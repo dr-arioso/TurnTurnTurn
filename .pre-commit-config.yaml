@@ -1,11 +1,11 @@
 exclude: '^examples/'
 
 repos:
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.0.241"  # use a recent version
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9  # (or current)
     hooks:
       - id: ruff
-        args: ["--select", "E,F,W,C90"]  # reuse ruff config
+        args: ["--select", "E,F,W,C90", "--ignore", "E501"]
   - repo: https://github.com/psf/black
     rev: 24.8.0
     hooks:

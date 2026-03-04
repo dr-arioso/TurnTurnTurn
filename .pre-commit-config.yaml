@@ -1,0 +1,30 @@
+exclude: '^examples/'
+
+repos:
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.0.241"  # use a recent version
+    hooks:
+      - id: ruff
+        args: ["--select", "E,F,W,C90"]  # reuse ruff config
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        language_version: python3.12
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (venv)
+        entry: .venv/bin/mypy
+        language: system
+        pass_filenames: false
+        args: ["--strict", "src/turnturnturn"]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v0.9.5
+    hooks:
+      - id: check-added-large-files

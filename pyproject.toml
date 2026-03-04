@@ -1,0 +1,39 @@
+[project]
+name = "turnturnturn"
+version = "0.0.0"
+description = "TurnTurnTurn minimal scaffold"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "ruff>=0.2",
+    "black>=24.0",
+    "isort>=6.0",
+    "mypy>=1.0",
+    "coverage",
+    "safety",
+    "pip-audit",
+    "pre-commit",
+]
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "C90"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[build-system]
+requires = ["setuptools>=65.0","wheel"]
+build-backend = "setuptools.build_meta"

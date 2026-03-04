@@ -1,5 +1,5 @@
 # TurnTurnTurn (TTT) — Architecture Document
-## Version 0.7 — March 2026
+## Version 0.8 — March 2026
 ### Source: Design session between Bill and Claude (Anthropic)
 
 
@@ -39,35 +39,50 @@ CTOs and Deltas travel on typed events. The event stream is what you replay to
 reconstruct any derived artifact. Full CTO observation state is always derivable
 from the event stream.
 
-**Append-only. Never override.**
-The CTO identity fields are immutable at construction. The `observations` dict is
-written once per owned namespace and appended-to for shared namespaces. Nobody
-overrides anyone else. Everyone just takes their turn.
+**Append-only. Never override; hub is authoritative.**
+The CTO identity fields are immutable at construction. The `observations` dict
+is never written directly by Purposes or other external components — the hub
+is the sole authority that merges incoming Deltas into the CTO observation
+state. Purposes emit Deltas (events) describing intended changes; the hub
+receives those Deltas via the `take_turn` pathway, validates and merges them,
+and then emits HubEvents and dispatches follow-up purposes via the DAG.
 
 **Owned vs shared namespaces.**
-Each Purpose owns one namespace in `cto.observations` — written once, single
-writer. Shared namespaces are always lists — TTT appends each contribution
-regardless of count. A single contributor produces a list of one. Conflict
-resolution is never TTT's concern; that belongs to a resolver operating
-downstream.
+Each Purpose owns one *owned* namespace in `cto.observations`. Owned
+namespace entries are written by the hub on behalf of that purpose; other
+purposes may read those entries but may not propose writes to them. Purposes
+have no mechanism to propose updates outside their own owned namespace or the
+shared namespace — the hub enforces that rule. Shared namespaces are
+represented by lists maintained by the hub; when a purpose contributes to a
+shared key the hub appends the contribution to the list (`[a]` → `[a, b]`).
+The hub enforces the invariant that shared entries are lists and that owned
+entries are authored only by the hub acting for the owning purpose. The hub
+preserves append history and provenance via the event stream; higher‑level
+conflict resolution (semantics of merging structured payloads) is left to
+downstream resolvers when needed.
 
 **Provenance is a query, not a field.**
-Who contributed what, and when, is answerable from the event stream. The
-`observations` dict carries only values — clean, uncluttered by attribution
-metadata. TRTPurpose persists every event; provenance views are queries or
-formatted log entries derived from that stream.
+Who contributed what, and when, is answerable from the event stream and
+HubEvents; the `observations` dict itself intentionally contains values only
+so that in‑memory CTOs are compact and easy to consume. TRTPurpose (and other
+adapters) persist events; provenance is reconstructed by querying that event
+log or by reading HubEvents emitted during processing.
 
-**Domain-neutral core.**
-TTT knows nothing about trace mutations, conversation analysis, LLM alignment,
-or any other research domain. Those concerns belong in Purpose implementations.
-The core ships with exactly one built-in Purpose adapter: **TRTPurpose**
-(the TTT integration point for TurnReTurn).
+**Domain‑neutral core.**
+TTT knows nothing about domain semantics such as trace mutations, conversation
+analysis, or LLM alignment — those responsibilities belong to Purpose
+implementations. The core provides the event / DAG routing, merge semantics,
+and enforcement guarantees. The core ships with exactly one built‑in Purpose
+adapter: **TRTPurpose** (the TTT integration point for TurnReTurn).
 
-**`take_turn` is the one true path.**
-All communication flows through `take_turn`, including registration and
-subscription management. Convenience methods like `ttt.register()` are
-syntactic sugar that construct and dispatch events internally. Under the hood
-it is always events.
+**`take_turn` is the one true path (routing & dispatch).**
+All inbound messages and lifecycle operations are expressed as events and enter
+the system through `take_turn`. `take_turn` is responsible for accepting an
+incoming event (Delta, registration, observation write request, etc.),
+validating it, handing it to the hub merge logic (which alone updates the
+CTO/observations), and then routing any resulting HubEvents through the DAG to
+subscribed Purposes. Convenience APIs such as `ttt.register()` are thin
+wrappers that construct and dispatch these events via `take_turn`.
 
 **Loosely coupled via declared dependencies.**
 Purposes declare what other Purposes they depend on. TTT manages execution
@@ -142,6 +157,68 @@ Calling code (e.g. Adjacency session runner)
   │  └── purpose_audit()    │
   └─────────────────────────┘
 ```
+
+
+## 2.5 Applicability Beyond Any Single Use Case
+
+TTT is not a pipeline framework. Because **calling code is itself registered as a Purpose**, TTT forms a **peer mesh** of Purposes coordinated by the hub:
+
+- Every actor is a first-class node in the same event graph (no privileged “upstream/downstream” layer).
+- Purposes do not call each other; they **subscribe** to events and **propose** observations via Deltas.
+- The hub is the sole authority that merges proposed changes into `cto.observations`, preserving append history and provenance via the event stream.
+
+In practice, “upstream/downstream” is only a description of a particular *topology* (who subscribes to whom), not an architectural hierarchy.
+
+### 2.5.1 What this unlocks
+
+- **Composition & orchestration**: assemble complex behaviors from small, focused Purposes that each add a narrow observation set.
+- **Late binding**: add/remove Purposes at runtime via registration/subscription changes without rewriting orchestration code.
+- **Cross-cutting concerns**: privacy, policy checks, logging, and auditing can be implemented as separate Purposes that subscribe broadly.
+- **Multi-agent enrichment**: multiple independent analyzers can contribute to shared keys (append-only lists) without coordination beyond schema contracts.
+- **Replay and re-analysis**: new Purposes can be run over historical event logs to derive new artifacts without modifying prior records.
+
+### 2.5.2 Example topologies
+
+These are illustrative “starter meshes” that demonstrate the generality of CTO + event routing beyond any single domain.
+
+#### Topology A — Observability + Evaluation Mesh (LLM app debugging)
+
+- Calling code (as Purpose) emits `turn_observed` / lifecycle events.
+- `TRTPurpose` persists all HubEvents (JSONL/SQL).
+- `CostPurpose` annotates token usage / latency metrics.
+- `EvalPurpose` computes lightweight quality signals (e.g., semantic similarity checks) and appends evaluation observations.
+- `AuditPurpose` subscribes to `*` and emits human-readable audit summaries.
+
+Outcome:
+- A replayable event log plus per-turn “quality/audit” observations, without any LLM-specific semantics in the core.
+
+#### Topology B — Decision Ledger Mesh (DecisionCards as projections)
+
+- `DecisionExtractPurpose` proposes decision-move observations (append-only evidence).
+- `DecisionResolvePurpose` materializes a “current snapshot” (replaceable view) from evidence.
+- `ReviewPurpose` (human-in-the-loop) subscribes to conflicts/unresolved items and appends review actions.
+- `TRTPurpose` stores everything; re-resolution can be run deterministically when rules evolve.
+
+Outcome:
+- DecisionCards become a downstream projection over the authoritative log; multiple extractors can coexist.
+
+#### Topology C — Federated Enrichment Mesh (edge → central)
+
+- Edge node runs `EmbedPurpose` / lightweight heuristics locally and emits Deltas/events.
+- Central hub persists HubEvents and merges shared observations.
+- Optional `SearchIndexPurpose` builds full-text indices; optional vector index is maintained as a separate projection.
+- A `PolicyPurpose` enforces redaction/sanitization by proposing redaction observations (never overwriting raw text).
+
+Outcome:
+- Extensible enrichment with preserved provenance and the ability to recompute or augment annotations later.
+
+### 2.5.3 What Purposes must agree on (minimal governance)
+
+To keep the peer mesh tractable, Purposes should follow two conventions:
+
+- **Schema/versioning**: event payloads and observation values include `_schema` and `_v` when the shape matters.
+- **Merge expectations**: shared keys are append-only lists; owned keys are written only by the hub on behalf of the owning Purpose.
+
 
 ---
 
@@ -232,17 +309,17 @@ Although the **HubEvent** stream remains the authoritative record, TTT supports 
 
 #### 4.3.1 TTT.register()
 
-A Purpose/Provider registers itself with the hub by providing:
+A Purpose registers itself with the hub by providing:
 
-- `purpose_id: str` (stable identifier; used as the provider namespace)
+- `purpose_id: str` (stable identifier; used as the purpose namespace)
 - `subscriptions: list[str]` (event patterns; may include globs, e.g., `Events.*`)
 - optional `capabilities` (e.g., whether it can emit out-of-band observations)
 
-The hub returns a **provider token**:
+The hub returns a **purpose token**:
 
-- `provider_token: str` — 24-char hex (`secrets.token_hex(12)`)
+- `purpose_token: str` — 24-char hex (`secrets.token_hex(12)`)
 
-The provider token is then attached to any provider-originating calls back into the hub (e.g., posting a Delta, requesting subscription changes). This is an identity and trust-boundary mechanism; it is not intended to be cryptographic security in hostile settings.
+The purpose token is then attached to any provider-originating calls back into the hub (e.g., posting a Delta, requesting subscription changes). This is an identity and trust-boundary mechanism; it is not intended to be cryptographic security in hostile settings.
 
 #### 4.3.2 Subscription patterns
 
@@ -264,22 +341,22 @@ TTT supports dynamic subscription updates via a dedicated hub call:
 
 Payload shape (conceptual):
 - `purpose_id: str`
-- `provider_token: str`
+- `purpose_token: str`
 - `delete_subs: list[str]` (optional)
 - `add_subs: list[str]` (optional)
 
-This call is only accepted if `provider_token` matches the currently registered token for `purpose_id`. The hub applies the update atomically for that provider.
+This call is only accepted if `purpose_token` matches the currently registered token for `purpose_id`. The hub applies the update atomically for that provider.
 
 > Note: the strings inside `add_subs` / `delete_subs` are subscription patterns (e.g., `Events.*`), not turn identifiers. If you need turn scoping, the hub should filter/route based on the event’s `token_id` (CTO token_id) or a separate explicit filter mechanism.
 
 #### 4.3.4 Provider identity in events
 
-Provider identity is carried as the **provider namespace** (`purpose_id`) inside:
+Provider identity is carried as the **purpose namespace** (`purpose_id`) inside:
 - `Delta.provider`
 - `Observation.owner`
 - and, when needed, in `HubEvent.payload["provider"]`
 
-The **provider token** is not intended to be written into every HubEvent payload; it is used to authenticate provider-originating requests to the hub.
+The **purpose token** is not intended to be written into every HubEvent payload; it is used to authenticate provider-originating requests to the hub.
 
 
 ---
@@ -309,7 +386,7 @@ class CTO:
 ```python
 @dataclass
 class Observation:
-    owner:  str   # provider namespace (e.g. "ue_detector")
+    owner:  str   # purpose namespace (e.g. "ue_detector")
     shared: bool  # True => readable by other providers; hub enforces immutability
     value:  Any   # JSON-safe provider-defined content
 ```
@@ -326,18 +403,36 @@ Providers report work via a Delta, which the hub can merge into the CTO and reco
 ```python
 @dataclass
 class Delta:
-    source_token_id: str          # CTO token_id the delta was derived from
-    provider:        str          # provider namespace
-    kind:            str          # provider-defined (e.g. "observation_added")
+    source_turn_id: str          # CTO turn_id the delta was derived from
+    purpose_id:      str         # purpose namespace that produced this delta
+    invocation_id:   str | None  # hub-generated per dispatch (optional)
+    kind:            str         # purpose-defined (e.g. "observation_added")
     payload:         dict[str,Any]# JSON-safe; convention: includes _schema and _v
-    timestamp:       float        # unix epoch at delta creation
+    timestamp:       float       # unix epoch at delta creation
 ```
 
-Delta merge policy is now expressed in hub logic rather than baked into a two-bucket `purpose_data/shared_data` structure. Common patterns:
-- add/update `cto.observations[key] = Observation(...)`
-- append-only “lists of contributions” can live either:
-  - as a single shared Observation holding a list, or
-  - as multiple Observations under distinct keys (depending on how you want to query)
+Delta merge policy is implemented by the hub (the only component that may
+mutate `cto.observations`). The hub applies deterministic rules when merging
+incoming Deltas:
+
+-- Owned writes: when a delta carries an Observation intended for an owned
+  namespace the hub records the contribution on behalf of the owning purpose
+  following append‑only semantics. The hub never silently overwrites an
+  existing contribution; it records the new contribution and preserves history
+  for provenance.
+-- Shared appends: when a delta targets a shared namespace the hub appends
+  the contribution to the list maintained at that key. The hub enforces the
+  invariant that shared keys always map to lists and that all contributions
+  are appended rather than replacing prior entries.
+-- Merge semantics: the hub applies deterministic, documented merge behavior
+  (append-only by default). For structured payloads the hub may use explicit
+  merge functions, but these are always implemented to preserve event history
+  rather than discarding prior contributions. Higher‑level reconciliation and
+  domain-specific resolution remain the responsibility of downstream
+  components.
+
+These policies keep the core small and deterministic while enabling varied
+downstream strategies for reconciliation and enrichment.
 
 ### 5.4 DAGNode status machine (eligibility)
 
@@ -370,8 +465,8 @@ subscribers. TRTPurpose still receives it regardless of privacy setting.
 
 TTT assumes the hub is the **authority** for lifecycle events and state mutation. Providers/Purposes are *extensions* that can compute and propose changes (Deltas) but do not directly mutate shared state without hub mediation.
 
-- Providers register via `TTT.register(purpose_id, subscriptions)` and receive a `provider_token` (`secrets.token_hex(12)`).
-- Any provider-originating request (posting a Delta, requesting subscription changes) must include `purpose_id` + `provider_token`.
+- Providers register via `TTT.register(purpose_id, subscriptions)` and receive a `purpose_token` (`secrets.token_hex(12)`).
+- Any provider-originating request (posting a Delta, requesting subscription changes) must include `purpose_id` + `purpose_token`.
 - The hub validates the token against its registry before accepting the request.
 
 This mechanism is primarily for correctness and accidental misuse prevention (e.g., preventing a misconfigured provider from impersonating another). If you need a hostile-environment security model, treat this as scaffolding and add cryptographic authentication at the transport layer.
@@ -525,23 +620,16 @@ trt_sql/                      # pip install ttt[persist-sql]
 
 ---
 
-## 9. Adjacency Integration
+## 9. Example Integration (Adjacency as one client)
 
-Adjacency is both **upstream** and **downstream** of TTT:
+Adjacency is one consumer of TTT, but it is not architecturally special. In TTT terms:
 
-- **Upstream**: Adjacency's session runner constructs `turn_observed` events
-  and calls `ttt.take_turn(...)` to feed turns into the system. Adjacency is
-  the source of the raw turn data that becomes a CTO.
-- **Downstream**: Adjacency-specific Purposes (CA annotation, trace mutation
-  detection, reviewer scoring) register with TTT and receive `purpose_resolved`
-  events for the namespaces they declared interest in.
-- **Feedback**: Purposes may emit `speaker_feedback` events that Adjacency's
-  session runner receives and acts on — e.g. a terminology drift signal from
-  a StashKit-backed Purpose.
+- The Adjacency session runner can be modeled as a Purpose that emits `turn_observed` events via `take_turn`.
+- Adjacency-specific analyzers are simply additional Purposes that subscribe to relevant events and propose observations.
+- Feedback loops (e.g., a `speaker_feedback` event) are implemented as subscriptions: calling code receives feedback the same way any other Purpose does.
 
-Adjacency's existing session log (JSONL) becomes a TurnReTurn FileStore
-output rather than a separately managed artifact. The log format is preserved;
-the machinery producing it is replaced by TRTPurpose + JSONLBackend.
+Adjacency’s existing session log (JSONL) becomes a TurnReTurn FileStore output rather than a separately managed artifact. The log format can be preserved; the machinery producing it is replaced by TRTPurpose + JSONLBackend.
+
 
 ---
 

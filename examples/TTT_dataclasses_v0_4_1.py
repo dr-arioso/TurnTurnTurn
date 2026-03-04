@@ -66,19 +66,21 @@ class Observation:
 
     owner: purpose namespace that produced this observation (e.g. "ue_detector").
     shared: flag indicating where the data lives.
-            * **False** – written into the owner's private namespace; only the
-              owner may modify or read the value. Nothing in a private
-              namespace is visible to other purposes.
-            * **True** – written into the *shared* namespace. In the shared
-              namespace every key maps to a **list**; when a purpose appends a
-              value it is added to the list (`[a]` → `[a, b]`). All purposes
-              may append to and read shared entries. The hub enforces the list
-              semantics.
-    value: arbitrary purpose-defined content. For non‑shared observations the
-           value is stored directly; for shared observations the value is
-           appended to a list. In either case the data must be JSON-serializable
-           (dicts, lists, strings, numbers, bools, None). The hub does not
-           validate this at runtime; purposes are responsible.
+        * **False** – written into the owner's *owned* namespace. The hub
+          writes on behalf of the owning purpose; other purposes may read that
+          namespace but may not propose updates to it. Purposes have no
+          mechanism to propose writes outside their own owned namespace or the
+          shared namespace; the hub enforces this rule.
+        * **True** – written into the *shared* namespace. In the shared
+          namespace every key maps to a **list**; when a purpose contributes
+          the hub appends the value to the list (`[a]` → `[a, b]`). All
+          purposes may append to and read shared entries. The hub enforces the
+          list semantics and append-only invariant.
+    value: arbitrary purpose-defined content. For non-shared observations the
+        value is stored directly; for shared observations the value is
+        appended to a list. In either case the data must be JSON-serializable
+        (dicts, lists, strings, numbers, bools, None). The hub does not
+        validate this at runtime; purposes are responsible.
     """
     owner:  str
     shared: bool
@@ -102,11 +104,14 @@ class CTO:
     text: the raw turn text as received from the participant.
     role: participant role identifier (e.g. "subject", "interviewer").
     observations: keyed by purpose namespace. Each value is either a
-                  single Observation (private namespace) or, for shared data,
-                  a list of Observation values representing the shared list
+                  single Observation (owned namespace) or, for shared data, a
+                  list of Observation values representing the shared list
                   semantics described above.
                   Access pattern: `cto.observations["purpose_name"]` or, when
-                  iterating shared entries, walk the list.
+                  iterating shared entries, walk the list. The hub is the only
+                  component that mutates `cto.observations` — Purposes submit
+                  Deltas describing intended changes and the hub applies them
+                  according to the append-only semantics.
     ext: purpose-specific extension data. Namespaced by purpose. Purposes
          may write arbitrary data here; other purposes should treat foreign
          namespaces as opaque. Intended for lightweight per-turn metadata

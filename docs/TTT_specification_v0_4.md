@@ -1,7 +1,6 @@
-TTT Specification v0.2
+TTT Specification
 =====================
 
-Status: draft (aligned to TTT_dataclasses_v0_6.py)
 
 Overview
 --------
@@ -16,6 +15,12 @@ Goals
 
 Conventions
 -----------
+- **Canonical identifiers:** `turn_id` is the only valid turn identity key.
+- **Subscriptions:** match on `HubEvent.event_type` patterns (routing), then apply optional attribute filters (filtering).
+- `SubscriptionLike` (v0): either a string `event_type` pattern, or an object with:
+  - `event_type: str` (pattern; may be "*")
+  - optional filters such as `turn_id: str` and `purpose_id: str`
+  - hubs MUST ignore unknown keys in subscription objects.
 - All event payloads follow `_schema` (str) and `_v` (int) to allow evolution.
 - Identifiers:
   - `turn_id`: CTO identity (24 hex chars via `secrets.token_hex(12)`).
@@ -93,12 +98,12 @@ Hub (in `src/turnturnturn/hub.py`)
   - `get_cto(turn_id: str) -> CTO | None`.
   - `submit_delta(delta: Delta) -> HubEvent` — validate, apply, persist, emit.
   - `apply_delta(cto: CTO, delta: Delta) -> list[HubEvent]` — apply one or more HubEvents as a result of merge.
-  - `register_purpose(purpose_id: str, subscriptions: list[str], token: str | None)`.
+  - `register_purpose(purpose_id: str, subscriptions: list[SubscriptionLike], token: str | None)`.
   - `list_events(turn_id: str) -> list[HubEvent]` — readback for provenance.
 
 Router (in `src/turnturnturn/router.py`)
 - `class Router:`
-  - `register(purpose_id: str, callback: Callable[[HubEvent], None], subscriptions: list[str])`
+  - `register(purpose_id: str, callback: Callable[[HubEvent], None], subscriptions: list[SubscriptionLike])`
   - `dispatch(event: HubEvent) -> None` — route to matching callbacks.
 
 Helpers
@@ -156,22 +161,3 @@ Next steps (implementation roadmap)
 
 
 
-
-
-
-- Reserved extension keys: payloads MAY include `_meta` for future extensions; hubs MUST ignore unknown keys.
-
-
-## PurposeRegistrationEvent (control-plane)
-
-Purposes may (re)register at any time via `take_turn(PurposeRegistrationEvent, purpose_token=...)`. The event is accepted only if authenticated by the hub (purpose_token is **out-of-band** and never included in the HubEvent payload).
-
-**Semantics:** registration replaces the current subscription set for the given `purpose_id` (latest accepted state wins). Registration history is preserved in the HubEvent stream.
-
-**Payload shape (conceptual):**
-- `_schema: "purpose_registration"`
-- `_v: 1`
-- `purpose_id: str`
-- `subscriptions: list[str]`  (REPLACE semantics)
-- `request_id?: str`          (optional idempotency key)
-- `_meta?: dict[str, Any]`    (reserved extension surface; hubs must ignore unknown keys)

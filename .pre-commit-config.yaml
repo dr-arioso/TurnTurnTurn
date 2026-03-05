@@ -2,7 +2,7 @@ exclude: '^examples/'
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9  # (or current)
+    rev: v0.15.4  # (or current)
     hooks:
       - id: ruff
         args: ["--select", "E,F,W,C90", "--ignore", "E501"]

@@ -1,15 +1,8 @@
-# turnturnturn/dataclasses.py
-# conversational turn processing middleware — core data model
-#
-# Version: 0.6
-#
-# Changes from v0.1:
-#   - turn_id uses secrets.token_hex(12) — 24 hex chars
-#   - timestamp None-checks use `is None` pattern (not `or default`) throughout
-#   - DAGNode: proper status state machine; is_eligible checks status == "eligible"
-#   - CTO.to_dict() and Delta.to_dict() stub serialization methods
-#   - payload helpers include _schema and _v fields by convention
-#   - EventType: TURN_ANNOTATED added (annotation event, out-of-band write)
+"""
+turnturnturn/dataclasses.py
+conversational turn processing middleware — core data model
+"""
+
 from __future__ import annotations
 
 import secrets
@@ -17,6 +10,9 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+SubscriptionLike = str | dict[str, Any]
+
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -34,7 +30,7 @@ class EventType(str, Enum):
     TURN_OBSERVATION_RECORDED = "turn_observation_recorded"
 
     # --- registration / control-plane ---
-    PURPOSE_REGISTERED = "purpose_registered"
+    PURPOSE_REGISTERED = "purpose_registration"
     SUBSCRIPTIONS_CHANGED = "subscriptions_changed"
 
 
@@ -174,9 +170,9 @@ class Delta:
 
     source_turn_id: str
     purpose_id: str
+    invocation_id: str | None = None  # hub-generated per dispatch (optional)
     kind: str
     payload: dict[str, Any]
-    invocation_id: str | None = None  # hub-generated per dispatch (optional)
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -320,9 +316,9 @@ class HubEvent:
 # ---------------------------------------------------------------------------
 
 
-def payload_purpose_registered(
+def payload_purpose_registration(
     purpose_id: str,
-    subscriptions: list[str],
+    subscriptions: list[SubscriptionLike],
     request_id: str | None = None,
     _meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:

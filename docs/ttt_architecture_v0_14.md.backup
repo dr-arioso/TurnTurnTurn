@@ -1,9 +1,6 @@
 # TurnTurnTurn (TTT) — Architecture Document
-## Version 0.12 — March 2026
-### Source: Design session between Bill and Claude (Anthropic)
 
 
-> **v0.6 note:** Reinstates the **provider registration + subscriptions** layer from v0.4 as an explicit hub capability (TTT.register / ChangeSubscriptionsEvent) while keeping the v0.2 core dataclasses (CTO/Observation/Delta) and HubEvent stream as the authoritative record.
 
 ---
 
@@ -289,12 +286,11 @@ class HubEvent:
 
 Events are intentionally small and JSON-safe (or trivially serializable via `to_dict()` on embedded objects). Payloads should follow the `_schema` + `_v` convention for future migration/debugging.
 
-### 4.2 EventType vocabulary (aligned to dataclasses v0.5)
 
 Pipeline (DAG) lifecycle:
 
 - `turn_received`
-- `purpose_registered`
+- `purpose_registration`
 - `subscriptions_changed`
 - `purpose_fired`
 - `delta_merged`
@@ -313,7 +309,7 @@ Although the **HubEvent** stream remains the authoritative record, TTT supports 
 A Purpose registers itself with the hub by providing:
 
 - `purpose_id: str` (stable identifier; used as the purpose namespace)
-- `subscriptions: list[str]` (event patterns; may include globs, e.g., `Events.*`)
+- `subscriptions: list[SubscriptionLike]` (event patterns; may include globs, e.g., `Events.*`)
 - optional `capabilities` (e.g., whether it can emit out-of-band observations)
 
 The hub returns a **purpose token**:
@@ -324,7 +320,14 @@ The purpose token is then attached to any purpose-originating calls back into th
 
 #### 4.3.2 Subscription patterns
 
-Subscriptions are matched against `HubEvent.event_type` (and optionally other routing keys) using simple glob semantics.
+Subscriptions are matched against `HubEvent.event_type` using simple glob semantics.
+
+**Canonical contract (routing vs filtering):**
+- **Route** by `event_type` only.
+- **Filter** optionally by attributes (e.g., `turn_id`, `purpose_id`).
+- Turn scoping uses `turn_id` only.
+- Subscription entries MAY be either a string pattern or an object with `event_type` + optional filters.
+
 
 Examples:
 - `turn_received`
@@ -332,13 +335,9 @@ Examples:
 - `Events.*` (all events)
 - `turn_observation_recorded`
 
-A subscription may also include routing hints via payload keys (implementation-defined). If you want to subscribe to events that reference a specific turn, use `token_id`-scoped routing (the hub already emits `token_id` on turn-scoped events); do **not** rely on raw text matching.
+Turn scoping is expressed via **attribute filtering** on `HubEvent.turn_id` (and optionally other well-known attributes), not by encoding a turn identifier into the `event_type` pattern. Do **not** rely on raw text matching.
 
 #### 4.3.3 Changing subscriptions at runtime
-**Extension seam:** registration payloads MAY include `_meta` for future extensions; the hub MUST ignore unknown keys.
-
-**Credential seam:** `purpose_token` is passed out-of-band to `take_turn(...)` and is never included in HubEvents or persisted payloads.
-
 
 TTT supports dynamic subscription updates via a dedicated hub call:
 
@@ -352,7 +351,7 @@ Payload shape (conceptual):
 
 This call is only accepted if `purpose_token` matches the currently registered token for `purpose_id`. The hub applies the update atomically for that provider.
 
-> Note: the strings inside `add_subs` / `delete_subs` are subscription patterns (e.g., `Events.*`), not turn identifiers. If you need turn scoping, the hub should filter/route based on the event’s `token_id` (CTO turn_id) or a separate explicit filter mechanism.
+> Note: the strings inside `add_subs` / `delete_subs` are subscription patterns (e.g., `Events.*`), not turn identifiers. If you need turn scoping, the hub should filter/route based on the event’s `turn_id` or a separate explicit filter mechanism.
 
 #### 4.3.4 Purpose identity in events
 
@@ -453,6 +452,8 @@ Eligibility checks must reflect `status == eligible` (hub-driven transitions).
 
 ### 6.1 Subscription model — Switch with wildcard support
 
+(See **Canonical contract (routing vs filtering)** in §4.3.2.)
+
 TTT is a **switch**: subscribers declare which event types and/or purpose_ids
 they care about at registration time. TTT only forwards events to subscribers
 whose declared interests match.
@@ -466,7 +467,6 @@ regardless of type or purpose_id.
 `private=True` means TTT does not forward `purpose_resolved` to other
 subscribers. TRTPurpose still receives it regardless of privacy setting.
 
-### 6.2 Authentication / trust boundary (v0.6)
 
 TTT assumes the hub is the **authority** for lifecycle events and state mutation. Providers/Purposes are *extensions* that can compute and propose changes (Deltas) but do not directly mutate shared state without hub mediation.
 
@@ -769,10 +769,7 @@ REPAIR:
 
 ---
 
-*TTT Architecture v0.4 — March 2026*
-*Drafted from design session. Companion document: Adjacency ADR v1.0.*
 
-*v0.4 changes from v0.3:*
 - *`ttt.register()` as convenience wrapper clarified — `take_turn` is the*
   *one true path; `register()` constructs and dispatches internally*
 - *`subscription_update` event added for mid-session subscription changes*
@@ -846,7 +843,7 @@ create table hub_events (
 ```
 
 Notes:
-- `conversation_id`/`turn_index` are nullable to support non-turn-scoped events (e.g., `purpose_registered`, `subscriptions_changed`).
+- `conversation_id`/`turn_index` are nullable to support non-turn-scoped events (e.g., `purpose_registration`, `subscriptions_changed`).
 - `payload` is JSONB and should include `_schema` and `_v` when the event’s internal structure matters.
 - You can add `purpose_token` to `payload` for requests, but **do not** store it on accepted events unless you need an audit trail; typically you store only `purpose_id` and keep `purpose_token` in the registry table.
 
@@ -963,4 +960,3 @@ When you need semantic retrieval at scale:
 - store only embedding references in event payloads and/or CTO observations.
 
 If you want to stay Postgres-only, pgvector is a reasonable next step; otherwise keep the vector index as a separate projection.
-

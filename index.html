@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.">
+        <meta name="description" content="TTT is a hub runtime built around the Canonical Turn Object (CTO). The hub is the sole authority for CTO creation and canonical state. Processors (Purposes) propose changes via Deltas; the hub validates and merges them. Nothing writes to canonical state directly.">
       
       
       
       
       
-        <link rel="next" href="ttt_architecture_v0_15/">
+        <link rel="next" href="ttt_architecture_v0_16/">
       
       
         
@@ -365,7 +365,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ttt_architecture_v0_15/" class="md-nav__link">
+      <a href="ttt_architecture_v0_16/" class="md-nav__link">
         
   
   
@@ -753,7 +753,7 @@ not hard-coded to speaker/text semantics.</p>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">turn_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ttt</span><span class="o">.</span><span class="n">start_turn</span><span class="p">(</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="n">session_id</span><span class="o">=</span><span class="n">uuid4</span><span class="p">(),</span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">content_profile</span><span class="o">=</span><span class="s2">&quot;conversation&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">},</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;speaker_id&quot;</span><span class="p">:</span> <span class="s2">&quot;usr_a3f9&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">},</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="p">)</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created turn: </span><span class="si">{</span><span class="n">turn_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
@@ -792,7 +792,7 @@ not hard-coded to speaker/text semantics.</p>
 </table>
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <p>This project is in active architectural development. Names, APIs, and module
-layout are still being refined. See the <a href="ttt_architecture_v0_15/">Architecture</a>
+layout are still being refined. See the <a href="ttt_architecture_v0_16/">Architecture</a>
 doc for current design direction.</p>
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.">
+        <meta name="description" content="TTT is a hub runtime built around the Canonical Turn Object (CTO). The hub is the sole authority for CTO creation and canonical state. Processors (Purposes) propose changes via Deltas; the hub validates and merges them. Nothing writes to canonical state directly.">
       
       
       
@@ -21,7 +21,7 @@
     
     
       
-        <title>Ollama extension fix - TurnTurnTurn</title>
+        <title>Workaround for vscode-ollama 0.17.x - TurnTurnTurn</title>
       
     
     
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Ollama extension fix
+              Workaround for vscode-ollama 0.17.x
             
           </span>
         </div>
@@ -283,7 +283,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ttt_architecture_v0_15/" class="md-nav__link">
+      <a href="../ttt_architecture_v0_16/" class="md-nav__link">
         
   
   
@@ -576,25 +576,8 @@
   
   
   
+    
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#workaround-for-vscode-ollama-017x" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workaround for vscode-ollama 0.17.x
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -619,9 +602,7 @@
   
 
 
-  <h1>Ollama extension fix</h1>
-
-<h3 id="workaround-for-vscode-ollama-017x">Workaround for <code>vscode-ollama</code> 0.17.x<a class="headerlink" href="#workaround-for-vscode-ollama-017x" title="Permanent link">&para;</a></h3>
+<h1 id="workaround-for-vscode-ollama-017x">Workaround for <code>vscode-ollama</code> 0.17.x<a class="headerlink" href="#workaround-for-vscode-ollama-017x" title="Permanent link">&para;</a></h1>
 <p>The official <code>vscode-ollama</code> extension probes the Ollama HTTP server for a
 <code>/version</code> endpoint when it activates. That endpoint was introduced in a later
 release; the current Windows build (0.17.5/0.17.6 as of March 4 2026) returns
@@ -632,23 +613,21 @@ release; the current Windows build (0.17.5/0.17.6 as of March 4 2026) return
 from showing the configured model.  Until the extension is updated to handle
 404s gracefully you can patch it locally.</p>
 <ol>
-<li>
-<p>locate the installed extension in the WSL filesystem (you may be using a
-   remote SSH session so the path begins with <code>~/.vscode-server</code>):
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>~/.vscode-server/extensions/warm3snow.vscode-ollama-&lt;version&gt;/<span class="o">{</span>dist,out<span class="o">}</span>/extension.js
+<li>locate the installed extension in the WSL filesystem (you may be using a
+   remote SSH session so the path begins with <code>~/.vscode-server</code>):</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>~/.vscode-server/extensions/warm3snow.vscode-ollama-&lt;version&gt;/<span class="o">{</span>dist,out<span class="o">}</span>/extension.js
 </code></pre></div>
-   There are two copies of the runtime code – one under <code>dist</code> that ships on the
-   VS Code marketplace and another under <code>out</code> that is actually executed by the
+<p>There are two copies of the runtime code – one under <code>dist</code> that ships on the
+   VS Code marketplace and another under <code>out</code> that is actually executed by the
    editor.  <strong>Be sure to edit both files</strong> (or just <code>out/extension.js</code>) when you
    apply the workaround.</p>
-</li>
-<li>
-<p>modify <code>extension.js</code> and either replace or prepend the following snippet
+<ol>
+<li>modify <code>extension.js</code> and either replace or prepend the following snippet
    near the top of the <code>activate</code> function (e.g. just after the
    "Initializing Ollama client with config" log).  The patched code uses
    <code>/version</code> and swallows any failure so 0.17‑series servers will no longer
-   trigger the warning.</p>
-</li>
+   trigger the warning.</li>
 </ol>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// version probe (workaround for 0.17.x servers)</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">(</span><span class="kd">function</span><span class="p">(){</span>
@@ -674,7 +653,7 @@ from showing the configured model.  Until the extension is updated to handle
 <a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="p">})();</span>
 </code></pre></div>
 <ol>
-<li><strong>Reload the VS Code window</strong> (<code>Ctrl+Shift+P</code> → <strong>Reload Window</strong>) or restart
+<li><strong>Reload the VS Code window</strong> (<code>Ctrl+Shift+P</code> → <strong>Reload Window</strong>) or restart
 the editor.  The new JavaScript will be picked up only after a reload.</li>
 </ol>
 <p>After patching and reloading you should no longer see the version warning and

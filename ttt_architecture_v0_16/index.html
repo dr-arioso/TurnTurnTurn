@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.">
+        <meta name="description" content="TTT is a hub runtime built around the Canonical Turn Object (CTO). The hub is the sole authority for CTO creation and canonical state. Processors (Purposes) propose changes via Deltas; the hub validates and merges them. Nothing writes to canonical state directly.">
       
       
       
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#turnturnturn-ttt-architecture-v015" class="md-skip">
+        <a href="#turnturnturn-ttt-architecture-v016" class="md-skip">
           Skip to content
         </a>
       
@@ -686,6 +686,78 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="5. Canonical example profile: conversation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-the-profile-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 The profile system
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-key-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Key convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-content-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Content shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-accessor-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Accessor dispatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-computed-accessors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Computed accessors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-strict_profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 strict_profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1475,6 +1547,78 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="5. Canonical example profile: conversation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-the-profile-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 The profile system
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-key-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Key convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-content-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Content shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-accessor-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Accessor dispatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-computed-accessors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Computed accessors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-strict_profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 strict_profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1649,7 +1793,7 @@
 
 
   
-    <a href="https://github.com/dr-arioso/TurnTurnTurn/edit/main/docs/ttt_architecture_v0_15.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/dr-arioso/TurnTurnTurn/edit/main/docs/ttt_architecture_v0_16.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1657,14 +1801,21 @@
   
 
 
-<h1 id="turnturnturn-ttt-architecture-v015">TurnTurnTurn (TTT) — Architecture v0.15<a class="headerlink" href="#turnturnturn-ttt-architecture-v015" title="Permanent link">&para;</a></h1>
+<h1 id="turnturnturn-ttt-architecture-v016">TurnTurnTurn (TTT) — Architecture v0.16<a class="headerlink" href="#turnturnturn-ttt-architecture-v016" title="Permanent link">&para;</a></h1>
 <h2 id="0-positioning">0. Positioning<a class="headerlink" href="#0-positioning" title="Permanent link">&para;</a></h2>
-<p><strong>TurnTurnTurn (TTT)</strong> is a hub runtime built around a single canonical object — the CTO — and the principle that nothing writes to canonical state directly. TTT was extracted from real human-AI interaction research infrastructure; the abstractions reflect actual usage rather than speculative design.</p>
+<p><strong>TurnTurnTurn (TTT)</strong> is a lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.</p>
 <p>TTT is built around a single canonical object:</p>
 <ul>
 <li><strong>CTO</strong> — Canonical Turn Object</li>
 </ul>
-<p>TTT does <strong>not</strong> define domain semantics. It provides the machinery to adopt the semantics that are important to anyone who uses it.</p>
+<p>TTT does <strong>not</strong> define domain semantics. It provides:</p>
+<ul>
+<li>authoritative CTO creation</li>
+<li>hub-mediated Delta merge</li>
+<li>typed HubEvents</li>
+<li>Purpose registration and dispatch</li>
+<li>replayable provenance through the event stream</li>
+</ul>
 <p>The canonical example profile is <strong><code>conversation</code></strong>, but TTT is <strong>profile-based</strong>, not hard-coded to speaker/text semantics.</p>
 <h2 id="1-core-nouns">1. Core nouns<a class="headerlink" href="#1-core-nouns" title="Permanent link">&para;</a></h2>
 <h3 id="ttt">TTT<a class="headerlink" href="#ttt" title="Permanent link">&para;</a></h3>
@@ -1688,16 +1839,16 @@
 <li><code>turn_id</code></li>
 <li><code>session_id</code></li>
 <li><code>created_at_ms</code></li>
-<li><code>content_profile</code></li>
+<li><code>content_profile</code> — <code>{"id": str, "version": int}</code></li>
 <li><code>content</code></li>
 <li><code>observations</code></li>
 </ul>
 <p>The canonical example profile is:</p>
 <ul>
 <li><code>content_profile = "conversation"</code></li>
-<li><code>content = {"speaker": str, "text": str}</code></li>
+<li><code>content = {"speaker_id": str, "speaker_role": str, "speaker_label": str, "text": str}</code></li>
 </ul>
-<p>Convenience attributes such as <code>speaker</code> and <code>text</code> are <strong>derived</strong>, profile-scoped accessors.</p>
+<p>Convenience attributes (<code>speaker_id</code>, <code>speaker_role</code>, <code>speaker_label</code>, <code>text</code>) are <strong>derived</strong>, profile-scoped accessors.</p>
 <h3 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h3>
 <p>A registered agenda-bearing actor in the TTT mesh.</p>
 <p>A Purpose:</p>
@@ -1760,9 +1911,11 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">await</span> <span class="n">ttt</span><span class="o">.</span><span class="n">start_turn</span><span class="p">(</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">session_id</span><span class="o">=...</span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">content_profile</span><span class="o">=</span><span class="s2">&quot;conversation&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">},</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">content</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;usr_a3f9&quot;</span><span class="p">},</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="p">},</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="34-ttt-creates-cto">3.4 TTT creates CTO<a class="headerlink" href="#34-ttt-creates-cto" title="Permanent link">&para;</a></h3>
 <p>TTT validates the content against its content profile, creates the CTO, and emits:</p>
@@ -1830,19 +1983,49 @@
 </code></pre></div>
 <h2 id="5-canonical-example-profile-conversation">5. Canonical example profile: <code>conversation</code><a class="headerlink" href="#5-canonical-example-profile-conversation" title="Permanent link">&para;</a></h2>
 <p>TTT is profile-based, but <code>conversation</code> remains the canonical example because it is simple, legible, and central to Adjacency.</p>
-<p>Required content shape:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">content_profile</span> <span class="o">=</span> <span class="s2">&quot;conversation&quot;</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="p">}</span>
+<h3 id="51-the-profile-system">5.1 The profile system<a class="headerlink" href="#51-the-profile-system" title="Permanent link">&para;</a></h3>
+<p>A <code>Profile</code> is a self-contained schema object that owns validation, default application, and accessor resolution for one content shape. Profiles are registered in <code>ProfileRegistry</code> — a process-scoped class-level registry. The hub consults it at <code>start_turn()</code> time; <code>CTO.__getattr__</code> consults it at attribute access time.</p>
+<p>The CTO carries only identifying data — no object references, no code:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">content_profile</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;conversation&quot;</span><span class="p">,</span> <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
 </code></pre></div>
-<p>Convenience accessors:</p>
-<ul>
-<li><code>CTO.speaker</code></li>
-<li><code>CTO.text</code></li>
-</ul>
-<p>These are derived from <code>content</code> and valid only when <code>content_profile == "conversation"</code>.</p>
+<p>This is fully serializable and loggable as-is. <code>CTO.__getattr__</code> dispatches to <code>ProfileRegistry.resolve(id, version, name, content)</code> for unknown attribute lookups. No profile-specific code lives in <code>CTO</code> or <code>hub.py</code>.</p>
+<p>To add a new profile: construct a <code>Profile</code>, call <code>TTT.register_profile()</code>. No core module changes required.</p>
+<h3 id="52-key-convention">5.2 Key convention<a class="headerlink" href="#52-key-convention" title="Permanent link">&para;</a></h3>
+<p>The conversation profile uses the <strong>parent_child flat key convention</strong> (max depth 2). Keys are grouped by parent prefix. Enforced when <code>strict_profiles=True</code> on the hub or <code>strict=True</code> on the profile; documented convention otherwise.</p>
+<h3 id="53-content-shape">5.3 Content shape<a class="headerlink" href="#53-content-shape" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">content_profile</span> <span class="o">=</span> <span class="s2">&quot;conversation&quot;</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="s2">&quot;id&quot;</span><span class="p">:</span>    <span class="nb">str</span><span class="p">,</span>   <span class="c1"># required — stable caller-defined identifier.</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>                        <span class="c1"># no format enforced — model name, UUID, handle, etc.</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>                        <span class="c1"># anchors ordinal assignment and provenance tracking.</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="s2">&quot;role&quot;</span><span class="p">:</span>  <span class="nb">str</span><span class="p">,</span>   <span class="c1"># optional — semantic role in the session protocol.</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>                        <span class="c1"># e.g. &quot;subject&quot;, &quot;interviewer&quot;, &quot;user&quot;, &quot;assistant&quot;.</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>                        <span class="c1"># default: &quot;speaker&quot; (the parent key name).</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>   <span class="c1"># optional — human-facing display name.</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>                        <span class="c1"># e.g. &quot;Stevie&quot;, &quot;Human&quot;, &quot;LLM&quot;, &quot;Dr. Smith&quot;.</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>                        <span class="c1"># default: &quot;speaker_&lt;n&gt;&quot; — 1-based ordinal of this</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>                        <span class="c1"># speaker.id in the session&#39;s speaker registry.</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>                        <span class="c1"># same speaker.id always resolves to the same</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>                        <span class="c1"># ordinal within a session.</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    <span class="p">},</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>        <span class="c1"># required — the turn content. root-level field.</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="54-accessor-dispatch">5.4 Accessor dispatch<a class="headerlink" href="#54-accessor-dispatch" title="Permanent link">&para;</a></h3>
+<p>Content is nested; CTO accessors are flat, following the parent_child
+convention. <code>cto.speaker_id</code> resolves to <code>content["speaker"]["id"]</code> via
+the path tuple declared in the profile's FieldSpec:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">cto</span><span class="o">.</span><span class="n">speaker_id</span>     <span class="c1"># → content[&quot;speaker&quot;][&quot;id&quot;]</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">cto</span><span class="o">.</span><span class="n">speaker_role</span>   <span class="c1"># → content[&quot;speaker&quot;][&quot;role&quot;]</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">cto</span><span class="o">.</span><span class="n">speaker_label</span>  <span class="c1"># → content[&quot;speaker&quot;][&quot;label&quot;]</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">cto</span><span class="o">.</span><span class="n">text</span>           <span class="c1"># → content[&quot;text&quot;]</span>
+</code></pre></div>
+<p>Unknown attribute names raise <code>AttributeError</code> as normal. Accessors for unknown profiles raise <code>AttributeError</code> — there is no cross-profile fallback.</p>
+<h3 id="55-computed-accessors">5.5 Computed accessors<a class="headerlink" href="#55-computed-accessors" title="Permanent link">&para;</a></h3>
+<p>Not supported in v0. All accessors are simple <code>content.get(name)</code> lookups. When computed accessors are needed (fields derived from multiple content keys), override <code>Profile.resolve()</code> on a subclass and register the subclass. No core changes required.</p>
+<h3 id="56-strict_profiles">5.6 strict_profiles<a class="headerlink" href="#56-strict_profiles" title="Permanent link">&para;</a></h3>
+<p><code>TTT.create(strict_profiles=True)</code> activates strict key validation on all profiles. Per-profile <code>strict=True</code> activates it for that profile regardless of the hub setting.</p>
 <h2 id="6-event-taxonomy-minimal-v015">6. Event taxonomy (minimal v0.15)<a class="headerlink" href="#6-event-taxonomy-minimal-v015" title="Permanent link">&para;</a></h2>
 <h3 id="cto_created"><code>cto_created</code><a class="headerlink" href="#cto_created" title="Permanent link">&para;</a></h3>
 <p>A new CTO now exists and is canonical.</p>
@@ -1878,11 +2061,12 @@
 <ul>
 <li><code>hub.py</code> — TTT runtime</li>
 <li><code>protocols.py</code> — PurposeProtocol / TurnTakerProtocol</li>
-<li><code>cto.py</code> — CTO and content-profile validation</li>
+<li><code>cto.py</code> — CTO; no profile-specific code</li>
+<li><code>profile.py</code> — Profile, ProfileRegistry, FieldSpec; conversation profile built-in</li>
 <li><code>events.py</code> — HubEvent and payload helpers</li>
 <li><code>delta.py</code> — Delta</li>
 <li><code>registry.py</code> — Purpose registration</li>
-<li><code>dag.py</code> — eligibility model</li>
+<li><code>dag.py</code> — eligibility model (stub)</li>
 </ul>
 <p>This document is only the front door.</p>
 <h2 id="9-non-goals-for-v015">9. Non-goals for v0.15<a class="headerlink" href="#9-non-goals-for-v015" title="Permanent link">&para;</a></h2>
@@ -1891,7 +2075,6 @@
 <li>cross-process transport</li>
 <li>durable persistence layout</li>
 <li>auth policy beyond token seam</li>
-<li>profile registry mechanics beyond minimal validation</li>
 <li>domain semantics for observations</li>
 <li>final naming for <code>purpose_completed</code> event</li>
 </ul>
@@ -1900,6 +2083,8 @@
 <li>Decide whether <code>purpose_completed</code> survives or is replaced by a clearer event.</li>
 <li>Decide whether explicit per-dispatch runtime records need a named public abstraction.</li>
 <li>Decide how much DAG language belongs in the public doc versus in code-level docs.</li>
+<li><strong>Profile registry strict enforcement</strong> — the <code>parent_child</code> key convention depth check in <code>Profile.validate(strict=True)</code> is a placeholder. Full enforcement (unknown key rejection by convention, not just by explicit field declaration) is deferred pending real usage driving the requirements.</li>
+<li><strong>Declarative profile system</strong> — the intended future state is profiles-as-pure-data requiring no Python code, loadable from JSON or YAML. The design is sketched in <code>profile.py</code>'s module docstring and <code>profiles/conversation.py</code>'s TODO block. Key elements: nested <code>content</code> dict mirroring actual content shape; <code>field_interpolation</code> for structural token declaration; <code>accessor_rule</code> for CTO attribute name generation; <code>_ordinal_</code> magic token for session-scoped counters; <code>Profile.from_dict()</code> as the parser entry point. The seam is the three stable method signatures: <code>Profile.validate()</code>, <code>Profile.apply_defaults()</code>, <code>Profile.resolve()</code> — these must not change when the declarative system lands.</li>
 </ul>
 <h2 id="11-migration-notes-from-v014">11. Migration notes from v0.14<a class="headerlink" href="#11-migration-notes-from-v014" title="Permanent link">&para;</a></h2>
 <p>This revision intentionally changes the public story:</p>
@@ -1909,6 +2094,11 @@
 <li>from <code>turn_received</code> to <code>cto_created</code></li>
 <li>from <code>purpose_id</code> as overloaded type/instance language to <code>Purpose.name</code> + <code>Purpose.id</code></li>
 <li>from <code>TurnSnargle</code> + <code>submit_snargle()</code> to direct <code>start_turn()</code> invocation on the hub</li>
+<li>from <code>content["speaker"]: str</code> to <code>content["speaker_id"]: str</code> (required) + <code>content["speaker_role"]: str</code> (optional) + <code>content["speaker_label"]: str</code> (optional) in the conversation profile</li>
+<li>from <code>CTO.speaker</code> convenience accessor to <code>CTO.speaker_id</code>, <code>CTO.speaker_role</code>, <code>CTO.speaker_label</code></li>
+<li>from ad-hoc <code>validate_content_profile()</code> switch to <code>Profile</code> / <code>ProfileRegistry</code> — profile-specific code no longer lives in core modules</li>
+<li><code>content_profile</code> on CTO changed from a string to a plain dict <code>{"id": ..., "version": ...}</code> — fully serializable, no object references</li>
+<li>hub <code>_speaker_registry</code> replaced by opaque <code>_session_contexts</code> — the hub no longer has any knowledge of speaker ordinals; the conversation profile manages that state in the session context dict it owns</li>
 </ul>
 <p>It preserves:</p>
 <ul>

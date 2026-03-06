@@ -1,5 +1,5 @@
 site_name: TurnTurnTurn
-site_description: Lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.
+site_description: TTT is a hub runtime built around the Canonical Turn Object (CTO). The hub is the sole authority for CTO creation and canonical state. Processors (Purposes) propose changes via Deltas; the hub validates and merges them. Nothing writes to canonical state directly.
 repo_url: https://github.com/dr-arioso/TurnTurnTurn
 repo_name: dr-arioso/TurnTurnTurn
 edit_uri: edit/main/docs/

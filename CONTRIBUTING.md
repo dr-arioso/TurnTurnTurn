@@ -1,0 +1,245 @@
+# Contributing to TurnTurnTurn
+
+This document is for humans and LLMs alike. If you are an agent working in this
+repo, read `AGENTS.md` first — it covers operational context, naming history,
+and things not to do. This document covers the contribution workflow.
+
+---
+
+## The core rule
+
+**TTT must not accumulate domain semantics.** The `conversation` profile is an
+example, not a direction. If a change makes TTT more useful for conversations
+specifically at the cost of generality, it belongs in the consuming project
+(e.g. Adjacency), not here.
+
+When in doubt: would this change make sense for a researcher building an image
+annotation pipeline? A document review workflow? If not, it probably doesn't
+belong in TTT.
+
+---
+
+## Branch and PR workflow
+
+Currently: push to `main`. This will formalize as collaborators join.
+
+Before pushing:
+
+```bash
+pytest --cov=turnturnturn
+pre-commit run --all-files
+```
+
+Both must pass cleanly. No exceptions.
+
+---
+
+## The docs-as-code contract
+
+TTT uses docs-as-code: the architecture doc and API reference are maintained
+alongside the code, not separately. This means doc drift is a bug, not a
+backlog item.
+
+The workflow has two layers:
+
+**Layer 1 — Docstrings (always)**
+Every public class, method, and function must have a docstring. This is
+enforced by `interrogate` at commit time (threshold: 80%). The API reference
+in `docs/api/` is generated from these docstrings at build time via
+`mkdocstrings` — you do not edit the API reference pages directly.
+
+**Layer 2 — Architecture doc (when the design changes)**
+`docs/ttt_architecture_v0_15.md` documents intent, principles, and settled
+decisions. Update it when you change *why* something works the way it does,
+not just *how*. See [When to update the arch doc](#when-to-update-the-arch-doc)
+below.
+
+---
+
+## Docstring standards
+
+TTT uses Google-style docstrings. `mkdocstrings` renders them; mypy checks
+types. A good docstring answers three questions:
+
+1. **What is this?** One sentence, present tense, no waffling.
+2. **What does the caller need to know?** Constraints, invariants, side effects.
+3. **What are the args/returns?** Only if non-obvious from the type signature.
+
+### Good example
+
+```python
+async def start_turn(
+    self,
+    session_id: UUID,
+    content_profile: str,
+    content: dict[str, Any],
+    *,
+    request_id: str | None = None,
+    submitted_by_label: str | None = None,
+) -> UUID:
+    """
+    Validate content, create a CTO, emit cto_created, then dispatch.
+
+    The hub is the sole authority for CTO creation. Callers may not construct
+    CTOs directly. If content does not satisfy the profile contract,
+    ValueError is raised and no CTO is created.
+
+    Args:
+        session_id: The session this turn belongs to.
+        content_profile: Profile identifier (e.g. "conversation"). Determines
+            required shape of content.
+        content: Profile-conformant content dict.
+        request_id: Optional caller correlation key for idempotency. Not yet
+            enforced in v0.
+        submitted_by_label: Optional provenance label for non-Purpose callers.
+
+    Returns:
+        The turn_id of the newly created CTO.
+
+    Raises:
+        ValueError: If content does not satisfy the profile contract.
+    """
+```
+
+### What to avoid
+
+```python
+def start_turn(self, session_id, content_profile, content):
+    """Start a turn."""  # too thin — says nothing the name doesn't already say
+```
+
+```python
+def start_turn(self, session_id, content_profile, content):
+    """
+    This method is used to start a turn by validating the content profile
+    and then creating a CTO and emitting events and dispatching purposes.
+    """  # no structure, no invariants, restates the code
+```
+
+### Inline comments
+
+Use inline comments for implementation notes that are not part of the public
+contract — things a maintainer needs to know, things that will change, things
+that are deliberately incomplete:
+
+```python
+# v0: naive broadcast to all registered purposes.
+# Later: subscription matching by event_type + DAG eligibility gating.
+```
+
+These do not substitute for docstrings. They are not extracted into the API
+reference.
+
+---
+
+## The interrogate threshold
+
+The current threshold is **80%** (`pyproject.toml: [tool.interrogate]`).
+
+If `pre-commit run --all-files` fails on `interrogate`, check coverage manually:
+
+```bash
+interrogate src/turnturnturn --verbose
+```
+
+This shows exactly which classes and methods are missing docstrings. Fix those
+before committing. Do not raise the threshold to paper over a gap — add the
+docstrings.
+
+If you are adding a stub or placeholder that is intentionally undocumented for
+now, add a minimal docstring that says so:
+
+```python
+def merge_delta(self, delta: Delta) -> None:
+    """Merge a proposed Delta into canonical CTO state. Not yet implemented."""
+    raise NotImplementedError
+```
+
+This counts toward coverage and tells the next reader (human or LLM) exactly
+what the situation is.
+
+---
+
+## When to update the arch doc
+
+`docs/ttt_architecture_v0_15.md` is the design record. It documents *intent*
+and *principles*, not implementation detail. Use this table:
+
+| Change | Update arch doc? |
+|--------|-----------------|
+| New public method or class | No — docstrings + API reference handle it |
+| Changed method signature | No — docstrings handle it |
+| New HubEvent type | Yes — update the event taxonomy (§6) |
+| New content profile | Yes — update the profiles section |
+| Changed DAG or routing behavior | Yes — update §2 principles and relevant lifecycle sections |
+| Renamed a core concept | Yes — update §11 migration notes with the old and new name |
+| Retired a concept | Yes — add to §11, remove from core nouns (§1) |
+| Bug fix | No |
+| Performance change | No |
+
+**The migration notes section (§11) is permanent history.** Do not remove
+entries. If a concept was retired, future readers (and LLMs) need to know it
+existed and why it's gone. This is how we avoid re-litigating settled decisions.
+
+---
+
+## Verifying docs locally
+
+```bash
+mkdocs serve
+```
+
+Opens at `http://127.0.0.1:8000`. The API reference pages render live from
+your docstrings — if a docstring is malformed, you'll see it here before CI
+does.
+
+Before pushing any doc change:
+
+```bash
+mkdocs build --strict
+```
+
+`--strict` treats warnings as errors. This is what CI runs. If it passes
+locally it will pass in CI.
+
+---
+
+## Adding a new content profile
+
+1. Add validation logic to `validate_content_profile()` in `cto.py`
+2. Add a docstring entry describing the required content shape
+3. Add a test in `tests/` covering valid and invalid content for the profile
+4. Update the profiles section of the arch doc
+5. Consider adding an example to `docs/index.md` if the profile is a
+   canonical use case
+
+Do not add profile-specific convenience properties to `CTO` (like the existing
+`speaker` and `text`) unless the profile is truly canonical. Those properties
+exist for `conversation` as an example of the pattern, not as an invitation to
+repeat it for every profile.
+
+---
+
+## Adding a new Purpose
+
+Purposes live in consuming projects (e.g. Adjacency), not in TTT. If you find
+yourself wanting to add a Purpose to TTT itself, that is a signal that domain
+semantics are leaking into the hub. Step back and ask whether the behavior
+belongs in the consuming project instead.
+
+The one exception: example or test Purposes used to demonstrate or verify TTT
+behavior. These belong in `tests/` or a future `examples/` directory, clearly
+marked as illustrative.
+
+---
+
+## Checklist
+
+Before any push:
+
+- [ ] `pytest --cov=turnturnturn` passes
+- [ ] `pre-commit run --all-files` passes (includes interrogate, mypy --strict)
+- [ ] New public surfaces have docstrings
+- [ ] `mkdocs build --strict` passes if any doc files were touched
+- [ ] Arch doc updated if a design decision changed (see table above)
+- [ ] Migration notes updated if anything was renamed or retired

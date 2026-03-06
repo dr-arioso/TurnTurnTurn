@@ -1,0 +1,2020 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>TurnTurnTurn (TTT) — Architecture Document - TurnTurnTurn</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#turnturnturn-ttt-architecture-document" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="TurnTurnTurn" class="md-header__button md-logo" aria-label="TurnTurnTurn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TurnTurnTurn
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TurnTurnTurn (TTT) — Architecture Document
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dr-arioso/TurnTurnTurn" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dr-arioso/TurnTurnTurn
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="TurnTurnTurn" class="md-nav__button md-logo" aria-label="TurnTurnTurn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TurnTurnTurn
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dr-arioso/TurnTurnTurn" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dr-arioso/TurnTurnTurn
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ttt_architecture_v0_15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hub (TTT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/cto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CTO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/delta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Delta
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#version-011-march-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version 0.11 — March 2026
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Version 0.11 — March 2026">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#source-design-session-between-bill-and-claude-anthropic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source: Design session between Bill and Claude (Anthropic)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-background-and-motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Background and Motivation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Design Principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-conceptual-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Conceptual Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-applicability-beyond-any-single-use-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Applicability Beyond Any Single Use Case
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5 Applicability Beyond Any Single Use Case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#251-what-this-unlocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.1 What this unlocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#252-example-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.2 Example topologies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5.2 Example topologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#topology-a-observability-evaluation-mesh-llm-app-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology A — Observability + Evaluation Mesh (LLM app debugging)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topology-b-decision-ledger-mesh-decisioncards-as-projections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology B — Decision Ledger Mesh (DecisionCards as projections)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topology-c-federated-enrichment-mesh-edge-central" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology C — Federated Enrichment Mesh (edge → central)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#253-what-purposes-must-agree-on-minimal-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.3 What Purposes must agree on (minimal governance)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-core-protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Core Protocols
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Core Protocols">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-turntakerprotocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 TurnTakerProtocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-purposeprotocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 PurposeProtocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-storeprotocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 StoreProtocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-event-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Event Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Event Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-hubevent-authoritative-event-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 HubEvent (authoritative event record)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-eventtype-vocabulary-aligned-to-dataclasses-v05" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 EventType vocabulary (aligned to dataclasses v0.5)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-provider-registration-and-subscriptions-hub-managed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Provider registration and subscriptions (hub-managed)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.3 Provider registration and subscriptions (hub-managed)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#431-tttregister" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3.1 TTT.register()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#432-subscription-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3.2 Subscription patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#433-changing-subscriptions-at-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3.3 Changing subscriptions at runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#434-purpose-identity-in-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3.4 Purpose identity in events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Data Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Data Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-cto-canonical-turn-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 CTO — Canonical Turn Object
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-observation-attributable-annotation-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Observation — attributable annotation unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-delta-provider-mutation-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Delta — provider mutation record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-dagnode-status-machine-eligibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 DAGNode status machine (eligibility)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-ttt-internals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. TTT Internals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. TTT Internals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-subscription-model-switch-with-wildcard-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Subscription model — Switch with wildcard support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-authentication-trust-boundary-v06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Authentication / trust boundary (v0.6)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-dag-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 DAG execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-utilities-tttutils" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Utilities — ttt.utils
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-turnreturn-and-trtpurpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. TurnReTurn and TRTPurpose
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. TurnReTurn and TRTPurpose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-store-and-backend-layering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Store and Backend layering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-package-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Package Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-example-integration-adjacency-as-one-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Example Integration (Adjacency as one client)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-what-ttt-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. What TTT Is Not
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-reference-material-from-earlier-document" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A — Reference Material from Earlier Document
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix A — Reference Material from Earlier Document">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-trace-candidate-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.1 Trace Candidate Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-alignment-signals-for-an-alignment-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.2 Alignment Signals (for an Alignment Purpose)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-mutation-candidate-event-schema-for-a-tracemutation-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.3 Mutation Candidate Event Schema (for a TraceMutation Purpose)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a4-decisioncard-provenance-accumulator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.4 DecisionCard / Provenance Accumulator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a5-alignment-snapshot-contents-for-an-alignment-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.5 Alignment Snapshot Contents (for an Alignment Purpose)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a6-llmz-guidance-packet-for-a-guidance-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.6 LLMZ Guidance Packet (for a Guidance Purpose)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a7-integration-roadmap-adapted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.7 Integration Roadmap (adapted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/dr-arioso/TurnTurnTurn/edit/main/docs/historical/ttt_architecture_v0_13.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="turnturnturn-ttt-architecture-document">TurnTurnTurn (TTT) — Architecture Document<a class="headerlink" href="#turnturnturn-ttt-architecture-document" title="Permanent link">&para;</a></h1>
+<h2 id="version-011-march-2026">Version 0.11 — March 2026<a class="headerlink" href="#version-011-march-2026" title="Permanent link">&para;</a></h2>
+<h3 id="source-design-session-between-bill-and-claude-anthropic">Source: Design session between Bill and Claude (Anthropic)<a class="headerlink" href="#source-design-session-between-bill-and-claude-anthropic" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>v0.6 note:</strong> Reinstates the <strong>provider registration + subscriptions</strong> layer from v0.4 as an explicit hub capability (TTT.register / ChangeSubscriptionsEvent) while keeping the v0.2 core dataclasses (CTO/Observation/Delta) and HubEvent stream as the authoritative record.</p>
+</blockquote>
+<hr />
+<h2 id="0-background-and-motivation">0. Background and Motivation<a class="headerlink" href="#0-background-and-motivation" title="Permanent link">&para;</a></h2>
+<p>This document describes the architecture of <strong>TurnTurnTurn (TTT)</strong>, a lightweight,
+domain-neutral Python middleware library for conversational turn processing. It emerged
+from design work on <strong>Adjacency</strong> (a structured elicitation research instrument) and
+the need for a reusable infrastructure layer that could serve that project and others.</p>
+<p>An earlier document (<em>Alignment Middleware for Human–LLM Dialogue</em>) sketched a broader
+alignment and detection pipeline. TTT is not that system. TTT is the foundational
+layer that such a system would be built on — the part that handles canonical turn
+representation, enrichment, event routing, and persistence, without presupposing any
+particular analytical purpose.</p>
+<p>Sections of the earlier document that remain relevant — particularly the trace mutation
+detection signals, alignment snapshot design, DecisionCard/provenance accumulator, and
+the integration roadmap — are preserved in <strong>Appendix A</strong> of this document for
+reference. Those components are best understood as <strong>Purpose implementations</strong> that
+would run on top of TTT, not as architectural concerns of TTT itself.</p>
+<hr />
+<h2 id="1-design-principles">1. Design Principles<a class="headerlink" href="#1-design-principles" title="Permanent link">&para;</a></h2>
+<p><strong>Raw text is the substrate. The CTO is the unit of computation.</strong>
+Every turn becomes a Canonical Turn Object immediately on receipt. All downstream
+processing operates based on CTOs, never on raw strings.</p>
+<p><strong>The event stream is the authoritative record.</strong>
+CTOs and Deltas travel on typed events. The event stream is what you replay to
+reconstruct any derived artifact. Full CTO observation state is always derivable
+from the event stream.</p>
+<p><strong>Append-only. Never override; hub is authoritative.</strong>
+The CTO identity fields are immutable at construction. The <code>observations</code> dict
+is never written directly by Purposes or other external components — the hub
+is the sole authority that merges incoming Deltas into the CTO observation
+state. Purposes emit Deltas (events) describing intended changes; the hub
+receives those Deltas via the <code>take_turn</code> pathway, validates and merges them,
+and then emits HubEvents and dispatches follow-up purposes via the DAG.</p>
+<p><strong>Owned vs shared namespaces.</strong>
+Each Purpose owns one <em>owned</em> namespace in <code>cto.observations</code>. Owned
+namespace entries are written by the hub on behalf of that purpose; other
+purposes may read those entries but may not propose writes to them. Purposes
+have no mechanism to propose updates outside their own owned namespace or the
+shared namespace — the hub enforces that rule. Shared namespaces are
+represented by lists maintained by the hub; when a purpose contributes to a
+shared key the hub appends the contribution to the list (<code>[a]</code> → <code>[a, b]</code>).
+The hub enforces the invariant that shared entries are lists and that owned
+entries are authored only by the hub acting for the owning purpose. The hub
+preserves append history and provenance via the event stream; higher‑level
+conflict resolution (semantics of merging structured payloads) is left to
+downstream resolvers when needed.</p>
+<p><strong>Provenance is a query, not a field.</strong>
+Who contributed what, and when, is answerable from the event stream and
+HubEvents; the <code>observations</code> dict itself intentionally contains values only
+so that in‑memory CTOs are compact and easy to consume. TRTPurpose (and other
+adapters) persist events; provenance is reconstructed by querying that event
+log or by reading HubEvents emitted during processing.</p>
+<p><strong>Domain‑neutral core.</strong>
+TTT knows nothing about domain semantics such as trace mutations, conversation
+analysis, or LLM alignment — those responsibilities belong to Purpose
+implementations. The core provides the event / DAG routing, merge semantics,
+and enforcement guarantees. The core ships with exactly one built‑in Purpose
+adapter: <strong>TRTPurpose</strong> (the TTT integration point for TurnReTurn).</p>
+<p><strong><code>take_turn</code> is the one true path (routing &amp; dispatch).</strong>
+All inbound messages and lifecycle operations are expressed as events and enter
+the system through <code>take_turn</code>. <code>take_turn</code> is responsible for accepting an
+incoming event (Delta, registration, observation write request, etc.),
+validating it, handing it to the hub merge logic (which alone updates the
+CTO/observations), and then routing any resulting HubEvents through the DAG to
+subscribed Purposes. Convenience APIs such as <code>ttt.register()</code> are thin
+wrappers that construct and dispatch these events via <code>take_turn</code>.</p>
+<p><strong>Loosely coupled via declared dependencies.</strong>
+Purposes declare what other Purposes they depend on. TTT manages execution
+order via a DAG resolver. Purposes never call each other directly.</p>
+<p><strong>TTT is a domain-specific micro actor system built on asyncio.</strong>
+The architecture is conceptually an Actor model: every participant has a typed
+message interface, communicates via events, and does not know about other
+participants' implementations. Implemented directly on asyncio + dataclasses
+rather than an actor framework, which would add overhead without benefit at
+the expected scale.</p>
+<hr />
+<h2 id="2-conceptual-model">2. Conceptual Model<a class="headerlink" href="#2-conceptual-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Calling code (e.g. Adjacency session runner)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    │  ttt.register(purpose)          ← convenience wrapper
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    │  take_turn(HubEvent(&quot;register&quot;)) ← what actually happens
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    │  take_turn(HubEvent(&quot;turn_observed&quot;, ...))
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    ▼
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>┌──────────────────────────────────────────────┐
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│                TurnTurnTurn                  │
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│                                              │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│  1. Construct CTO from turn_observed event   │
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│  2. Resolve DAG — find eligible Purposes     │
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│  3. Dispatch concurrently via asyncio        │
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│  4. Receive purpose_complete events back     │
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│  5. If delta present:                        │
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│     a. Validate token                        │
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│     b. Write purpose_data →                  │
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│           observations[purpose_id]           │
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│     c. Append shared_data →                  │
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│           observations[schema_id]            │
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│     d. Advance DAG — check new eligibles     │
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│  6. Emit purpose_resolved to subscribers     │
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│     (filtered by declared interest/wildcard) │
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│  7. When DAG exhausted:                      │
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│     emit turn_processing_complete            │
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│     or turn_processing_incomplete (timeout)  │
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>└──────────────────────────────────────────────┘
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>         │                        ▲
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>         │ take_turn(HubEvent)    │ take_turn(HubEvent)
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>         ▼                        │
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>  ┌────────────┐  ┌─────────────────┐  ┌───────────────┐
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>  │ TRTPurpose │  │  CAPurpose      │  │  TMPurpose    │
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>  │ (built-in) │  │  depends_on=[]  │  │  depends_on=  │
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>  └────────────┘  └─────────────────┘  │  [&quot;embed&quot;,&quot;ca&quot;]│
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        │                              └───────────────┘
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>        │                                      │
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>        ▼                              may emit speaker_feedback
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>  ┌─────────────────────────┐          back to calling code
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>  │      TurnReTurn         │
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>  │                         │
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>  │  Stores:                │
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>  │  ├── FileStore          │
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>  │  │   ├── JSONLBackend   │
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>  │  │   ├── JSONBackend    │
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>  │  │   └── PlainTextBackend│
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>  │  ├── MemoryStore        │
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>  │  │   └── MessageDictBackend│
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>  │  └── SQLStore           │
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>  │      ├── SQLiteBackend  │
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>  │      └── PostgresBackend│
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>  │                         │
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>  │  Query views:           │
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>  │  ├── provenance()       │
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>  │  ├── session_replay()   │
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>  │  └── purpose_audit()    │
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>  └─────────────────────────┘
+</code></pre></div>
+<h2 id="25-applicability-beyond-any-single-use-case">2.5 Applicability Beyond Any Single Use Case<a class="headerlink" href="#25-applicability-beyond-any-single-use-case" title="Permanent link">&para;</a></h2>
+<p>TTT is not a pipeline framework. Because <strong>calling code is itself registered as a Purpose</strong>, TTT forms a <strong>peer mesh</strong> of Purposes coordinated by the hub:</p>
+<ul>
+<li>Every actor is a first-class node in the same event graph (no privileged “upstream/downstream” layer).</li>
+<li>Purposes do not call each other; they <strong>subscribe</strong> to events and <strong>propose</strong> observations via Deltas.</li>
+<li>The hub is the sole authority that merges proposed changes into <code>cto.observations</code>, preserving append history and provenance via the event stream.</li>
+</ul>
+<p>In practice, “upstream/downstream” is only a description of a particular <em>topology</em> (who subscribes to whom), not an architectural hierarchy.</p>
+<h3 id="251-what-this-unlocks">2.5.1 What this unlocks<a class="headerlink" href="#251-what-this-unlocks" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Composition &amp; orchestration</strong>: assemble complex behaviors from small, focused Purposes that each add a narrow observation set.</li>
+<li><strong>Late binding</strong>: add/remove Purposes at runtime via registration/subscription changes without rewriting orchestration code.</li>
+<li><strong>Cross-cutting concerns</strong>: privacy, policy checks, logging, and auditing can be implemented as separate Purposes that subscribe broadly.</li>
+<li><strong>Multi-agent enrichment</strong>: multiple independent analyzers can contribute to shared keys (append-only lists) without coordination beyond schema contracts.</li>
+<li><strong>Replay and re-analysis</strong>: new Purposes can be run over historical event logs to derive new artifacts without modifying prior records.</li>
+</ul>
+<h3 id="252-example-topologies">2.5.2 Example topologies<a class="headerlink" href="#252-example-topologies" title="Permanent link">&para;</a></h3>
+<p>These are illustrative “starter meshes” that demonstrate the generality of CTO + event routing beyond any single domain.</p>
+<h4 id="topology-a-observability-evaluation-mesh-llm-app-debugging">Topology A — Observability + Evaluation Mesh (LLM app debugging)<a class="headerlink" href="#topology-a-observability-evaluation-mesh-llm-app-debugging" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Calling code (as Purpose) emits <code>turn_observed</code> / lifecycle events.</li>
+<li><code>TRTPurpose</code> persists all HubEvents (JSONL/SQL).</li>
+<li><code>CostPurpose</code> annotates token usage / latency metrics.</li>
+<li><code>EvalPurpose</code> computes lightweight quality signals (e.g., semantic similarity checks) and appends evaluation observations.</li>
+<li><code>AuditPurpose</code> subscribes to <code>*</code> and emits human-readable audit summaries.</li>
+</ul>
+<p>Outcome:
+- A replayable event log plus per-turn “quality/audit” observations, without any LLM-specific semantics in the core.</p>
+<h4 id="topology-b-decision-ledger-mesh-decisioncards-as-projections">Topology B — Decision Ledger Mesh (DecisionCards as projections)<a class="headerlink" href="#topology-b-decision-ledger-mesh-decisioncards-as-projections" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>DecisionExtractPurpose</code> proposes decision-move observations (append-only evidence).</li>
+<li><code>DecisionResolvePurpose</code> materializes a “current snapshot” (replaceable view) from evidence.</li>
+<li><code>ReviewPurpose</code> (human-in-the-loop) subscribes to conflicts/unresolved items and appends review actions.</li>
+<li><code>TRTPurpose</code> stores everything; re-resolution can be run deterministically when rules evolve.</li>
+</ul>
+<p>Outcome:
+- DecisionCards become a downstream projection over the authoritative log; multiple extractors can coexist.</p>
+<h4 id="topology-c-federated-enrichment-mesh-edge-central">Topology C — Federated Enrichment Mesh (edge → central)<a class="headerlink" href="#topology-c-federated-enrichment-mesh-edge-central" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Edge node runs <code>EmbedPurpose</code> / lightweight heuristics locally and emits Deltas/events.</li>
+<li>Central hub persists HubEvents and merges shared observations.</li>
+<li>Optional <code>SearchIndexPurpose</code> builds full-text indices; optional vector index is maintained as a separate projection.</li>
+<li>A <code>PolicyPurpose</code> enforces redaction/sanitization by proposing redaction observations (never overwriting raw text).</li>
+</ul>
+<p>Outcome:
+- Extensible enrichment with preserved provenance and the ability to recompute or augment annotations later.</p>
+<h3 id="253-what-purposes-must-agree-on-minimal-governance">2.5.3 What Purposes must agree on (minimal governance)<a class="headerlink" href="#253-what-purposes-must-agree-on-minimal-governance" title="Permanent link">&para;</a></h3>
+<p>To keep the peer mesh tractable, Purposes should follow two conventions:</p>
+<ul>
+<li><strong>Schema/versioning</strong>: event payloads and observation values include <code>_schema</code> and <code>_v</code> when the shape matters.</li>
+<li><strong>Merge expectations</strong>: shared keys are append-only lists; owned keys are written only by the hub on behalf of the owning Purpose.</li>
+</ul>
+<hr />
+<h2 id="3-core-protocols">3. Core Protocols<a class="headerlink" href="#3-core-protocols" title="Permanent link">&para;</a></h2>
+<h3 id="31-turntakerprotocol">3.1 TurnTakerProtocol<a class="headerlink" href="#31-turntakerprotocol" title="Permanent link">&para;</a></h3>
+<p>The fundamental interface. Everything that participates in the event stream
+implements it: Purposes, TTT itself, and calling code.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">TurnTakerProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">take_turn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">HubEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<p><code>take_turn</code> accepts a <code>HubEvent</code> and returns nothing. Participants that want
+to send results or feedback back to TTT call <code>ttt.take_turn(event)</code> directly.
+The interface is uniform across all participants — no special return types,
+no polymorphic signatures.</p>
+<h3 id="32-purposeprotocol">3.2 PurposeProtocol<a class="headerlink" href="#32-purposeprotocol" title="Permanent link">&para;</a></h3>
+<p>Extends <code>TurnTakerProtocol</code>. Purpose metadata is declared as class attributes
+and communicated to TTT via the <code>register</code> event.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">PurposeProtocol</span><span class="p">(</span><span class="n">TurnTakerProtocol</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">purpose_id</span><span class="p">:</span> <span class="nb">str</span>      <span class="c1"># stable machine identifier; becomes namespace key</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">purpose_name</span><span class="p">:</span> <span class="nb">str</span>    <span class="c1"># human-readable label for logging and audit views</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">take_turn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">HubEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<p>Registration metadata (<code>private</code>, <code>depends_on</code>, <code>subscriptions</code>) is carried
+in the <code>register</code> event payload. This allows the same Purpose implementation
+to be registered with different configurations in different sessions.</p>
+<h3 id="33-storeprotocol">3.3 StoreProtocol<a class="headerlink" href="#33-storeprotocol" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">StoreProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">HubEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span> <span class="o">...</span>  <span class="c1"># optional</span>
+</code></pre></div>
+<hr />
+<h2 id="4-event-model">4. Event Model<a class="headerlink" href="#4-event-model" title="Permanent link">&para;</a></h2>
+<p>TTT/Adjacency now treats the <strong>hub-emitted event stream</strong> as the authoritative record of turn processing. Events are emitted on each hub state transition and are persisted by downstream stores (e.g., TurnReTurn backends).</p>
+<h3 id="41-hubevent-authoritative-event-record">4.1 HubEvent (authoritative event record)<a class="headerlink" href="#41-hubevent-authoritative-event-record" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">HubEvent</span><span class="p">:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">event_id</span><span class="p">:</span>   <span class="nb">str</span>            <span class="c1"># 24-char hex (secrets.token_hex(12))</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">event_type</span><span class="p">:</span> <span class="n">EventType</span>      <span class="c1"># Enum (pipeline + annotation)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">turn_id</span><span class="p">:</span>   <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>     <span class="c1"># CTO turn_id when event is turn-scoped</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">payload</span><span class="p">:</span>    <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="c1"># event-specific; convention: includes _schema and _v</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">timestamp</span><span class="p">:</span>  <span class="nb">float</span>          <span class="c1"># unix epoch</span>
+</code></pre></div>
+<p><strong>Token terminology:</strong>
+- <code>turn_id</code> identifies a single CTO (per turn).
+- <code>purpose_token</code> identifies a registered Purpose run (may span many turns/sessions).</p>
+<p>Events are intentionally small and JSON-safe (or trivially serializable via <code>to_dict()</code> on embedded objects). Payloads should follow the <code>_schema</code> + <code>_v</code> convention for future migration/debugging.</p>
+<h3 id="42-eventtype-vocabulary-aligned-to-dataclasses-v05">4.2 EventType vocabulary (aligned to dataclasses v0.5)<a class="headerlink" href="#42-eventtype-vocabulary-aligned-to-dataclasses-v05" title="Permanent link">&para;</a></h3>
+<p>Pipeline (DAG) lifecycle:</p>
+<ul>
+<li><code>turn_received</code></li>
+<li><code>purpose_registration</code></li>
+<li><code>subscriptions_changed</code></li>
+<li><code>purpose_fired</code></li>
+<li><code>delta_merged</code></li>
+<li><code>purpose_complete</code></li>
+</ul>
+<p>Out-of-band annotation:</p>
+<ul>
+<li><code>turn_observation_recorded</code></li>
+</ul>
+<h3 id="43-provider-registration-and-subscriptions-hub-managed">4.3 Provider registration and subscriptions (hub-managed)<a class="headerlink" href="#43-provider-registration-and-subscriptions-hub-managed" title="Permanent link">&para;</a></h3>
+<p>Although the <strong>HubEvent</strong> stream remains the authoritative record, TTT supports a <strong>provider registration</strong> layer to make the system extensible and safe across process boundaries.</p>
+<h4 id="431-tttregister">4.3.1 TTT.register()<a class="headerlink" href="#431-tttregister" title="Permanent link">&para;</a></h4>
+<p>A Purpose registers itself with the hub by providing:</p>
+<ul>
+<li><code>purpose_id: str</code> (stable identifier; used as the purpose namespace)</li>
+<li><code>subscriptions: list[str]</code> (event patterns; may include globs, e.g., <code>Events.*</code>)</li>
+<li>optional <code>capabilities</code> (e.g., whether it can emit out-of-band observations)</li>
+</ul>
+<p>The hub returns a <strong>purpose token</strong>:</p>
+<ul>
+<li><code>purpose_token: str</code> — 24-char hex (<code>secrets.token_hex(12)</code>)</li>
+</ul>
+<p>The purpose token is then attached to any purpose-originating calls back into the hub (e.g., posting a Delta, requesting subscription changes). This is an identity and trust-boundary mechanism; it is not intended to be cryptographic security in hostile settings.</p>
+<h4 id="432-subscription-patterns">4.3.2 Subscription patterns<a class="headerlink" href="#432-subscription-patterns" title="Permanent link">&para;</a></h4>
+<p>Subscriptions are matched against <code>HubEvent.event_type</code> (and optionally other routing keys) using simple glob semantics.</p>
+<p>Examples:
+- <code>turn_received</code>
+- <code>delta_merged</code>
+- <code>Events.*</code> (all events)
+- <code>turn_observation_recorded</code></p>
+<p>A subscription may also include routing hints via payload keys (implementation-defined). If you want to subscribe to events that reference a specific turn, use <code>token_id</code>-scoped routing (the hub already emits <code>token_id</code> on turn-scoped events); do <strong>not</strong> rely on raw text matching.</p>
+<h4 id="433-changing-subscriptions-at-runtime">4.3.3 Changing subscriptions at runtime<a class="headerlink" href="#433-changing-subscriptions-at-runtime" title="Permanent link">&para;</a></h4>
+<p>TTT supports dynamic subscription updates via a dedicated hub call:</p>
+<ul>
+<li><code>TTT.take_turn(ChangeSubscriptionsEvent(...))</code></li>
+</ul>
+<p>Payload shape (conceptual):
+- <code>purpose_id: str</code>
+- <code>purpose_token: str</code>
+- <code>delete_subs: list[str]</code> (optional)
+- <code>add_subs: list[str]</code> (optional)</p>
+<p>This call is only accepted if <code>purpose_token</code> matches the currently registered token for <code>purpose_id</code>. The hub applies the update atomically for that provider.</p>
+<blockquote>
+<p>Note: the strings inside <code>add_subs</code> / <code>delete_subs</code> are subscription patterns (e.g., <code>Events.*</code>), not turn identifiers. If you need turn scoping, the hub should filter/route based on the event’s <code>token_id</code> (CTO turn_id) or a separate explicit filter mechanism.</p>
+</blockquote>
+<h4 id="434-purpose-identity-in-events">4.3.4 Purpose identity in events<a class="headerlink" href="#434-purpose-identity-in-events" title="Permanent link">&para;</a></h4>
+<p>Purpose identity is carried as the <strong>purpose namespace</strong> (<code>purpose_id</code>) inside:
+- <code>Delta.purpose_id</code>
+- <code>Observation.owner</code>
+- and, when needed, in <code>HubEvent.payload["purpose_id"]</code></p>
+<p>The <strong>purpose token</strong> is not intended to be written into every HubEvent payload; it is used to authenticate purpose-originating requests to the hub.</p>
+<hr />
+<h2 id="5-data-model">5. Data Model<a class="headerlink" href="#5-data-model" title="Permanent link">&para;</a></h2>
+<h3 id="51-cto-canonical-turn-object">5.1 CTO — Canonical Turn Object<a class="headerlink" href="#51-cto-canonical-turn-object" title="Permanent link">&para;</a></h3>
+<p>The CTO is the stable per-turn state container. It has a minimal identity surface plus accumulating metadata.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">CTO</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">turn_id</span><span class="p">:</span>     <span class="nb">str</span>                      <span class="c1"># 24-char hex; generated by hub per turn</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">timestamp</span><span class="p">:</span>   <span class="nb">float</span>                    <span class="c1"># unix epoch; hub sets if None</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">text</span><span class="p">:</span>        <span class="nb">str</span>                      <span class="c1"># raw turn text (verbatim)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">role</span><span class="p">:</span>        <span class="nb">str</span>                      <span class="c1"># participant role label</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">observations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Observation</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</code></pre></div>
+<p>Semantics:
+- <code>cto.observations</code> is append-only. Every key maps to a list; the hub appends new <code>Observation</code> entries.
+- Provenance is reconstructed from the HubEvent stream.</p>
+<h3 id="52-observation-attributable-annotation-unit">5.2 Observation — attributable annotation unit<a class="headerlink" href="#52-observation-attributable-annotation-unit" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">Observation</span><span class="p">:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">owner</span><span class="p">:</span>  <span class="nb">str</span>   <span class="c1"># purpose namespace (e.g. &quot;ue_detector&quot;)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">shared</span><span class="p">:</span> <span class="nb">bool</span>  <span class="c1"># True =&gt; readable by other providers; hub enforces immutability</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">value</span><span class="p">:</span>  <span class="n">Any</span>   <span class="c1"># JSON-safe provider-defined content</span>
+</code></pre></div>
+<p>Semantics:
+- <strong>Shared observations</strong> are <em>write-once</em> after first creation (hub enforces).
+- <strong>Owned/private observations</strong> may be updated by the owning provider only (hub enforces).
+- Provenance is still primarily a query over the event stream; the <code>owner/shared</code> fields support correctness and enforcement at write time.</p>
+<h3 id="53-delta-provider-mutation-record">5.3 Delta — provider mutation record<a class="headerlink" href="#53-delta-provider-mutation-record" title="Permanent link">&para;</a></h3>
+<p>Providers report work via a Delta, which the hub can merge into the CTO and record in the event stream.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">Delta</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">source_turn_id</span><span class="p">:</span> <span class="nb">str</span>          <span class="c1"># CTO turn_id the delta was derived from</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">purpose_id</span><span class="p">:</span>      <span class="nb">str</span>         <span class="c1"># purpose namespace that produced this delta</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">invocation_id</span><span class="p">:</span>   <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># hub-generated per dispatch (optional)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">kind</span><span class="p">:</span>            <span class="nb">str</span>         <span class="c1"># purpose-defined (e.g. &quot;observation_added&quot;)</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">payload</span><span class="p">:</span>         <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="n">Any</span><span class="p">]</span><span class="c1"># JSON-safe; convention: includes _schema and _v</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">timestamp</span><span class="p">:</span>       <span class="nb">float</span>       <span class="c1"># unix epoch at delta creation</span>
+</code></pre></div>
+<p>Delta merge policy is implemented by the hub (the only component that may
+mutate <code>cto.observations</code>). The hub applies deterministic rules when merging
+incoming Deltas:</p>
+<p>-- Owned writes: when a delta carries an Observation intended for an owned
+  namespace the hub records the contribution on behalf of the owning purpose
+  following append‑only semantics. The hub never silently overwrites an
+  existing contribution; it records the new contribution and preserves history
+  for provenance.
+-- Shared appends: when a delta targets a shared namespace the hub appends
+  the contribution to the list maintained at that key. The hub enforces the
+  invariant that shared keys always map to lists and that all contributions
+  are appended rather than replacing prior entries.
+-- Merge semantics: the hub applies deterministic, documented merge behavior
+  (append-only by default). For structured payloads the hub may use explicit
+  merge functions, but these are always implemented to preserve event history
+  rather than discarding prior contributions. Higher‑level reconciliation and
+  domain-specific resolution remain the responsibility of downstream
+  components.</p>
+<p>These policies keep the core small and deterministic while enabling varied
+downstream strategies for reconciliation and enrichment.</p>
+<h3 id="54-dagnode-status-machine-eligibility">5.4 DAGNode status machine (eligibility)<a class="headerlink" href="#54-dagnode-status-machine-eligibility" title="Permanent link">&para;</a></h3>
+<p>DAG nodes follow an explicit state machine:</p>
+<p><code>waiting → eligible → dispatched → resolved</code></p>
+<p>Eligibility checks must reflect <code>status == eligible</code> (hub-driven transitions).</p>
+<hr />
+<h2 id="6-ttt-internals">6. TTT Internals<a class="headerlink" href="#6-ttt-internals" title="Permanent link">&para;</a></h2>
+<h3 id="61-subscription-model-switch-with-wildcard-support">6.1 Subscription model — Switch with wildcard support<a class="headerlink" href="#61-subscription-model-switch-with-wildcard-support" title="Permanent link">&para;</a></h3>
+<p>TTT is a <strong>switch</strong>: subscribers declare which event types and/or purpose_ids
+they care about at registration time. TTT only forwards events to subscribers
+whose declared interests match.</p>
+<p>Wildcard subscriptions: <code>"*"</code> matches everything. <code>"turn_*"</code> matches all
+turn lifecycle events. <code>"purpose_*"</code> matches all Purpose events.</p>
+<p>TRTPurpose declares <code>subscriptions: ["*"]</code> — it receives all events
+regardless of type or purpose_id.</p>
+<p><code>private=True</code> means TTT does not forward <code>purpose_resolved</code> to other
+subscribers. TRTPurpose still receives it regardless of privacy setting.</p>
+<h3 id="62-authentication-trust-boundary-v06">6.2 Authentication / trust boundary (v0.6)<a class="headerlink" href="#62-authentication-trust-boundary-v06" title="Permanent link">&para;</a></h3>
+<p>TTT assumes the hub is the <strong>authority</strong> for lifecycle events and state mutation. Providers/Purposes are <em>extensions</em> that can compute and propose changes (Deltas) but do not directly mutate shared state without hub mediation.</p>
+<ul>
+<li>Providers register via <code>TTT.register(purpose_id, subscriptions)</code> and receive a <code>purpose_token</code> (<code>secrets.token_hex(12)</code>).</li>
+<li>Any purpose-originating request (posting a Delta, requesting subscription changes) must include <code>purpose_id</code> + <code>purpose_token</code>.</li>
+<li>The hub validates the token against its registry before accepting the request.</li>
+</ul>
+<p>This mechanism is primarily for correctness and accidental misuse prevention (e.g., preventing a misconfigured provider from impersonating another). If you need a hostile-environment security model, treat this as scaffolding and add cryptographic authentication at the transport layer.</p>
+<h3 id="63-dag-execution">6.3 DAG execution<a class="headerlink" href="#63-dag-execution" title="Permanent link">&para;</a></h3>
+<p>Purposes declare <code>depends_on: list[str]</code> in their <code>register</code> payload. TTT
+maintains a per-turn resolution graph and dispatches Purposes as dependencies
+are satisfied.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Turn arrives →
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    embed (depends_on=[])             → dispatched immediately
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    ca    (depends_on=[])             → dispatched immediately
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    tm    (depends_on=[&quot;embed&quot;,&quot;ca&quot;]) → waiting
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>embed resolves → tm still waiting for ca
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>ca resolves    → tm now eligible → dispatched
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>tm resolves    → DAG exhausted → turn_processing_complete
+</code></pre></div>
+<p>Independent Purposes run concurrently via <code>asyncio.gather</code>. Dependent
+Purposes await their prerequisites.</p>
+<h3 id="64-utilities-tttutils">6.4 Utilities — <code>ttt.utils</code><a class="headerlink" href="#64-utilities-tttutils" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Event stream reconstruction</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">apply_delta</span><span class="p">(</span><span class="n">cto</span><span class="p">:</span> <span class="n">CTO</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="n">Delta</span><span class="p">,</span> <span class="n">purpose_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CTO</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">reconstruct</span><span class="p">(</span><span class="n">turn_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">HubEvent</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">CTO</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># Shared namespace resolution</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">resolve_shared</span><span class="p">(</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">namespace</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">events</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">HubEvent</span><span class="p">],</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">resolver</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">list</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="c1"># Provenance formatting</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="k">def</span><span class="w"> </span><span class="nf">format_provenance</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">HubEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="c1"># Returns a flat, serializable dict of provenance-relevant fields</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="c1"># for a single event. Callers serialize to JSON or log string as needed.</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="c1"># Example output:</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="c1"># {</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="c1">#   &quot;event_type&quot;: &quot;purpose_resolved&quot;,</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="c1">#   &quot;event_id&quot;:   &quot;a3f7...&quot;,</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="c1">#   &quot;timestamp&quot;:  1234567890.123,</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="c1">#   &quot;turn_id&quot;:    &quot;t_001&quot;,</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="c1">#   &quot;purpose_id&quot;: &quot;ca&quot;,</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="c1">#   &quot;purpose_name&quot;: &quot;Conversation Analysis Annotator&quot;,</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="c1">#   &quot;entries_added&quot;: 2,</span>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="c1">#   &quot;shared_keys_updated&quot;: []</span>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="c1"># }</span>
+</code></pre></div>
+<p><code>format_provenance</code> takes one event and returns a flat dict. It knows which
+fields are meaningful for provenance across event types and normalizes them
+into a consistent shape. Backends call it when writing log entries. Calling
+code can call it directly.</p>
+<hr />
+<h2 id="7-turnreturn-and-trtpurpose">7. TurnReTurn and TRTPurpose<a class="headerlink" href="#7-turnreturn-and-trtpurpose" title="Permanent link">&para;</a></h2>
+<p><strong>TurnReTurn</strong> is the persistence, retrieval, formatting, and output product.
+It is the brand and the system.</p>
+<p><strong>TRTPurpose</strong> is TurnReTurn's TTT integration point — a <code>PurposeProtocol</code>
+implementation that plugs into the DAG and feeds TurnReTurn's Stores.
+Someone who wants TurnReTurn's persistence features but has their own event
+infrastructure can use TurnReTurn without TRTPurpose.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">TRTPurpose</span><span class="p">:</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">purpose_id</span> <span class="o">=</span> <span class="s2">&quot;trt&quot;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">purpose_name</span> <span class="o">=</span> <span class="s2">&quot;TurnReTurn Persistence&quot;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="c1"># registered with: private=True, depends_on=[], subscriptions=[&quot;*&quot;]</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">register_store</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">store</span><span class="p">:</span> <span class="n">StoreProtocol</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">take_turn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">HubEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<p>TRTPurpose is also the host for query views — since it holds the durable
+event stream, provenance, session replay, and Purpose audit are naturally
+expressed as queries against it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Query views (available when a queryable Store is registered)</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">turn_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span> <span class="o">...</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">session_replay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">HubEvent</span><span class="p">]:</span> <span class="o">...</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">purpose_audit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span> <span class="o">...</span>
+</code></pre></div>
+<h3 id="71-store-and-backend-layering">7.1 Store and Backend layering<a class="headerlink" href="#71-store-and-backend-layering" title="Permanent link">&para;</a></h3>
+<p>A <strong>Store</strong> is the logical persistence target. A <strong>Backend</strong> is the specific
+driver implementing a Store. This mirrors SQLAlchemy's dialect pattern.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>TurnReTurn
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    └── TRTPurpose
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    └── Stores
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>          ├── FileStore
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>          │     ├── JSONLBackend
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>          │     ├── JSONBackend
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>          │     └── PlainTextBackend
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>          ├── MemoryStore
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>          │     └── MessageDictBackend
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>          └── SQLStore
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>                ├── SQLiteBackend
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>                └── PostgresBackend
+</code></pre></div>
+<p>Multiple Stores can be registered simultaneously. TRTPurpose fans out to all
+of them on each event.</p>
+<hr />
+<h2 id="8-package-structure">8. Package Structure<a class="headerlink" href="#8-package-structure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ttt/                          # pip install ttt
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    core/
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>        cto.py                # CTO, Delta
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>        events.py             # HubEvent, well-known event_type constants
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>        protocols.py          # TurnTakerProtocol, PurposeProtocol,
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>                              # StoreProtocol
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>        hub.py                # TTT hub: DAG resolver, switch, token auth
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        utils.py              # apply_delta, reconstruct, resolve_shared,
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>                              # format_provenance
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>trt/                          # pip install ttt[persist]
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    purpose.py                # TRTPurpose
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    stores/
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        file_store.py         # FileStore
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        memory_store.py       # MemoryStore
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        backends/
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>            jsonl.py          # JSONLBackend (under FileStore)
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>            json_.py          # JSONBackend (under FileStore)
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>            plaintext.py      # PlainTextBackend (under FileStore)
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>            messagedict.py    # MessageDictBackend (under MemoryStore)
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>trt_sql/                      # pip install ttt[persist-sql]
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>    stores/
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>        sql_store.py          # SQLStore
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>        backends/
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>            sqlite.py         # SQLiteBackend
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>            postgres.py       # PostgresBackend
+</code></pre></div>
+<hr />
+<h2 id="9-example-integration-adjacency-as-one-client">9. Example Integration (Adjacency as one client)<a class="headerlink" href="#9-example-integration-adjacency-as-one-client" title="Permanent link">&para;</a></h2>
+<p>Adjacency is one consumer of TTT, but it is not architecturally special. In TTT terms:</p>
+<ul>
+<li>The Adjacency session runner can be modeled as a Purpose that emits <code>turn_observed</code> events via <code>take_turn</code>.</li>
+<li>Adjacency-specific analyzers are simply additional Purposes that subscribe to relevant events and propose observations.</li>
+<li>Feedback loops (e.g., a <code>speaker_feedback</code> event) are implemented as subscriptions: calling code receives feedback the same way any other Purpose does.</li>
+</ul>
+<p>Adjacency’s existing session log (JSONL) becomes a TurnReTurn FileStore output rather than a separately managed artifact. The log format can be preserved; the machinery producing it is replaced by TRTPurpose + JSONLBackend.</p>
+<hr />
+<h2 id="10-installation">10. Installation<a class="headerlink" href="#10-installation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>pip install ttt                  # core only — no storage dependencies
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>pip install ttt[persist]         # + TurnReTurn with FileStore, MemoryStore
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>pip install ttt[persist-sql]     # + SQLStore with SQLite and Postgres backends
+</code></pre></div>
+<hr />
+<h2 id="11-what-ttt-is-not">11. What TTT Is Not<a class="headerlink" href="#11-what-ttt-is-not" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Not an API gateway or HTTP proxy</li>
+<li>Not an LLM alignment system</li>
+<li>Not an observability platform (though it can feed one via a Store)</li>
+<li>Not a replacement for OpenTelemetry, Langfuse, or Phoenix — it can emit
+  to any of these via a Store or subscriber</li>
+<li>Not an actor framework — it uses actor model concepts implemented directly
+  on asyncio</li>
+</ul>
+<hr />
+<h2 id="appendix-a-reference-material-from-earlier-document">Appendix A — Reference Material from Earlier Document<a class="headerlink" href="#appendix-a-reference-material-from-earlier-document" title="Permanent link">&para;</a></h2>
+<p>The following sections from <em>Alignment Middleware for Human–LLM Dialogue</em>
+(March 2026) remain useful as reference for Purpose implementations that
+would run on top of TTT. They are preserved here without modification.</p>
+<h3 id="a1-trace-candidate-schema">A.1 Trace Candidate Schema<a class="headerlink" href="#a1-trace-candidate-schema" title="Permanent link">&para;</a></h3>
+<p>Relevant to a TraceMutation Purpose implementation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">trace_candidate</span><span class="p">:</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="nt">span</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">message_id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">char_start</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">char_end</span><span class="p p-Indicator">}</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">decision|constraint|definition|plan|ownership|other</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">user|model|joint|unknown</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">  </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">  </span><span class="nt">normalized</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">  </span><span class="nt">timestamp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">  </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0..1</span>
+</code></pre></div>
+<h3 id="a2-alignment-signals-for-an-alignment-purpose">A.2 Alignment Signals (for an Alignment Purpose)<a class="headerlink" href="#a2-alignment-signals-for-an-alignment-purpose" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>User-constraint preservation score</strong> — compare embeddings of current
+   model response vs nearest constraint traces; low similarity + high
+   confidence restatement =&gt; risk.</li>
+<li><strong>Negation risk flag (UE-leaning)</strong> — detect negation operators in user
+   traces; if model restates without negation or with polarity flip, raise
+   risk.</li>
+<li><strong>Provenance compression score (GD-leaning)</strong> — track pronoun/possessive
+   shifts around accountability moments ("we/our" → "you/your").</li>
+<li><strong>Commitment continuity score</strong> — compare "what we decided" summaries
+   across time; detect discontinuous jumps.</li>
+</ol>
+<h3 id="a3-mutation-candidate-event-schema-for-a-tracemutation-purpose">A.3 Mutation Candidate Event Schema (for a TraceMutation Purpose)<a class="headerlink" href="#a3-mutation-candidate-event-schema-for-a-tracemutation-purpose" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nt">mutation_candidate</span><span class="p">:</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">UE|GD|unknown</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span><span class="nt">source_trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span><span class="nt">degenerate_trace_span</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">similarity_drop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">contradiction_score</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provenance_shift</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">  </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">low|med|high</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">  </span><span class="nt">proposed_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
+<h3 id="a4-decisioncard-provenance-accumulator">A.4 DecisionCard / Provenance Accumulator<a class="headerlink" href="#a4-decisioncard-provenance-accumulator" title="Permanent link">&para;</a></h3>
+<p>A DecisionCard Purpose would separate (1) append-only provenance from
+(2) replaceable resolved snapshots, supporting deterministic re-resolution
+when evidence evolves.</p>
+<p>Key design invariants:
+- CTO is verbatim-first and immutable (enforced by TTT core)
+- Provenance and annotations are append-only and span-referenced
+- "Current state" is always a materialized view with explicit <code>resolver_id</code>
+  and <code>evidence_bundle_id</code>, so it can be re-resolved deterministically</p>
+<h3 id="a5-alignment-snapshot-contents-for-an-alignment-purpose">A.5 Alignment Snapshot Contents (for an Alignment Purpose)<a class="headerlink" href="#a5-alignment-snapshot-contents-for-an-alignment-purpose" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>snapshot_id</code>, <code>turn_id</code>, <code>decision_ids</code> touched</li>
+<li><code>anchor_trace_ids</code> (constraints/definitions/commitments)</li>
+<li><code>alignment_scores</code> (per-signal + composite)</li>
+<li><code>state_summary_text</code> (compact) + <code>state_summary_embedding</code></li>
+<li><code>recent_drift_delta</code> (change from last snapshot)</li>
+</ul>
+<h3 id="a6-llmz-guidance-packet-for-a-guidance-purpose">A.6 LLMZ Guidance Packet (for a Guidance Purpose)<a class="headerlink" href="#a6-llmz-guidance-packet-for-a-guidance-purpose" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>[LLMZ]
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>GOAL: preserve shared-record integrity; avoid unilateral restatement of
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>      user constraints.
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>ANCHORS:
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>- (trace_id=...) &quot;constraint text&quot; [MUST-PRESERVE]
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>CHECKS:
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>- Before proposing plan, restate anchored clauses verbatim.
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>- Do not negate deferred commitments.
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>REPAIR:
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>- If conflict detected, ask one clarification Q; otherwise silently align.
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>[/LLMZ]
+</code></pre></div>
+<h3 id="a7-integration-roadmap-adapted">A.7 Integration Roadmap (adapted)<a class="headerlink" href="#a7-integration-roadmap-adapted" title="Permanent link">&para;</a></h3>
+<p><strong>Phase 1 — Working pipe</strong>
+- TTT core + TRTPurpose + JSONLBackend
+- Adjacency session runner emitting <code>turn_observed</code> events
+- DAG execution with zero-dependency Purposes</p>
+<p><strong>Phase 2 — Trace-aware</strong>
+- TraceMutation Purpose (heuristic first pass)
+- Embedding Purpose (SBERT + FAISS in-process)
+- CA annotation Purpose
+- DecisionCard Purpose (append-only evidence accumulation)
+- Shared namespace usage for open CA schema contributions</p>
+<p><strong>Phase 3 — Guided</strong>
+- Alignment signal Purpose
+- <code>speaker_feedback</code> → Adjacency session runner loop
+- LLMZ packet generation Purpose
+- Offline replay and heavier analysis passes
+- Resolver Purposes for shared namespace canonicalization</p>
+<hr />
+<p><em>TTT Architecture v0.4 — March 2026</em>
+<em>Drafted from design session. Companion document: Adjacency ADR v1.0.</em></p>
+<p><em>v0.4 changes from v0.3:</em>
+- <em><code>ttt.register()</code> as convenience wrapper clarified — <code>take_turn</code> is the</em>
+  <em>one true path; <code>register()</code> constructs and dispatches internally</em>
+- <em><code>subscription_update</code> event added for mid-session subscription changes</em>
+- <em><code>purpose_id</code> removed from <code>purpose_complete</code> payload — resolved from</em>
+  <em>token by TTT; prevents spoofing</em>
+- <em><code>format_provenance(event) -&gt; dict</code> added to <code>ttt.utils</code>; per-event,</em>
+  <em>flat, serializable, caller serializes to JSON or log string</em>
+- <em><code>provenance()</code> list traversal utility removed from <code>ttt.utils</code> —</em>
+  <em>provenance is a TurnReTurn query view, not a core utility</em>
+- <em>Design principles updated: <code>take_turn</code> is the one true path</em></p>
+<hr />
+<h1 id="addendum-e-postgres-substrate-authoritative-log-projections">Addendum E — Postgres Substrate (Authoritative Log + Projections)<a class="headerlink" href="#addendum-e-postgres-substrate-authoritative-log-projections" title="Permanent link">&para;</a></h1>
+<p>This addendum specifies a <strong>minimal Postgres-first</strong> persistence layout consistent with the core invariants:</p>
+<ul>
+<li><strong>Append-only</strong> authoritative record (no overwrites; replayable)</li>
+<li><strong>Purpose-run tokens</strong> (<code>purpose_token</code>) are run-scoped and can span many turns/sessions</li>
+<li><strong>CTO is per-turn</strong> and identified by <code>(conversation_id, turn_index)</code> (or an optional <code>turn_id</code>)</li>
+<li><strong>Extensibility</strong> is achieved with JSONB payloads + selective indexing (no schema churn)</li>
+</ul>
+<h2 id="e1-identity-model">E.1 Identity model<a class="headerlink" href="#e1-identity-model" title="Permanent link">&para;</a></h2>
+<h3 id="e11-conversation-turn-identity-recommended">E.1.1 Conversation + Turn identity (recommended)<a class="headerlink" href="#e11-conversation-turn-identity-recommended" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>conversation_id</code> — UUID (or 64–96-bit hex string) identifying a conversation/session grouping</li>
+<li><code>turn_index</code> — integer, monotonically increasing within <code>conversation_id</code></li>
+</ul>
+<p>Primary key:
+- <code>(conversation_id, turn_index)</code></p>
+<p>Optional convenience:
+- <code>turn_uid</code> computed as <code>conversation_id || ':' || turn_index</code></p>
+<h3 id="e12-purpose-run-identity">E.1.2 Purpose-run identity<a class="headerlink" href="#e12-purpose-run-identity" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>purpose_id</code> — stable identifier for the Purpose type (e.g., <code>"CA"</code>, <code>"embeddingizer"</code>, <code>"TRTPurpose"</code>)</li>
+<li><code>purpose_token</code> — 24-char hex string returned by <code>TTT.register()</code> and used to authenticate Purpose-originating requests</li>
+</ul>
+<p>A single <code>purpose_token</code> may cover:
+- many turns,
+- and multiple conversation sessions,
+depending on how you scope “run.”</p>
+<h2 id="e2-tables-minimal-viable">E.2 Tables (minimal viable)<a class="headerlink" href="#e2-tables-minimal-viable" title="Permanent link">&para;</a></h2>
+<h3 id="e21-hub_events-authoritative-append-only-log">E.2.1 <code>hub_events</code> — authoritative append-only log<a class="headerlink" href="#e21-hub_events-authoritative-append-only-log" title="Permanent link">&para;</a></h3>
+<p>The event stream is the source of truth. Everything else can be derived.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">hub_events</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span><span class="n">event_id</span><span class="w">        </span><span class="n">bigserial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span><span class="n">event_time</span><span class="w">      </span><span class="n">timestamptz</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="n">now</span><span class="p">(),</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">  </span><span class="c1">-- Routing / grouping</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">  </span><span class="n">conversation_id</span><span class="w"> </span><span class="n">uuid</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">  </span><span class="n">turn_index</span><span class="w">      </span><span class="nb">int</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">  </span><span class="n">purpose_id</span><span class="w">      </span><span class="nb">text</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a><span class="w">  </span><span class="c1">-- Core event type (enum or text)</span>
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="w">  </span><span class="n">event_type</span><span class="w">      </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="w">  </span><span class="c1">-- JSONB payload for event-specific content</span>
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="w">  </span><span class="n">payload</span><span class="w">         </span><span class="n">jsonb</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="w">  </span><span class="c1">-- Integrity</span>
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="w">  </span><span class="n">payload_hash</span><span class="w">    </span><span class="n">bytea</span><span class="w"> </span><span class="k">null</span>
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a><span class="p">);</span>
+</code></pre></div>
+<p>Notes:
+- <code>conversation_id</code>/<code>turn_index</code> are nullable to support non-turn-scoped events (e.g., <code>purpose_registration</code>, <code>subscriptions_changed</code>).
+- <code>payload</code> is JSONB and should include <code>_schema</code> and <code>_v</code> when the event’s internal structure matters.
+- You can add <code>purpose_token</code> to <code>payload</code> for requests, but <strong>do not</strong> store it on accepted events unless you need an audit trail; typically you store only <code>purpose_id</code> and keep <code>purpose_token</code> in the registry table.</p>
+<h3 id="e22-ctos-per-turn-state-snapshot-optional-but-practical">E.2.2 <code>ctos</code> — per-turn state snapshot (optional but practical)<a class="headerlink" href="#e22-ctos-per-turn-state-snapshot-optional-but-practical" title="Permanent link">&para;</a></h3>
+<p>This is a materialized convenience table. It is allowed to be “latest view” because the authoritative record is still <code>hub_events</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">ctos</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span><span class="n">conversation_id</span><span class="w"> </span><span class="n">uuid</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span><span class="n">turn_index</span><span class="w">      </span><span class="nb">int</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">  </span><span class="c1">-- stable per-turn fields</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">  </span><span class="n">created_at</span><span class="w">      </span><span class="n">timestamptz</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="n">now</span><span class="p">(),</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">  </span><span class="n">speaker_role</span><span class="w">    </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w">         </span><span class="c1">-- &quot;human&quot; | &quot;model&quot; | &quot;system&quot; (or richer labels)</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">  </span><span class="nb">text</span><span class="w">            </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w">         </span><span class="c1">-- raw turn text (verbatim)</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">  </span><span class="n">text_hash</span><span class="w">       </span><span class="n">bytea</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="w">  </span><span class="c1">-- observations are append-only lists per key</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="w">  </span><span class="n">observations</span><span class="w">    </span><span class="n">jsonb</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="p">::</span><span class="n">jsonb</span><span class="p">,</span>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="w">  </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="p">(</span><span class="n">conversation_id</span><span class="p">,</span><span class="w"> </span><span class="n">turn_index</span><span class="p">)</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="p">);</span>
+</code></pre></div>
+<p>Observations encoding:
+- <code>observations</code> is a JSON object keyed by observation key; each value is a JSON array of Observation objects:
+  - <code>[{ "owner": "...", "shared": true, "value": ... }, ...]</code></p>
+<p>This matches the “every value is a list; hub appends” invariant.</p>
+<h3 id="e23-purpose_runs-registry-for-purpose-tokens-and-subscriptions">E.2.3 <code>purpose_runs</code> — registry for Purpose tokens and subscriptions<a class="headerlink" href="#e23-purpose_runs-registry-for-purpose-tokens-and-subscriptions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">purpose_runs</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="n">purpose_id</span><span class="w">      </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span><span class="n">purpose_token</span><span class="w">   </span><span class="nb">char</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">  </span><span class="c1">-- run scope / lifecycle</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">  </span><span class="n">created_at</span><span class="w">      </span><span class="n">timestamptz</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="n">now</span><span class="p">(),</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span><span class="n">last_seen_at</span><span class="w">    </span><span class="n">timestamptz</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">  </span><span class="n">is_active</span><span class="w">       </span><span class="nb">boolean</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="w">  </span><span class="c1">-- subscriptions expressed as patterns; stored as jsonb array of strings</span>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="w">  </span><span class="n">subscriptions</span><span class="w">   </span><span class="n">jsonb</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">::</span><span class="n">jsonb</span><span class="p">,</span>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="w">  </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="p">(</span><span class="n">purpose_id</span><span class="p">,</span><span class="w"> </span><span class="n">purpose_token</span><span class="p">)</span>
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="p">);</span>
+</code></pre></div>
+<p>Notes:
+- This table is the trust boundary: hub validates <code>(purpose_id, purpose_token)</code> for Purpose-originating requests.
+- If you later want “one active token per purpose_id,” enforce via a partial unique index on <code>purpose_id where is_active</code>.</p>
+<h2 id="e3-indexes-day-1">E.3 Indexes (day 1)<a class="headerlink" href="#e3-indexes-day-1" title="Permanent link">&para;</a></h2>
+<p>For replay and common queries:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="n">hub_events_conv_turn_time</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">hub_events</span><span class="w"> </span><span class="p">(</span><span class="n">conversation_id</span><span class="p">,</span><span class="w"> </span><span class="n">turn_index</span><span class="p">,</span><span class="w"> </span><span class="n">event_time</span><span class="p">);</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="n">hub_events_type_time</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">hub_events</span><span class="w"> </span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span><span class="w"> </span><span class="n">event_time</span><span class="p">);</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="c1">-- If you frequently query by purpose_id (e.g., debugging a Purpose)</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="n">hub_events_purpose_time</span>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a><span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">hub_events</span><span class="w"> </span><span class="p">(</span><span class="n">purpose_id</span><span class="p">,</span><span class="w"> </span><span class="n">event_time</span><span class="p">);</span>
+</code></pre></div>
+<p>For JSONB filtering (only add when needed):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1">-- Example: find events whose payload contains a key/value pattern</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="n">hub_events_payload_gin</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">hub_events</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="n">gin</span><span class="w"> </span><span class="p">(</span><span class="n">payload</span><span class="p">);</span>
+</code></pre></div>
+<p>For CTO retrieval:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="n">ctos_conv_time</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">ctos</span><span class="w"> </span><span class="p">(</span><span class="n">conversation_id</span><span class="p">,</span><span class="w"> </span><span class="n">created_at</span><span class="p">);</span>
+</code></pre></div>
+<h2 id="e4-replay-model">E.4 Replay model<a class="headerlink" href="#e4-replay-model" title="Permanent link">&para;</a></h2>
+<p>Replay is a query over <code>hub_events</code>:</p>
+<ul>
+<li>“Replay a conversation”: <code>where conversation_id = ... order by turn_index, event_time, event_id</code></li>
+<li>“Replay a turn”: <code>where conversation_id = ... and turn_index = ... order by event_time, event_id</code></li>
+</ul>
+<p>Because the authoritative stream is append-only, strict ordering requirements are minimal. Recommended tie-break:
+- <code>event_time</code>, then <code>event_id</code> (monotone).</p>
+<h2 id="e5-projections-derived-consumers">E.5 Projections (derived consumers)<a class="headerlink" href="#e5-projections-derived-consumers" title="Permanent link">&para;</a></h2>
+<p>Treat everything beyond the core as <strong>derived projections</strong>:</p>
+<ul>
+<li>DecisionCard materialization (from DecisionMove events)</li>
+<li>Alignment snapshots</li>
+<li>Trace-probe / adjacency annotations</li>
+<li>Search indices</li>
+</ul>
+<p>Each projection:
+- reads from <code>hub_events</code> (and optionally <code>ctos</code>),
+- writes to its own tables/materialized views,
+- can be re-run as rules evolve.</p>
+<h2 id="e6-when-to-add-a-vector-index-optional">E.6 When to add a vector index (optional)<a class="headerlink" href="#e6-when-to-add-a-vector-index-optional" title="Permanent link">&para;</a></h2>
+<p>When you need semantic retrieval at scale:
+- store embeddings out-of-row (vector DB or Postgres pgvector),
+- store only embedding references in event payloads and/or CTO observations.</p>
+<p>If you want to stay Postgres-only, pgvector is a reasonable next step; otherwise keep the vector index as a separate projection.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

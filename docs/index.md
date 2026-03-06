@@ -31,7 +31,7 @@ async def main():
     turn_id = await ttt.start_turn(
         session_id=uuid4(),
         content_profile="conversation",
-        content={"speaker": "user", "text": "hello"},
+        content={"speaker_id": "usr_a3f9", "text": "hello"},
     )
     print(f"Created turn: {turn_id}")
 
@@ -41,7 +41,7 @@ asyncio.run(main())
 ## Core concepts
 
 | Concept | Description |
-| ------- | ----------- |
+|---------|-------------|
 | **TTT** | The hub runtime. Authoritative for CTO creation, Delta merge, and event emission. |
 | **CTO** | Canonical Turn Object. The hub-authoritative work item. |
 | **Purpose** | A registered agenda-bearing actor that receives HubEvents and may emit Deltas. |

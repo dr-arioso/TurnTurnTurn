@@ -1,3 +1,5 @@
+"""Purpose registration record for the TTT hub registry."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

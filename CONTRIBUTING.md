@@ -74,21 +74,24 @@ async def start_turn(
     content_profile: str,
     content: dict[str, Any],
     *,
+    profile_version: int = 1,
     request_id: str | None = None,
     submitted_by_label: str | None = None,
 ) -> UUID:
     """
-    Validate content, create a CTO, emit cto_created, then dispatch.
+    Look up the profile, validate content, apply defaults, create a CTO,
+    emit cto_created, then dispatch to registered Purposes.
 
     The hub is the sole authority for CTO creation. Callers may not construct
-    CTOs directly. If content does not satisfy the profile contract,
-    ValueError is raised and no CTO is created.
+    CTOs directly. If the profile is unknown or content does not satisfy the
+    profile contract, an exception is raised and no CTO is created.
 
     Args:
         session_id: The session this turn belongs to.
-        content_profile: Profile identifier (e.g. "conversation"). Determines
-            required shape of content.
+        content_profile: Profile identifier string (e.g. "conversation").
+            Must be registered in ProfileRegistry.
         content: Profile-conformant content dict.
+        profile_version: Version of the profile to use. Defaults to 1.
         request_id: Optional caller correlation key for idempotency. Not yet
             enforced in v0.
         submitted_by_label: Optional provenance label for non-Purpose callers.
@@ -97,6 +100,7 @@ async def start_turn(
         The turn_id of the newly created CTO.
 
     Raises:
+        KeyError: If content_profile / profile_version is not registered.
         ValueError: If content does not satisfy the profile contract.
     """
 ```
@@ -206,17 +210,43 @@ locally it will pass in CI.
 
 ## Adding a new content profile
 
-1. Add validation logic to `validate_content_profile()` in `cto.py`
-2. Add a docstring entry describing the required content shape
-3. Add a test in `tests/` covering valid and invalid content for the profile
-4. Update the profiles section of the arch doc
-5. Consider adding an example to `docs/index.md` if the profile is a
-   canonical use case
+No core module changes required. The profile system is designed for this.
 
-Do not add profile-specific convenience properties to `CTO` (like the existing
-`speaker` and `text`) unless the profile is truly canonical. Those properties
-exist for `conversation` as an example of the pattern, not as an invitation to
-repeat it for every profile.
+1. Construct a `Profile` with `FieldSpec` declarations for each field:
+   ```python
+   from turnturnturn import Profile, FieldSpec, TTT
+
+   my_profile = Profile(
+       profile_id="annotation",
+       version=1,
+       fields={
+           "document_id": FieldSpec(name="document_id", required=True, expected_type=str),
+           "label":       FieldSpec(name="label",       required=True, expected_type=str),
+       },
+   )
+   TTT.register_profile(my_profile)
+   ```
+2. For optional fields with defaults, supply a `default_factory`. If the
+   default depends on session-scoped state (e.g. an ordinal counter), read
+   from and write to the `session_context` dict — the hub passes it through
+   opaquely across all turns in a session:
+   ```python
+   def my_default(content, session_context):
+       counter = session_context.setdefault("annotation.count", 0)
+       session_context["annotation.count"] += 1
+       return f"item_{counter + 1}"
+   ```
+3. For computed accessors (a field derived from multiple content keys),
+   subclass `Profile` and override `resolve()`. Register the subclass.
+4. Add a test in `tests/` covering valid content, invalid content (missing
+   required fields), and default resolution.
+5. Update the profiles section of the arch doc (§5).
+6. Consider adding an example to `docs/index.md` if the profile is a
+   canonical use case.
+
+Do not add any profile-specific code to `cto.py`, `hub.py`, or any other
+core module. If you find yourself editing a core module to support a new
+profile, that is a signal the profile system needs to be extended instead.
 
 ---
 

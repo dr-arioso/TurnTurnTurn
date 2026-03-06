@@ -1,3 +1,5 @@
+"""Delta — a purpose-proposed change for hub merge."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,6 +28,12 @@ class Delta:
     patch: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
+        """
+        Serialize to a JSON-safe dict for persistence and transport.
+
+        UUIDs are rendered as strings. patch is expected to be JSON-safe
+        by construction — callers are responsible for ensuring this.
+        """
         return {
             "delta_id": str(self.delta_id),
             "session_id": str(self.session_id),

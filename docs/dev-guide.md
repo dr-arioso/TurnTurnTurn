@@ -76,7 +76,7 @@ Or let CI handle it — see `.github/workflows/docs.yml`.
 ## Dependency auditing
 
 ```bash
-safety scan  # Requires free account ('safety check' no longer supported)
+safety check
 pip-audit
 ```
 

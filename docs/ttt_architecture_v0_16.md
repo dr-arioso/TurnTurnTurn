@@ -1,14 +1,20 @@
-# TurnTurnTurn (TTT) — Architecture v0.15
+# TurnTurnTurn (TTT) — Architecture v0.16
 
 ## 0. Positioning
 
-**TurnTurnTurn (TTT)** is a hub runtime built around a single canonical object — the CTO — and the principle that nothing writes to canonical state directly. TTT was extracted from real human-AI interaction research infrastructure; the abstractions reflect actual usage rather than speculative design.
+**TurnTurnTurn (TTT)** is a lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.
 
 TTT is built around a single canonical object:
 
 - **CTO** — Canonical Turn Object
 
-TTT does **not** define domain semantics. It provides the machinery to adopt the semantics that are important to anyone who uses it.
+TTT does **not** define domain semantics. It provides:
+
+- authoritative CTO creation
+- hub-mediated Delta merge
+- typed HubEvents
+- Purpose registration and dispatch
+- replayable provenance through the event stream
 
 The canonical example profile is **`conversation`**, but TTT is **profile-based**, not hard-coded to speaker/text semantics.
 
@@ -43,16 +49,16 @@ Minimal shape:
 - `turn_id`
 - `session_id`
 - `created_at_ms`
-- `content_profile`
+- `content_profile` — `{"id": str, "version": int}`
 - `content`
 - `observations`
 
 The canonical example profile is:
 
 - `content_profile = "conversation"`
-- `content = {"speaker": str, "text": str}`
+- `content = {"speaker_id": str, "speaker_role": str, "speaker_label": str, "text": str}`
 
-Convenience attributes such as `speaker` and `text` are **derived**, profile-scoped accessors.
+Convenience attributes (`speaker_id`, `speaker_role`, `speaker_label`, `text`) are **derived**, profile-scoped accessors.
 
 ### Purpose
 
@@ -152,7 +158,10 @@ Example mental model:
 await ttt.start_turn(
     session_id=...,
     content_profile="conversation",
-    content={"speaker": "user", "text": "hello"},
+    content={
+        "speaker": {"id": "usr_a3f9"},
+        "text": "hello",
+    },
 )
 ```
 
@@ -242,22 +251,69 @@ follow-on Purpose dispatch
 
 TTT is profile-based, but `conversation` remains the canonical example because it is simple, legible, and central to Adjacency.
 
-Required content shape:
+### 5.1 The profile system
+
+A `Profile` is a self-contained schema object that owns validation, default application, and accessor resolution for one content shape. Profiles are registered in `ProfileRegistry` — a process-scoped class-level registry. The hub consults it at `start_turn()` time; `CTO.__getattr__` consults it at attribute access time.
+
+The CTO carries only identifying data — no object references, no code:
+
+```python
+content_profile = {"id": "conversation", "version": 1}
+```
+
+This is fully serializable and loggable as-is. `CTO.__getattr__` dispatches to `ProfileRegistry.resolve(id, version, name, content)` for unknown attribute lookups. No profile-specific code lives in `CTO` or `hub.py`.
+
+To add a new profile: construct a `Profile`, call `TTT.register_profile()`. No core module changes required.
+
+### 5.2 Key convention
+
+The conversation profile uses the **parent_child flat key convention** (max depth 2). Keys are grouped by parent prefix. Enforced when `strict_profiles=True` on the hub or `strict=True` on the profile; documented convention otherwise.
+
+### 5.3 Content shape
 
 ```python
 content_profile = "conversation"
 content = {
-    "speaker": "...",
-    "text": "...",
+    "speaker": {
+        "id":    str,   # required — stable caller-defined identifier.
+                        # no format enforced — model name, UUID, handle, etc.
+                        # anchors ordinal assignment and provenance tracking.
+        "role":  str,   # optional — semantic role in the session protocol.
+                        # e.g. "subject", "interviewer", "user", "assistant".
+                        # default: "speaker" (the parent key name).
+        "label": str,   # optional — human-facing display name.
+                        # e.g. "Stevie", "Human", "LLM", "Dr. Smith".
+                        # default: "speaker_<n>" — 1-based ordinal of this
+                        # speaker.id in the session's speaker registry.
+                        # same speaker.id always resolves to the same
+                        # ordinal within a session.
+    },
+    "text": str,        # required — the turn content. root-level field.
 }
 ```
 
-Convenience accessors:
+### 5.4 Accessor dispatch
 
-- `CTO.speaker`
-- `CTO.text`
+Content is nested; CTO accessors are flat, following the parent_child
+convention. `cto.speaker_id` resolves to `content["speaker"]["id"]` via
+the path tuple declared in the profile's FieldSpec:
 
-These are derived from `content` and valid only when `content_profile == "conversation"`.
+```python
+cto.speaker_id     # → content["speaker"]["id"]
+cto.speaker_role   # → content["speaker"]["role"]
+cto.speaker_label  # → content["speaker"]["label"]
+cto.text           # → content["text"]
+```
+
+Unknown attribute names raise `AttributeError` as normal. Accessors for unknown profiles raise `AttributeError` — there is no cross-profile fallback.
+
+### 5.5 Computed accessors
+
+Not supported in v0. All accessors are simple `content.get(name)` lookups. When computed accessors are needed (fields derived from multiple content keys), override `Profile.resolve()` on a subclass and register the subclass. No core changes required.
+
+### 5.6 strict_profiles
+
+`TTT.create(strict_profiles=True)` activates strict key validation on all profiles. Per-profile `strict=True` activates it for that profile regardless of the hub setting.
 
 ## 6. Event taxonomy (minimal v0.15)
 
@@ -313,11 +369,12 @@ Primary modules:
 
 - `hub.py` — TTT runtime
 - `protocols.py` — PurposeProtocol / TurnTakerProtocol
-- `cto.py` — CTO and content-profile validation
+- `cto.py` — CTO; no profile-specific code
+- `profile.py` — Profile, ProfileRegistry, FieldSpec; conversation profile built-in
 - `events.py` — HubEvent and payload helpers
 - `delta.py` — Delta
 - `registry.py` — Purpose registration
-- `dag.py` — eligibility model
+- `dag.py` — eligibility model (stub)
 
 This document is only the front door.
 
@@ -328,7 +385,6 @@ TTT v0.15 does not yet attempt to fully specify:
 - cross-process transport
 - durable persistence layout
 - auth policy beyond token seam
-- profile registry mechanics beyond minimal validation
 - domain semantics for observations
 - final naming for `purpose_completed` event
 
@@ -337,6 +393,8 @@ TTT v0.15 does not yet attempt to fully specify:
 - Decide whether `purpose_completed` survives or is replaced by a clearer event.
 - Decide whether explicit per-dispatch runtime records need a named public abstraction.
 - Decide how much DAG language belongs in the public doc versus in code-level docs.
+- **Profile registry strict enforcement** — the `parent_child` key convention depth check in `Profile.validate(strict=True)` is a placeholder. Full enforcement (unknown key rejection by convention, not just by explicit field declaration) is deferred pending real usage driving the requirements.
+- **Declarative profile system** — the intended future state is profiles-as-pure-data requiring no Python code, loadable from JSON or YAML. The design is sketched in `profile.py`'s module docstring and `profiles/conversation.py`'s TODO block. Key elements: nested `content` dict mirroring actual content shape; `field_interpolation` for structural token declaration; `accessor_rule` for CTO attribute name generation; `_ordinal_` magic token for session-scoped counters; `Profile.from_dict()` as the parser entry point. The seam is the three stable method signatures: `Profile.validate()`, `Profile.apply_defaults()`, `Profile.resolve()` — these must not change when the declarative system lands.
 
 ## 11. Migration notes from v0.14
 
@@ -347,6 +405,11 @@ This revision intentionally changes the public story:
 - from `turn_received` to `cto_created`
 - from `purpose_id` as overloaded type/instance language to `Purpose.name` + `Purpose.id`
 - from `TurnSnargle` + `submit_snargle()` to direct `start_turn()` invocation on the hub
+- from `content["speaker"]: str` to `content["speaker_id"]: str` (required) + `content["speaker_role"]: str` (optional) + `content["speaker_label"]: str` (optional) in the conversation profile
+- from `CTO.speaker` convenience accessor to `CTO.speaker_id`, `CTO.speaker_role`, `CTO.speaker_label`
+- from ad-hoc `validate_content_profile()` switch to `Profile` / `ProfileRegistry` — profile-specific code no longer lives in core modules
+- `content_profile` on CTO changed from a string to a plain dict `{"id": ..., "version": ...}` — fully serializable, no object references
+- hub `_speaker_registry` replaced by opaque `_session_contexts` — the hub no longer has any knowledge of speaker ordinals; the conversation profile manages that state in the session context dict it owns
 
 It preserves:
 

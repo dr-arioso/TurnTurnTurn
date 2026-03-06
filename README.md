@@ -4,51 +4,89 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 
-**TurnTurnTurn (TTT)** is a lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.
+---
+
+TTT started as an answer to a surprisingly open question in conversational AI research: **what actually *is* a turn?**
+
+When building research infrastructure for human-AI interaction studies, the honest answer from the field was: an assorted collection of dicts, flat transcript files, and ad-hoc JSON — each project reinventing the same structure with different field names and no provenance story. TTT is the canonical object that was missing: a structured, hub-authoritative unit of conversational or sequential work, with data integrity and replayability built in from the start.
+
+From there, the applications broadened. TTT is useful anywhere a single input needs to move through multiple processors — human-AI interaction pipelines, multi-LLM coordination, AI observability, annotation workflows, content enrichment. The abstraction generalizes cleanly because the core problem is always the same: **something arrives, multiple things need to happen to it, and you need to know exactly what happened and in what order.**
+
+TTT is built for anyone who needs:
+
+- **Incremental enrichment** — multiple processors each contribute to a shared work item without overwriting each other
+- **Dependency ordering** — this has to happen before that, enforced by the hub
+- **Async safety** — concurrent processors without race conditions on canonical state
+- **Data integrity** — nothing writes to canonical state directly; every change is *proposed* and validated at merge time
+- **Full replayability** — the event stream is the ground truth; replay any session against a new processor version to verify behavior before shipping
+
+That last point is the one that tends to land hardest. Most pipelines have no good answer to "how do we test the new version of our annotator against real historical data?" TTT's answer is: rerun the event stream. The worst a buggy processor can do is have its Delta rejected. The audit trail survives regardless.
+
+---
+
+## How it works
 
 TTT is built around a single canonical object:
 
-* **CTO** — Canonical Turn Object
+**CTO** — Canonical Turn Object. Created by the hub, never mutated directly. Processors read CTOs and propose changes via **Deltas**; the hub validates and merges them. Every transition emits a **HubEvent**. The event stream is the authoritative record.
 
-TTT does **not** define domain semantics. It provides:
+```
+start_turn(session_id, content_profile, content)
+    │
+    ▼
+  TTT hub
+    ├── validate content profile
+    ├── create CTO  ──────────────────────────────► cto_created event
+    └── dispatch to registered Purposes
+              │
+              ▼
+        Purpose.take_turn(event)
+              │
+              ▼
+           Delta  ────────────────────────────────► delta_merged event
+```
 
-* authoritative CTO creation
-* hub-mediated Delta merge
-* typed HubEvents
-* Purpose registration and dispatch
-* replayable provenance through the event stream
+TTT does **not** define domain semantics. It provides the structure; you bring the content. The `content_profile` field is the extension point — `"conversation"` is the canonical example, but any profile can be registered with its own required shape.
 
-The canonical example profile is **`conversation`**, but TTT is **profile-based**, not hard-coded to speaker/text semantics.
+### Core vocabulary
 
-## Core concepts
+| Concept | What it is |
+|---------|------------|
+| **TTT** | The hub runtime. Sole authority for CTO creation, Delta merge, and event emission. |
+| **CTO** | Canonical Turn Object. The hub-authoritative work item. Immutable once created. |
+| **Purpose** | A registered actor that receives HubEvents and may propose Deltas. |
+| **Delta** | A purpose-proposed change. Validated and merged by the hub; never applied directly. |
+| **HubEvent** | An authoritative event emitted by the hub on each state transition. The replay substrate. |
 
-* **TTT** — the public hub runtime
-* **TurnSnargle** — pre-CTO ingress object submitted to TTT
-* **CTO** — canonical work item created by TTT
-* **Purpose** — registered agenda-bearing actor in the TTT mesh
-* **Delta** — purpose-proposed change, merged authoritatively by TTT
-* **HubEvent** — authoritative event emitted by TTT
+---
 
-## Status
+## Quick start
 
-This project is in active architectural development.
-Names, APIs, and module layout are still being refined.
+```python
+import asyncio
+from uuid import uuid4
+from turnturnturn import TTT
 
-Current design direction:
+async def main():
+    ttt = TTT.create()
 
-* TTT is the hub runtime
-* `conversation` is the canonical example content profile
-* TTT creates CTOs from submitted TurnSnargles
-* `cto_created` is the canonical creation event
-* Purposes are actors, not per-turn payload wrappers
+    turn_id = await ttt.start_turn(
+        session_id=uuid4(),
+        content_profile="conversation",
+        content={"speaker": "user", "text": "hello"},
+    )
+    print(f"Created turn: {turn_id}")
+
+asyncio.run(main())
+```
+
+---
 
 ## Requirements
 
-* Python 3.12+
+Python 3.12+
 
 ## Installation
-
-Create and activate a virtual environment:
 
 ```bash
 python3.12 -m venv .venv
@@ -56,57 +94,35 @@ source .venv/bin/activate
 pip install -e .[dev]
 ```
 
-## Usage
+---
 
-Run the package:
+## Status
 
-```bash
-python -m turnturnturn
-```
+TTT is in active architectural development. The core object model and hub semantics are stable; the DAG eligibility layer and persistence are in progress. Names and APIs may still shift before v1.0.
+
+See [`docs/ttt_architecture_v0_15.md`](docs/ttt_architecture_v0_15.md) for the current design.
+
+---
 
 ## Developer workflow
 
-Run the test suite with coverage:
-
 ```bash
+# Tests
 pytest --cov=turnturnturn
 coverage html
-```
 
-Run linting / formatting / type checks via pre-commit:
-
-```bash
+# Lint / format / type check / docstring coverage
 pre-commit install
 pre-commit run --all-files
-```
 
-Audit dependencies:
-
-```bash
+# Dependency audit
 safety check
 pip-audit
 ```
 
-Lint markdown:
+See the [Developer Guide](docs/dev-guide.md) for the full docs workflow including `mkdocs serve`.
 
-```bash
-markdownlint README.md
-```
-
-## Architecture
-
-See:
-
-* `docs/ttt_architecture_v0_15.md`
-
-Primary source modules:
-
-* `src/turnturnturn/hub.py`
-* `src/turnturnturn/protocols.py`
-* `src/turnturnturn/snargle.py`
-* `src/turnturnturn/cto.py`
-* `src/turnturnturn/events.py`
-* `src/turnturnturn/delta.py`
+---
 
 ## License
 

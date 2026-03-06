@@ -17,6 +17,12 @@ dev = [
     "safety",
     "pip-audit",
     "pre-commit",
+    # docs-as-code
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+    "griffe>=0.45",
+    "interrogate>=1.7",
 ]
 
 [tool.ruff]
@@ -39,6 +45,26 @@ line-length = 88
 
 [tool.isort]
 profile = "black"
+
+[tool.interrogate]
+# Enforce docstring coverage on public API surfaces.
+# Excludes test files, __init__, __main__, and empty stub modules.
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-semiprivate = false
+ignore-private = false
+ignore-module = false
+ignore-nested-functions = false
+fail-under = 10
+exclude = ["tests", "docs"]
+ignore-regex = ["^get$", "^mock_.*", ".*BaseClass.*"]
+verbose = 0
+quiet = false
+whitelist-regex = []
+color = true
+generate-badge = "docs/assets/"
+badge-format = "svg"
 
 [build-system]
 requires = ["setuptools>=65.0","wheel"]

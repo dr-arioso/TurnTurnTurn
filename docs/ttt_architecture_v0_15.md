@@ -2,19 +2,13 @@
 
 ## 0. Positioning
 
-**TurnTurnTurn (TTT)** is a lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.
+**TurnTurnTurn (TTT)** is a hub runtime built around a single canonical object — the CTO — and the principle that nothing writes to canonical state directly. TTT was extracted from real human-AI interaction research infrastructure; the abstractions reflect actual usage rather than speculative design.
 
 TTT is built around a single canonical object:
 
 - **CTO** — Canonical Turn Object
 
-TTT does **not** define domain semantics. It provides:
-
-- authoritative CTO creation
-- hub-mediated Delta merge
-- typed HubEvents
-- Purpose registration and dispatch
-- replayable provenance through the event stream
+TTT does **not** define domain semantics. It provides the machinery to adopt the semantics that are important to anyone who uses it.
 
 The canonical example profile is **`conversation`**, but TTT is **profile-based**, not hard-coded to speaker/text semantics.
 
@@ -32,17 +26,17 @@ TTT is the authority for:
 - maintaining Purpose registration
 - enforcing routing and dispatch rules
 
-### TurnSnargle
+### start_turn
 
-Pre-CTO ingress object.
+The hub ingress method.
 
-A TurnSnargle is submitted to TTT. TTT validates it against a content profile, creates a CTO, emits `cto_created`, and dispatches interested Purposes.
+A caller invokes `ttt.start_turn(...)` with a session ID, content profile, and content dict. TTT validates the content against the profile, creates a CTO, emits `cto_created`, and dispatches interested Purposes.
 
 ### CTO
 
 Canonical Turn Object.
 
-A CTO is the authoritative, canonical work item created by TTT from a TurnSnargle.
+A CTO is the authoritative, canonical work item created by TTT via `start_turn`.
 
 Minimal shape:
 
@@ -71,7 +65,7 @@ A Purpose:
 - may later receive a nullable hub-assigned `token`
 - subscribes to HubEvents
 - may emit Deltas
-- may, in future, submit new TurnSnargles
+- may, in future, invoke `start_turn` to submit new work items
 
 A Purpose is **not** a per-turn work parcel.
 
@@ -148,25 +142,23 @@ Registration associates:
 
 TTT creates or accepts session context.
 
-### 3.3 Submit TurnSnargle
+### 3.3 Call start_turn
 
-A caller submits a TurnSnargle to TTT.
+A caller invokes `start_turn` on TTT directly.
 
 Example mental model:
 
 ```python
-await ttt.submit_snargle(
-    TurnSnargle(
-        session_id=...,
-        content_profile="conversation",
-        content={"speaker": "user", "text": "hello"},
-    )
+await ttt.start_turn(
+    session_id=...,
+    content_profile="conversation",
+    content={"speaker": "user", "text": "hello"},
 )
 ```
 
 ### 3.4 TTT creates CTO
 
-TTT validates the TurnSnargle against its content profile, creates the CTO, and emits:
+TTT validates the content against its content profile, creates the CTO, and emits:
 
 - `cto_created`
 
@@ -197,14 +189,14 @@ TTT continues routing and merge/dispatch cycles until no further eligible work r
 submitter / app / Purpose
           │
           ▼
-    submit_snargle(...)
+    start_turn(session_id, content_profile, content, ...)
           │
           ▼
 ┌──────────────────────────────┐
 │             TTT              │
 │                              │
 │  authoritative hub runtime   │
-│  - validate TurnSnargle      │
+│  - validate content          │
 │  - create CTO                │
 │  - merge Deltas              │
 │  - emit HubEvents            │
@@ -223,17 +215,17 @@ submitter / app / Purpose
 ### 4.2 Creation boundary
 
 ```text
-TurnSnargle  --submitted to-->  TTT
-                                  │
-                                  ├─ validate profile contract
-                                  ├─ create CTO
-                                  └─ emit cto_created { cto: ... }
+start_turn(...)  --invoked on-->  TTT
+                                    │
+                                    ├─ validate profile contract
+                                    ├─ create CTO
+                                    └─ emit cto_created { cto: ... }
 ```
 
 ### 4.3 Canonical event flow
 
 ```text
-submit_snargle
+start_turn
    ↓
 cto_created
    ↓
@@ -321,7 +313,6 @@ Primary modules:
 
 - `hub.py` — TTT runtime
 - `protocols.py` — PurposeProtocol / TurnTakerProtocol
-- `snargle.py` — TurnSnargle
 - `cto.py` — CTO and content-profile validation
 - `events.py` — HubEvent and payload helpers
 - `delta.py` — Delta
@@ -339,11 +330,10 @@ TTT v0.15 does not yet attempt to fully specify:
 - auth policy beyond token seam
 - profile registry mechanics beyond minimal validation
 - domain semantics for observations
-- final naming for TurnSnargle
+- final naming for `purpose_completed` event
 
 ## 10. Immediate open questions
 
-- Replace `TurnSnargle` with the final ingress noun.
 - Decide whether `purpose_completed` survives or is replaced by a clearer event.
 - Decide whether explicit per-dispatch runtime records need a named public abstraction.
 - Decide how much DAG language belongs in the public doc versus in code-level docs.
@@ -356,6 +346,7 @@ This revision intentionally changes the public story:
 - from CTO fields `text` + `role` to CTO fields `content_profile` + `content`
 - from `turn_received` to `cto_created`
 - from `purpose_id` as overloaded type/instance language to `Purpose.name` + `Purpose.id`
+- from `TurnSnargle` + `submit_snargle()` to direct `start_turn()` invocation on the hub
 
 It preserves:
 

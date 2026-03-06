@@ -1,11 +1,11 @@
-### Workaround for `vscode-ollama` 0.17.x
+# Workaround for `vscode-ollama` 0.17.x
 
 The official `vscode-ollama` extension probes the Ollama HTTP server for a
 `/version` endpoint when it activates. That endpoint was introduced in a later
 release; the current Windows build (0.17.5/0.17.6 as of March 4 2026) returns
 404, causing the extension to display the spurious warning:
 
-```
+```text
 unable to verify Ollama server version...
 ```
 
@@ -15,11 +15,13 @@ from showing the configured model.  Until the extension is updated to handle
 
 1. locate the installed extension in the WSL filesystem (you may be using a
    remote SSH session so the path begins with `~/.vscode-server`):
+
    ```sh
    ~/.vscode-server/extensions/warm3snow.vscode-ollama-<version>/{dist,out}/extension.js
    ```
+
    There are two copies of the runtime code – one under `dist` that ships on the
-   VS Code marketplace and another under `out` that is actually executed by the
+   VS Code marketplace and another under `out` that is actually executed by the
    editor.  **Be sure to edit both files** (or just `out/extension.js`) when you
    apply the workaround.
 
@@ -54,7 +56,7 @@ from showing the configured model.  Until the extension is updated to handle
 })();
 ```
 
-3. **Reload the VS Code window** (`Ctrl+Shift+P` → **Reload Window**) or restart
+1. **Reload the VS Code window** (`Ctrl+Shift+P` → **Reload Window**) or restart
 the editor.  The new JavaScript will be picked up only after a reload.
 
 After patching and reloading you should no longer see the version warning and

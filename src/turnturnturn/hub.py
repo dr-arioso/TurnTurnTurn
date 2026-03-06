@@ -9,11 +9,10 @@ from .cto import CTO, validate_content_profile
 from .events import HubEvent, HubEventType, payload_cto_created
 from .protocols import PurposeProtocol
 from .registry import PurposeRegistration
-from .snargle import TurnSnargle
 
 """
 CTO creation boundary:
-submit_snargle(TurnSnargle)
+start_turn(session_id, content_profile, content, ...)
     -> validate profile contract
     -> create CTO
     -> emit cto_created {cto: ...}
@@ -33,7 +32,7 @@ class TTT:
     Positioning (v0):
       - TTT is the hub: authoritative CTO creation + Delta merge + event emission.
       - Purposes are registered agenda-bearing actors that receive HubEvents.
-      - Ingress happens via submit_snargle(); the hub creates CTOs from snargles.
+      - Ingress happens via start_turn(); the hub creates CTOs directly.
     """
 
     registrations: dict[UUID, PurposeRegistration]
@@ -56,19 +55,27 @@ class TTT:
             subscriptions=subs,
         )
 
-    async def submit_snargle(self, snargle: TurnSnargle) -> UUID:
+    async def start_turn(
+        self,
+        session_id: UUID,
+        content_profile: str,
+        content: dict[str, Any],
+        *,
+        request_id: str | None = None,
+        submitted_by_label: str | None = None,
+    ) -> UUID:
         """
-        Validate the snargle, create a CTO, emit cto_created, then dispatch.
+        Validate content, create a CTO, emit cto_created, then dispatch.
         Returns the new CTO's turn_id.
         """
-        validate_content_profile(snargle.content_profile, snargle.content)
+        validate_content_profile(content_profile, content)
 
         cto = CTO(
             turn_id=uuid4(),
-            session_id=snargle.session_id,
+            session_id=session_id,
             created_at_ms=now_ms(),
-            content_profile=snargle.content_profile,
-            content=dict(snargle.content),
+            content_profile=content_profile,
+            content=dict(content),
         )
 
         event = HubEvent(
@@ -79,7 +86,7 @@ class TTT:
             turn_id=cto.turn_id,
             payload=payload_cto_created(
                 cto_dict=cto.to_dict(),
-                submitted_by_label=snargle.submitted_by_label,
+                submitted_by_label=submitted_by_label,
             ),
         )
 

@@ -1,0 +1,65 @@
+site_name: TurnTurnTurn
+site_description: Lightweight hub runtime for routing, enriching, and preserving provenance over sequential work items.
+repo_url: https://github.com/dr-arioso/TurnTurnTurn
+repo_name: dr-arioso/TurnTurnTurn
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            inherited_members: false
+            filters:
+              - "!^_"   # exclude private members
+              - "^__init__$"  # but include __init__
+
+nav:
+  - Overview: index.md
+  - Architecture: ttt_architecture_v0_15.md
+  - API Reference:
+    - Hub (TTT): api/hub.md
+    - CTO: api/cto.md
+    - Delta: api/delta.md
+    - Events: api/events.md
+    - Protocols: api/protocols.md
+    - Registry: api/registry.md
+  - Developer Guide: dev-guide.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true

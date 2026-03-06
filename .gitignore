@@ -7,3 +7,5 @@ build/
 *.egg-info
 .coverage
 /docs/historical/
+# mkdocs build output
+site/

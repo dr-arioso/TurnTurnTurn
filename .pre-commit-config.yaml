@@ -24,6 +24,13 @@ repos:
         language: system
         pass_filenames: false
         args: ["--strict", "src/turnturnturn"]
+      - id: interrogate
+        name: interrogate (docstring coverage)
+        entry: .venv/bin/interrogate
+        language: system
+        pass_filenames: false
+        args: ["src/turnturnturn", "--fail-under=10", "--ignore-init-method",
+               "--ignore-init-module", "--ignore-magic"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v0.9.5
     hooks:

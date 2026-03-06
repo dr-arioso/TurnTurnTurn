@@ -43,7 +43,7 @@ plugins:
 
 nav:
   - Overview: index.md
-  - Architecture: ttt_architecture_v0_15.md
+  - Architecture: ttt_architecture_v0_16.md
   - API Reference:
     - Hub (TTT): api/hub.md
     - CTO: api/cto.md

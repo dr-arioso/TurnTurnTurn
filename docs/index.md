@@ -51,5 +51,5 @@ asyncio.run(main())
 ## Status
 
 This project is in active architectural development. Names, APIs, and module
-layout are still being refined. See the [Architecture](ttt_architecture_v0_15.md)
+layout are still being refined. See the [Architecture](ttt_architecture_v0_16.md)
 doc for current design direction.

@@ -8,3 +8,6 @@ Lightweight hub runtime for routing, enriching, and preserving provenance over s
 - src/turnturnturn/hub.py — TTT hub runtime (start_turn, register_purpose)
 - src/turnturnturn/cto.py — CTO and content profile validation
 - src/turnturnturn/protocols.py — PurposeProtocol, TurnTakerProtocol
+
+## For agentic use
+- AGENTS.md

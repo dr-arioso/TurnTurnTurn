@@ -118,6 +118,7 @@ def test_cto_to_dict_contains_expected_keys():
         "content_profile",
         "content",
         "observations",
+        "last_event_id",
     }
 
 
@@ -203,4 +204,5 @@ def test_cto_index_to_dict_keys():
         "session_id",
         "content_profile",
         "created_at_ms",
+        "last_event_id",
     }

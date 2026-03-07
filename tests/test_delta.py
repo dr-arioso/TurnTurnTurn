@@ -61,6 +61,7 @@ def test_to_dict_keys():
         "purpose_name",
         "purpose_id",
         "patch",
+        "based_on_event_id",
     }
 
 

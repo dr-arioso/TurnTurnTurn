@@ -37,6 +37,9 @@ class Delta:
         purpose_name: semantic kind, doubles as the observation namespace key.
         purpose_id: instance UUID, distinguishes concurrent instances of the
             same Purpose name.
+        based_on_event_id: the last_event_id of the CTO state this Delta was
+            derived from. Used by the hub to detect stale proposals. None if
+            the proposing Purpose did not record it.
     """
 
     delta_id: UUID
@@ -50,22 +53,27 @@ class Delta:
     # All values must be lists — enforced by hub at merge time.
     patch: dict[str, Any]
 
-    # TODO(delta-versioning): Add based_on_event_id: UUID | None = None
     # The event_id of the cto_created or delta_merged event that produced
-    # the CTO state this Delta was derived from. Read from
-    # CTOIndex.last_event_id in the triggering HubEvent payload — no
-    # extra get_cto() call needed. The hub compares this against
-    # CTO.last_event_id at merge time; a mismatch means the Purpose was
-    # reasoning about stale state. Handling policy (reject, warn, or pass
-    # to resolver Purpose) is deferred until Adjacency integration drives
-    # the requirements.
+    # the CTO state this Delta was derived from. Purposes read this from
+    # CTOIndex.last_event_id in the triggering HubEvent payload — no extra
+    # get_cto() call needed. The hub compares this against CTO.last_event_id
+    # at merge time; a mismatch means the Purpose was reasoning about stale
+    # state.
+    #
+    # None means the proposing Purpose did not record which CTO state it was
+    # based on (e.g. Purposes written before delta versioning was introduced).
+    # The hub treats a None based_on_event_id as unverifiable and still merges,
+    # but marks the delta_merged event payload with stale_delta=True when
+    # CTO.last_event_id is set — signalling that staleness cannot be confirmed.
+    based_on_event_id: UUID | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize to a JSON-safe dict for persistence and transport.
 
-        UUIDs are rendered as strings. patch is expected to be JSON-safe
-        by construction — callers are responsible for ensuring this.
+        UUIDs are rendered as strings, including based_on_event_id (None if
+        absent). patch is expected to be JSON-safe by construction — callers
+        are responsible for ensuring this.
         """
         return {
             "delta_id": str(self.delta_id),
@@ -74,4 +82,7 @@ class Delta:
             "purpose_name": self.purpose_name,
             "purpose_id": str(self.purpose_id),
             "patch": self.patch,
+            "based_on_event_id": (
+                str(self.based_on_event_id) if self.based_on_event_id else None
+            ),
         }

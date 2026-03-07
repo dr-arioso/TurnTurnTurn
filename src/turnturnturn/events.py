@@ -57,17 +57,26 @@ def payload_delta_merged(
     *,
     delta_dict: dict[str, Any],
     cto_index_dict: dict[str, Any],
+    stale_delta: bool = False,
 ) -> dict[str, Any]:
     """
     Build the payload dict for a delta_merged HubEvent.
 
-    Carries the full serialized Delta for provenance, and a CTOIndex dict
-    as a lightweight routing reference. Purposes that need full CTO state
-    (content, observations) call TTT.get_cto(turn_id).
+    Carries the full serialized Delta for provenance, a CTOIndex dict as a
+    lightweight routing reference, and a staleness flag. Purposes that need
+    full CTO state (content, observations) call TTT.get_cto(turn_id).
+
+    stale_delta is True when the hub detected that the proposing Purpose was
+    reasoning about an older CTO state — i.e. delta.based_on_event_id did not
+    match cto.last_event_id at merge time. The merge still proceeds; this flag
+    lets consumers decide on escalation policy. Also True when
+    based_on_event_id is None and the CTO has a last_event_id (unverifiable).
 
     Args:
         delta_dict: Serialized Delta from Delta.to_dict().
         cto_index_dict: Serialized CTOIndex from CTOIndex.to_dict().
+        stale_delta: True if the hub detected a version mismatch or an
+            unverifiable proposal against a versioned CTO.
 
     Returns:
         A JSON-safe payload dict with _schema "delta_merged" and _v 1.
@@ -77,6 +86,7 @@ def payload_delta_merged(
         "_v": 1,
         "delta": delta_dict,
         "cto_index": cto_index_dict,
+        "stale_delta": stale_delta,
     }
 
 

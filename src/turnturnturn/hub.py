@@ -66,12 +66,6 @@ class TTT:
     # because CTO is frozen — a new instance is constructed with updated observations.
     _ctos: dict[UUID, CTO] = field(default_factory=dict, init=False, repr=False)
 
-    # TODO(delta-versioning): When CTO.last_event_id and Delta.based_on_event_id
-    # are added, merge_delta() should compare delta.based_on_event_id against
-    # cto.last_event_id before merging. Mismatch = Purpose was reasoning about
-    # stale state. Initial handling policy (reject / warn / resolver dispatch)
-    # to be decided by Adjacency integration requirements.
-
     @classmethod
     def create(cls, *, strict_profiles: bool = False) -> "TTT":
         """
@@ -206,18 +200,25 @@ class TTT:
             self._session_context(session_id),
         )
 
+        # Mint the event_id before constructing the CTO so that last_event_id
+        # can be set to the cto_created event_id at construction time.
+        # This keeps the CTO's version handle and the emitted event in sync
+        # without a second write to _ctos after the event is built.
+        cto_created_event_id = uuid4()
+
         cto = CTO(
             turn_id=uuid4(),
             session_id=session_id,
             created_at_ms=now_ms(),
             content_profile={"id": content_profile, "version": profile_version},
             content=resolved_content,
+            last_event_id=cto_created_event_id,
         )
         self._ctos[cto.turn_id] = cto
 
         event = HubEvent(
             event_type=HubEventType.CTO_CREATED,
-            event_id=uuid4(),
+            event_id=cto_created_event_id,
             created_at_ms=now_ms(),
             session_id=cto.session_id,
             turn_id=cto.turn_id,
@@ -243,8 +244,17 @@ class TTT:
         owned by the proposing Purpose (keyed by purpose_name). Values must be
         lists — the hub extends the existing list, never replaces it.
 
-        On success, the canonical CTO is updated and a DELTA_MERGED event is
-        emitted and multicast to all registered Purposes.
+        Staleness check: if delta.based_on_event_id does not match
+        cto.last_event_id (meaning the Purpose was reasoning about an older
+        CTO state), the merge still proceeds but the delta_merged event payload
+        carries stale_delta=True. Consumers (e.g. Adjacency) can inspect this
+        flag and decide on escalation policy. A None based_on_event_id is
+        treated as unverifiable and also sets stale_delta=True when the CTO
+        has a last_event_id.
+
+        On success, the canonical CTO is updated (with last_event_id set to
+        the new delta_merged event_id) and a DELTA_MERGED event is emitted
+        and multicast to all registered Purposes.
 
         Args:
             delta: The proposed change. Must reference a known turn_id.
@@ -268,8 +278,31 @@ class TTT:
                     f"got {type(val).__name__!r} — hub enforces append-only semantics"
                 )
 
+        # Staleness check: compare delta.based_on_event_id against
+        # cto.last_event_id. A mismatch means the proposing Purpose was
+        # reasoning about an older CTO state — another Delta was merged
+        # between when the Purpose read the CTO and when it submitted this one.
+        #
+        # Policy (v0): do not reject — record the mismatch as stale_delta=True
+        # in the delta_merged event payload and proceed with the merge. This
+        # lets Adjacency observe and decide on escalation policy (hard-reject,
+        # resolver dispatch, etc.) from real usage rather than speculation.
+        #
+        # A None based_on_event_id (Purpose did not record it) is treated as
+        # unverifiable when the CTO has a last_event_id. We flag it the same
+        # way so consumers know the staleness check was inconclusive.
+        stale_delta = False
+        if cto.last_event_id is not None:
+            if delta.based_on_event_id != cto.last_event_id:
+                stale_delta = True
+
         # Build updated observations: purpose_name namespace, append-only.
         # CTO is frozen, so we construct a new instance with updated observations.
+        # Mint the event_id before constructing the updated CTO so that
+        # last_event_id is set to the delta_merged event_id at construction,
+        # keeping the version handle and emitted event in sync.
+        delta_merged_event_id = uuid4()
+
         namespace = delta.purpose_name
         existing_obs = dict(cto.observations)
         existing_ns = list(existing_obs.get(namespace, []))
@@ -284,23 +317,24 @@ class TTT:
             content_profile=cto.content_profile,
             content=cto.content,
             observations=existing_obs,
+            last_event_id=delta_merged_event_id,
         )
         self._ctos[updated_cto.turn_id] = updated_cto
 
-        event_id = uuid4()
         event = HubEvent(
             event_type=HubEventType.DELTA_MERGED,
-            event_id=event_id,
+            event_id=delta_merged_event_id,
             created_at_ms=now_ms(),
             session_id=updated_cto.session_id,
             turn_id=updated_cto.turn_id,
             payload=payload_delta_merged(
                 delta_dict=delta.to_dict(),
                 cto_index_dict=updated_cto.to_index().to_dict(),
+                stale_delta=stale_delta,
             ),
         )
         await self._multicast(event)
-        return event_id
+        return delta_merged_event_id
 
     def get_cto(self, turn_id: UUID) -> CTO | None:
         """

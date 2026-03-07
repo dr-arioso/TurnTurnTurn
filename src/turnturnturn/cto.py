@@ -42,6 +42,12 @@ class CTO:
     the hub enforces append-only semantics across all namespaces.
     Purposes may read any namespace but may only propose Deltas into
     their own.
+
+    last_event_id is the version handle for this CTO instance — the
+    event_id of the hub event (cto_created or delta_merged) that produced
+    it. The hub updates it on every state transition. Purposes record it
+    as based_on_event_id when proposing Deltas so the hub can detect
+    stale proposals at merge time.
     """
 
     turn_id: UUID
@@ -57,13 +63,17 @@ class CTO:
     # written via Delta merge; never mutated directly.
     observations: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
-    # TODO(delta-versioning): Add last_event_id: UUID | None = None
-    # Set to the cto_created event_id at construction, updated to the
-    # delta_merged event_id on each merge. Carried in CTOIndex so Purposes
-    # can record based_on_event_id in their Delta proposals without calling
-    # get_cto(). The hub validates based_on_event_id at merge time to detect
-    # stale proposals — i.e. a Purpose reasoning about CTO state that has
-    # since advanced. See Delta.based_on_event_id.
+    # Version handle — the event_id of the most recent hub event that produced
+    # or updated this CTO instance. Set to the cto_created event_id at
+    # construction; replaced with the delta_merged event_id on each merge.
+    # None only for CTOs constructed outside the hub (e.g. in tests that
+    # do not go through start_turn). Never None in canonical hub operation.
+    #
+    # Carried in CTOIndex so Purposes can record it as based_on_event_id in
+    # their Delta proposals directly from the triggering event payload, without
+    # a separate get_cto() call. The hub compares based_on_event_id against
+    # last_event_id at merge time to detect stale proposals.
+    last_event_id: UUID | None = None
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -99,7 +109,8 @@ class CTO:
         UUIDs are rendered as strings. content_profile serializes as-is —
         it is already a plain dict containing only id (str) and version (int).
         Observations are passed through as-is; callers are responsible for
-        ensuring observation values are JSON-safe.
+        ensuring observation values are JSON-safe. last_event_id serializes
+        as a string UUID or None.
         """
         return {
             "turn_id": str(self.turn_id),
@@ -108,6 +119,7 @@ class CTO:
             "content_profile": self.content_profile,
             "content": self.content,
             "observations": self.observations,
+            "last_event_id": str(self.last_event_id) if self.last_event_id else None,
         }
 
     def to_index(self) -> "CTOIndex":
@@ -123,6 +135,7 @@ class CTO:
             session_id=self.session_id,
             content_profile=self.content_profile,
             created_at_ms=self.created_at_ms,
+            last_event_id=self.last_event_id,
         )
 
 
@@ -144,6 +157,11 @@ class CTOIndex:
     The hub is the authority for canonical CTO state. A CTOIndex is a
     pointer, not a snapshot — it does not carry a moment-in-time copy of
     observations or content.
+
+    last_event_id mirrors CTO.last_event_id at the moment the index was
+    produced. Purposes use it as based_on_event_id when constructing Delta
+    proposals — it records which CTO state the Purpose was reading when it
+    decided to propose the change.
     """
 
     turn_id: UUID
@@ -154,21 +172,22 @@ class CTOIndex:
     content_profile: dict[str, Any]
     created_at_ms: int
 
-    # TODO(delta-versioning): Add last_event_id: UUID | None = None
-    # Mirrors CTO.last_event_id. Carried here so Purposes can read the
-    # current CTO version handle directly from the event payload and record
-    # it as based_on_event_id in their Delta proposals — without needing
+    # Version handle mirroring CTO.last_event_id. Carried here so Purposes
+    # can read the current CTO version handle directly from the event payload
+    # and record it as based_on_event_id in their Delta proposals — without
     # a separate get_cto() call just to get the version handle.
+    last_event_id: UUID | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize to a JSON-safe dict for event payload embedding.
 
-        UUIDs are rendered as strings. content_profile serializes as-is.
+        UUIDs are rendered as strings, including last_event_id (None if absent). content_profile serializes as-is.
         """
         return {
             "turn_id": str(self.turn_id),
             "session_id": str(self.session_id),
             "content_profile": self.content_profile,
             "created_at_ms": self.created_at_ms,
+            "last_event_id": str(self.last_event_id) if self.last_event_id else None,
         }

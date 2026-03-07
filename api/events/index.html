@@ -287,7 +287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ttt_architecture_v0_16/" class="md-nav__link">
+      <a href="../../ttt_architecture_v0_17/" class="md-nav__link">
         
   
   
@@ -912,6 +912,12 @@ contributed what, when" comes from replaying events, not from in-memory state.</
         <p>The event envelope.</p>
 <p><code>turn_id</code> is nullable because some events are not scoped to a CTO
 (e.g., purpose registration, session lifecycle).</p>
+<p><code>hub_token</code> is set by the hub at dispatch time to the token assigned
+to the receiving Purpose at registration. BasePurpose.take_turn()
+validates this field before delegating to _handle_event(). It is
+per-recipient — the hub constructs a separate envelope per Purpose
+rather than broadcasting a single shared event object, so tokens
+are never visible across Purpose boundaries.</p>
 
 
 
@@ -938,23 +944,43 @@ contributed what, when" comes from replaying events, not from in-memory state.</
 <span class="normal"><a href="#__codelineno-0-40">40</a></span>
 <span class="normal"><a href="#__codelineno-0-41">41</a></span>
 <span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-43">43</a></span>
+<span class="normal"><a href="#__codelineno-0-44">44</a></span>
+<span class="normal"><a href="#__codelineno-0-45">45</a></span>
+<span class="normal"><a href="#__codelineno-0-46">46</a></span>
+<span class="normal"><a href="#__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#__codelineno-0-52">52</a></span>
+<span class="normal"><a href="#__codelineno-0-53">53</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="k">class</span><span class="w"> </span><span class="nc">HubEvent</span><span class="p">:</span>
 <a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">    The event envelope.</span>
 <a id="__codelineno-0-31" name="__codelineno-0-31"></a>
 <a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">    `turn_id` is nullable because some events are not scoped to a CTO</span>
 <a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">    (e.g., purpose registration, session lifecycle).</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="n">event_type</span><span class="p">:</span> <span class="n">HubEventType</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="n">event_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="n">created_at_ms</span><span class="p">:</span> <span class="nb">int</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">    `hub_token` is set by the hub at dispatch time to the token assigned</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    to the receiving Purpose at registration. BasePurpose.take_turn()</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">    validates this field before delegating to _handle_event(). It is</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    per-recipient — the hub constructs a separate envelope per Purpose</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">    rather than broadcasting a single shared event object, so tokens</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    are never visible across Purpose boundaries.</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-42" name="__codelineno-0-42"></a>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>    <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a>    <span class="n">event_type</span><span class="p">:</span> <span class="n">HubEventType</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a>    <span class="n">event_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="n">created_at_ms</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="c1"># Set by hub at dispatch time. Validated by BasePurpose.take_turn().</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="c1"># None only in legacy/test contexts where token validation is not active.</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">hub_token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -983,7 +1009,7 @@ contributed what, when" comes from replaying events, not from in-memory state.</
 
 
 <h2 id="turnturnturn.events.payload_cto_created" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">payload_cto_created</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">cto_dict</span><span class="p">,</span> <span class="n">submitted_by_purpose_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">submitted_by_purpose_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">submitted_by_label</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">payload_cto_created</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">cto_index_dict</span><span class="p">,</span> <span class="n">submitted_by_purpose_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">submitted_by_purpose_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">submitted_by_label</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#turnturnturn.events.payload_cto_created" class="headerlink" title="Permanent link">&para;</a></h2>
 
@@ -991,6 +1017,10 @@ contributed what, when" comes from replaying events, not from in-memory state.</
     <div class="doc doc-contents first">
 
         <p>Build the payload dict for a cto_created HubEvent.</p>
+<p>Carries a CTOIndex as a lightweight routing reference and optional
+submitter attribution. Purposes that need full CTO state call
+TTT.get_cto(turn_id). ctoPersistP is the canonical consumer that
+will call get_cto() to persist the full canonical state.</p>
 <p>All payloads include _schema (payload type identifier) and _v
 (payload version) for forward-compatibility and deserializer dispatch.
 Submitter attribution fields are all nullable — use submitted_by_label
@@ -1011,14 +1041,14 @@ fields for Purpose-originated turns.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>cto_dict</code>
+                <code>cto_index_dict</code>
             </td>
             <td>
                   <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Serialized CTO from CTO.to_dict().</p>
+                <p>Serialized CTOIndex from CTOIndex.to_dict().</p>
               </div>
             </td>
             <td>
@@ -1102,71 +1132,81 @@ fields for Purpose-originated turns.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/turnturnturn/events.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span>
-<span class="normal"><a href="#__codelineno-0-55">55</a></span>
-<span class="normal"><a href="#__codelineno-0-56">56</a></span>
-<span class="normal"><a href="#__codelineno-0-57">57</a></span>
-<span class="normal"><a href="#__codelineno-0-58">58</a></span>
-<span class="normal"><a href="#__codelineno-0-59">59</a></span>
-<span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span>
-<span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span>
-<span class="normal"><a href="#__codelineno-0-73">73</a></span>
-<span class="normal"><a href="#__codelineno-0-74">74</a></span>
-<span class="normal"><a href="#__codelineno-0-75">75</a></span>
-<span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span>
-<span class="normal"><a href="#__codelineno-0-78">78</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="k">def</span><span class="w"> </span><span class="nf">payload_cto_created</span><span class="p">(</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="n">cto_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="n">submitted_by_purpose_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">submitted_by_purpose_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="n">submitted_by_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    Build the payload dict for a cto_created HubEvent.</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    All payloads include _schema (payload type identifier) and _v</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    (payload version) for forward-compatibility and deserializer dispatch.</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">    Submitter attribution fields are all nullable — use submitted_by_label</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    for non-Purpose callers (e.g. a direct API client), and the purpose</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    fields for Purpose-originated turns.</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">        cto_dict: Serialized CTO from CTO.to_dict().</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">        submitted_by_purpose_id: UUID string of the submitting Purpose, if any.</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        submitted_by_purpose_name: Name of the submitting Purpose, if any.</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">        submitted_by_label: Free-form provenance label for non-Purpose callers.</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        A JSON-safe payload dict with _schema &quot;cto_created&quot; and _v 1.</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="s2">&quot;_schema&quot;</span><span class="p">:</span> <span class="s2">&quot;cto_created&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>        <span class="s2">&quot;_v&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="s2">&quot;cto&quot;</span><span class="p">:</span> <span class="n">cto_dict</span><span class="p">,</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="s2">&quot;submitted_by_purpose_id&quot;</span><span class="p">:</span> <span class="n">submitted_by_purpose_id</span><span class="p">,</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="s2">&quot;submitted_by_purpose_name&quot;</span><span class="p">:</span> <span class="n">submitted_by_purpose_name</span><span class="p">,</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="s2">&quot;submitted_by_label&quot;</span><span class="p">:</span> <span class="n">submitted_by_label</span><span class="p">,</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="p">}</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-83"> 83</a></span>
+<span class="normal"><a href="#__codelineno-0-84"> 84</a></span>
+<span class="normal"><a href="#__codelineno-0-85"> 85</a></span>
+<span class="normal"><a href="#__codelineno-0-86"> 86</a></span>
+<span class="normal"><a href="#__codelineno-0-87"> 87</a></span>
+<span class="normal"><a href="#__codelineno-0-88"> 88</a></span>
+<span class="normal"><a href="#__codelineno-0-89"> 89</a></span>
+<span class="normal"><a href="#__codelineno-0-90"> 90</a></span>
+<span class="normal"><a href="#__codelineno-0-91"> 91</a></span>
+<span class="normal"><a href="#__codelineno-0-92"> 92</a></span>
+<span class="normal"><a href="#__codelineno-0-93"> 93</a></span>
+<span class="normal"><a href="#__codelineno-0-94"> 94</a></span>
+<span class="normal"><a href="#__codelineno-0-95"> 95</a></span>
+<span class="normal"><a href="#__codelineno-0-96"> 96</a></span>
+<span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
+<span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
+<span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
+<span class="normal"><a href="#__codelineno-0-100">100</a></span>
+<span class="normal"><a href="#__codelineno-0-101">101</a></span>
+<span class="normal"><a href="#__codelineno-0-102">102</a></span>
+<span class="normal"><a href="#__codelineno-0-103">103</a></span>
+<span class="normal"><a href="#__codelineno-0-104">104</a></span>
+<span class="normal"><a href="#__codelineno-0-105">105</a></span>
+<span class="normal"><a href="#__codelineno-0-106">106</a></span>
+<span class="normal"><a href="#__codelineno-0-107">107</a></span>
+<span class="normal"><a href="#__codelineno-0-108">108</a></span>
+<span class="normal"><a href="#__codelineno-0-109">109</a></span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span>
+<span class="normal"><a href="#__codelineno-0-120">120</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="k">def</span><span class="w"> </span><span class="nf">payload_cto_created</span><span class="p">(</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="n">cto_index_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="n">submitted_by_purpose_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>    <span class="n">submitted_by_purpose_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>    <span class="n">submitted_by_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">    Build the payload dict for a cto_created HubEvent.</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">    Carries a CTOIndex as a lightweight routing reference and optional</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">    submitter attribution. Purposes that need full CTO state call</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">    TTT.get_cto(turn_id). ctoPersistP is the canonical consumer that</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">    will call get_cto() to persist the full canonical state.</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">    All payloads include _schema (payload type identifier) and _v</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">    (payload version) for forward-compatibility and deserializer dispatch.</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">    Submitter attribution fields are all nullable — use submitted_by_label</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">    for non-Purpose callers (e.g. a direct API client), and the purpose</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    fields for Purpose-originated turns.</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">        cto_index_dict: Serialized CTOIndex from CTOIndex.to_dict().</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        submitted_by_purpose_id: UUID string of the submitting Purpose, if any.</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        submitted_by_purpose_name: Name of the submitting Purpose, if any.</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">        submitted_by_label: Free-form provenance label for non-Purpose callers.</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        A JSON-safe payload dict with _schema &quot;cto_created&quot; and _v 1.</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a>        <span class="s2">&quot;_schema&quot;</span><span class="p">:</span> <span class="s2">&quot;cto_created&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>        <span class="s2">&quot;_v&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>        <span class="s2">&quot;cto_index&quot;</span><span class="p">:</span> <span class="n">cto_index_dict</span><span class="p">,</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>        <span class="s2">&quot;submitted_by_purpose_id&quot;</span><span class="p">:</span> <span class="n">submitted_by_purpose_id</span><span class="p">,</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>        <span class="s2">&quot;submitted_by_purpose_name&quot;</span><span class="p">:</span> <span class="n">submitted_by_purpose_name</span><span class="p">,</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>        <span class="s2">&quot;submitted_by_label&quot;</span><span class="p">:</span> <span class="n">submitted_by_label</span><span class="p">,</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

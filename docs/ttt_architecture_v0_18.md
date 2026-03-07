@@ -324,6 +324,21 @@ ttt.librarian.get_cto(turn_id)     # point query (synchronous, in-memory)
 `ProfileRegistry` is called directly at process setup — not through the hub.
 Profiles are process-scoped metadata, hub-independent.
 
+### API clarifications for the next implementation step
+
+`ttt.take_turn(event)` is the canonical ingress path for Purpose-originated
+post-bootstrap events.
+
+Responsibilities:
+
+1. validate event structure
+2. authenticate the submitting Purpose
+3. verify the event's claimed origin
+4. dispatch to the appropriate handler
+
+All canonical state mutation must enter through `take_turn()`.
+Direct mutation helpers remain internal implementation details.
+
 `TTT.start()` accepts `strict_profiles=True` to activate strict key
 validation on all profiles at `start_turn()` time.
 
@@ -360,6 +375,8 @@ Registration:
 - associates `Purpose.name`, `Purpose.id`, and `subscriptions`
 - generates a cryptographic token and assigns it to the Purpose via
   `BasePurpose._assign_token()`
+- derives and assigns a per-Purpose `downlink_signature` used to validate
+  hub-authored downlink events
 - stores a `PurposeRegistration` record keyed by `purpose.id`
 
 After registration the Purpose's token is non-nullable and the Purpose is
@@ -600,6 +617,49 @@ that profile regardless of the hub setting.
 
 ## 7. Event taxonomy (v0.18)
 
+### Event model clarification
+
+TTT uses a typed event model with structured payload objects.
+
+All events satisfy this minimal contract:
+
+```python
+class EventProtocol(Protocol):
+    event_type: HubEventType
+    event_id: UUID
+    created_at_ms: int
+    payload: EventPayloadProtocol
+```
+
+Payloads satisfy:
+
+```python
+class EventPayloadProtocol(Protocol):
+    def as_dict(self) -> dict[str, Any]: ...
+```
+
+This keeps serialization, logging, and persistence on one explicit path.
+
+### Purpose-originated event contract
+
+Purpose-submitted events satisfy a stricter contract:
+
+```python
+class PurposeEventProtocol(EventProtocol, Protocol):
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+```
+
+When the hub receives a Purpose event it validates:
+
+1. `hub_token` resolves to a registered Purpose
+2. `purpose_id` matches the registered Purpose
+3. `purpose_name` matches the registered Purpose
+
+Events failing these checks are rejected with
+`UnauthorizedDispatchError`.
+
 ### `cto_created`
 
 A new CTO now exists and is canonical.
@@ -624,11 +684,18 @@ Payload includes:
   (includes updated `last_event_id`)
 - `_schema` / `_v` metadata
 
-### `delta_proposal` (TODO)
+### `delta_proposal`
 
 A Purpose-submitted request to merge a Delta. Submitted via
-`hub.take_turn()`. The hub validates, merges, and emits `delta_merged`.
-Replaces direct `merge_delta()` calls as the public-facing mechanism.
+`hub.take_turn()`. The hub validates the submitting Purpose, verifies the
+claimed sender identity, routes to internal `_merge_delta()`, and emits
+`delta_merged` on success.
+
+`DeltaProposalPayload` carries the proposed `Delta` and serializes via
+`.as_dict()` like all event payloads.
+
+This event replaces direct `merge_delta()` calls as the public-facing
+mechanism.
 
 ### `subscription_update` (TODO)
 
@@ -644,7 +711,10 @@ must have completed before it is eligible to fire on a given CTO.
 
 ### `purpose_started`
 
-TTT has accepted a Purpose registration. Not yet emitted in v0.
+TTT has accepted a Purpose registration.
+
+The taxonomy entry is settled. Emission remains the natural follow-on after
+`hub.take_turn()` lands as the established ingress pattern.
 
 ### `purpose_completed`
 
@@ -678,6 +748,21 @@ at construction; updated to the `delta_merged` event_id on each merge.
 
 Each HubEvent has its own `event_id`.
 
+### Hub downlink verification
+
+Hub-authored downlink events carry a `downlink_signature` scoped to the hub
+instance and registered Purpose.
+
+Purpose: detect hub-looking events that did not actually originate from the
+hub and discourage direct Purpose-to-Purpose bypasses.
+
+This mechanism is for route integrity and architecture enforcement, not
+adversarial cryptographic security.
+
+Recommended construction: derive the signature using an HMAC-style function
+with a hub-private secret as key and Purpose-specific material (at minimum
+`purpose_token` and `purpose_id`) as input.
+
 ### CTOIndex
 
 `CTOIndex` is the lightweight event-payload form of CTO identity. Carries
@@ -694,13 +779,18 @@ Primary modules:
 - `hub.py` — TTT runtime; `librarian.py` or inline `Librarian` class
 - `base_purpose.py` — BasePurpose abstract base class; hub token validation;
   `_handle_event()` override point
-- `protocols.py` — PurposeProtocol / TurnTakerProtocol
+- `protocols.py` — EventProtocol, PurposeEventProtocol,
+  EventPayloadProtocol, and related structural contracts
 - `cto.py` — CTO and CTOIndex; no profile-specific code
 - `profile.py` — Profile, ProfileRegistry, FieldSpec, path-walking helpers
-- `events.py` — HubEvent and payload helpers
+- `events/` — event definitions and payload classes
+  - `events/hub_events.py` — hub-authored event types and shared contracts
+  - `events/purpose_events.py` — Purpose-originated event types
+  - `events/__init__.py` — public re-exports
 - `delta.py` — Delta
 - `registry.py` — PurposeRegistration
-- `errors.py` — TTTError, UnauthorizedDispatchError, UnboundPurposeError
+- `errors.py` — TTTError, UnauthorizedDispatchError,
+  UnknownEventTypeError, UnboundPurposeError
 - `dag.py` — eligibility model (stub)
 - `ids.py` — identifier utilities (stub)
 
@@ -716,9 +806,10 @@ TTT v0.18 does not yet attempt to fully specify:
 - domain semantics for observations
 - final naming for `purpose_completed` event
 - DAG eligibility layer (stub only)
-- `hub.take_turn()` ingress (designed, not yet implemented)
-- `DeltaProposalEvent`, `SubscriptionUpdateEvent`, `DependencyUpdateEvent`
+- hub-local diagnostic logging for unauthenticated dispatch failures
+- `SubscriptionUpdateEvent` and `DependencyUpdateEvent`
   (taxonomy settled, implementation pending)
+- custom event type registration by consuming projects
 - `ttt.librarian` as a named object (designed, not yet extracted)
 - `ttt.librarian.get_turns()` readback interface
 
@@ -728,10 +819,11 @@ TTT v0.18 does not yet attempt to fully specify:
   integration drives real dependency declarations. The `dependencies=["*"]`
   terminal-node pattern for `ctoPersistPurpose` is the first concrete
   requirement.
-- **`hub.take_turn()` ingress** — the interface is settled (Purpose submits
-  typed events; hub validates token, routes by event type). Implementation
-  requires defining the `DeltaProposalEvent` type and retiring `merge_delta()`
-  from the public API surface.
+- **Error events for unauthenticated failures** — current recommendation is
+  to raise exceptions only. Future work may add a hub-local diagnostic sink
+  and optionally authenticated `ErrorEvent` emission.
+- **Custom event registration** — mechanism for consuming projects to extend
+  the hub routing table without living in the TTT namespace remains open.
 - **Cross-purpose observations** — whether a shared or reconciled workspace
   is needed for Purposes to build on each other's observations is deferred
   pending a concrete use case. The architecture does not preclude it; no
@@ -771,10 +863,11 @@ TTT v0.18 does not yet attempt to fully specify:
   `ttt.librarian.get_cto()`. The hub is an authority and router; the
   librarian is the read path.
 - `TTT.merge_delta()` retired from public API. Replaced by
-  `hub.take_turn(DeltaProposalEvent(...))`. Still exists internally.
-  (TODO — not yet implemented.)
-- `hub.take_turn(event)` introduced as the unified Purpose → hub ingress.
-  (TODO — not yet implemented.)
+  `hub.take_turn(DeltaProposalEvent(...))`. Exists only as internal
+  `_merge_delta()`.
+- `hub.take_turn(event)` is the unified Purpose → hub ingress.
+- event definitions move from `events.py` to the `events/` package, with
+  imports preserved through re-exports.
 
 **Communication model:**
 - `take_turn()` is now the explicit two-way communication channel:
@@ -852,3 +945,11 @@ It preserves:
 - append-only observation history
 - event-stream provenance as primary record
 - switch-style routing plus DAG-gated eligibility
+
+
+### Documentation split note
+
+This architecture document is the normative design surface.
+Explanatory runtime walkthroughs — such as event lifecycle diagrams,
+end-to-end flow examples, and extension-oriented developer guidance — belong
+in MkDocs developer documentation near the code they describe.

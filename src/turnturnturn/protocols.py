@@ -1,8 +1,8 @@
-"""Structural protocols for TTT participants: TurnTakerProtocol and PurposeProtocol."""
+"""Structural protocols for TTT participants and event envelopes."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -10,9 +10,50 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
+class EventPayloadProtocol(Protocol):
+    """
+    Serialization contract for event payload objects.
+
+    All events carry a payload object rather than an ad-hoc dict so the hub
+    can rely on a uniform serialization path for logging, persistence, and
+    debugging.
+    """
+
+    def as_dict(self) -> dict[str, Any]: ...
+
+
+@runtime_checkable
+class EventProtocol(Protocol):
+    """
+    Minimal event envelope contract shared by hub-authored and
+    Purpose-originated events.
+    """
+
+    event_type: str
+    event_id: UUID
+    created_at_ms: int
+    payload: EventPayloadProtocol
+
+
+@runtime_checkable
+class PurposeEventProtocol(EventProtocol, Protocol):
+    """
+    Stricter envelope contract for Purpose-originated ingress events.
+
+    These fields represent a claim of origin. The hub validates that the
+    claimed sender matches the registration resolved from hub_token before
+    routing the event.
+    """
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+
+
+@runtime_checkable
 class TurnTakerProtocol(Protocol):
     """
-    A component that can receive HubEvents and optionally emit Deltas.
+    A component that can receive hub-authored events.
 
     NOTE:
     - "TurnTaker" is a capability role (can participate in the event mesh).
@@ -30,16 +71,16 @@ class PurposeProtocol(TurnTakerProtocol, Protocol):
     Identification:
       - name: semantic kind ("ca", "embeddingizer", "socratic", ...)
       - id: per-instance UUID (multiple instances can share the same name)
-      - token: hub-assigned token, None until registered with a hub.
+      - token: hub-assigned ingress token, None until registered with a hub.
 
     BasePurpose is the recommended implementation base — it enforces that
-    take_turn() rejects events whose hub_token does not match the assigned
-    token, closing the point-to-point bypass. Raw PurposeProtocol
-    implementors (e.g. test doubles) receive hub_token=None and bypass
-    validation. ttt.start_purpose() accepts either.
+    take_turn() rejects events whose routing credentials do not match the
+    values assigned by the hub at registration.
 
-    The hub uses (id, token) for per-recipient dispatch. Purposes are
-    registered via ttt.start_purpose(), which assigns the token.
+    Raw PurposeProtocol implementors (e.g. simple test doubles) may still be
+    registered, but because they do not participate in BasePurpose validation,
+    they should be treated as test-only conveniences rather than production
+    implementations.
     """
 
     name: str

@@ -12,26 +12,43 @@ class TTTError(Exception):
 
 class UnauthorizedDispatchError(TTTError):
     """
-    Raised when a HubEvent is delivered to a Purpose with an invalid or
-    mismatched hub token.
+    Raised when a Purpose-originated event fails hub ingress authentication
+    or when a hub-authored event is delivered to a Purpose with invalid
+    routing credentials.
 
-    This indicates that take_turn() was called from outside the hub —
-    either directly by another Purpose (point-to-point bypass) or by code
-    that constructed a HubEvent without going through start_turn(). Both
-    cases violate the hub-authoritative dispatch invariant.
+    At hub ingress, this means the submitted event's claimed sender does not
+    match the registration resolved from hub_token.
 
-    The hub assigns a token to each Purpose at registration time. Valid
-    dispatch always originates from the hub, which embeds the matching
-    token in every HubEvent it emits. Purposes never call take_turn() on
-    each other directly.
+    At Purpose downlink, this means take_turn() was called from outside the
+    registering hub — either directly by another Purpose or by code that
+    fabricated a hub-looking event without going through hub dispatch.
+    """
+
+
+class InvalidDownlinkSignatureError(TTTError):
+    """
+    Raised when a Purpose rejects a hub-authored event whose
+    downlink_signature does not match the signature assigned at registration.
+
+    This is an anti-bypass / route-integrity check. It is intended to catch
+    accidental or local architectural violations, not to provide adversarial
+    cryptographic security guarantees.
+    """
+
+
+class UnknownEventTypeError(TTTError):
+    """
+    Raised when hub.take_turn() receives an event_type that has no routing
+    rule in the hub ingress table.
     """
 
 
 class UnboundPurposeError(TTTError):
     """
     Raised when a Purpose that has not been registered with a hub attempts
-    to receive a HubEvent via take_turn().
+    to receive a hub-authored event via take_turn().
 
-    A Purpose is unbound if its token has not yet been assigned by a hub.
-    Register the Purpose with ttt.start_purpose() before use.
+    A Purpose is unbound if its hub token and downlink signature have not yet
+    been assigned by a hub. Register the Purpose with ttt.start_purpose()
+    before use.
     """

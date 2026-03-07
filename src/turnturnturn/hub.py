@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import secrets
 import time
 from dataclasses import dataclass, field
@@ -11,7 +13,7 @@ from uuid import UUID, uuid4
 from .base_purpose import BasePurpose
 from .cto import CTO
 from .delta import Delta
-from .events import HubEvent, HubEventType, payload_cto_created, payload_delta_merged
+from .events import CTOCreatedPayload, DeltaMergedPayload, HubEvent, HubEventType
 from .profile import ProfileRegistry
 from .protocols import PurposeProtocol
 from .registry import PurposeRegistration
@@ -105,6 +107,7 @@ class TTT:
     # The hub is the sole writer. CTOs are replaced (not mutated) on Delta merge
     # because CTO is frozen — a new instance is constructed with updated observations.
     _ctos: dict[UUID, CTO] = field(default_factory=dict, init=False, repr=False)
+    _hub_secret: str = field(default_factory=lambda: secrets.token_hex(32), repr=False)
     librarian: Librarian = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -141,6 +144,21 @@ class TTT:
             self._session_contexts[session_id] = {}
         return self._session_contexts[session_id]
 
+    def _build_downlink_signature(self, token: str, purpose_id: UUID) -> str:
+        """
+        Derive a per-hub-instance, per-Purpose downlink signature.
+
+        This is an anti-bypass / route-integrity check. It is intended to
+        catch local architectural violations, not to provide adversarial
+        cryptographic security guarantees.
+        """
+        message = f"{token}:{purpose_id}".encode("utf-8")
+        return hmac.new(
+            self._hub_secret.encode("utf-8"),
+            message,
+            hashlib.sha256,
+        ).hexdigest()
+
     async def start_purpose(
         self,
         purpose: PurposeProtocol,
@@ -175,14 +193,18 @@ class TTT:
         """
         # v0: in-memory registry only. Later: emit PURPOSE_STARTED, persist, auth.
         token: str | None = None
+        downlink_signature: str | None = None
         if isinstance(purpose, BasePurpose):
             token = secrets.token_hex(16)
+            downlink_signature = self._build_downlink_signature(token, purpose.id)
             purpose._assign_token(token)
+            purpose._assign_downlink_signature(downlink_signature)
 
         subs = subscriptions or []
         self.registrations[purpose.id] = PurposeRegistration(
             purpose=purpose,
             token=token,
+            downlink_signature=downlink_signature,
             subscriptions=subs,
         )
 
@@ -264,8 +286,8 @@ class TTT:
             created_at_ms=now_ms(),
             session_id=cto.session_id,
             turn_id=cto.turn_id,
-            payload=payload_cto_created(
-                cto_index_dict=cto.to_index().to_dict(),
+            payload=CTOCreatedPayload(
+                cto_index=cto.to_index().to_dict(),
                 submitted_by_label=submitted_by_label,
             ),
         )
@@ -351,9 +373,9 @@ class TTT:
             created_at_ms=now_ms(),
             session_id=updated_cto.session_id,
             turn_id=updated_cto.turn_id,
-            payload=payload_delta_merged(
-                delta_dict=delta.to_dict(),
-                cto_index_dict=updated_cto.to_index().to_dict(),
+            payload=DeltaMergedPayload(
+                delta=delta.to_dict(),
+                cto_index=updated_cto.to_index().to_dict(),
             ),
         )
         await self._multicast(event)

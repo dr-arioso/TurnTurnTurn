@@ -287,7 +287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ttt_architecture_v0_17/" class="md-nav__link">
+      <a href="../../ttt_architecture_v0_18/" class="md-nav__link">
         
   
   
@@ -785,7 +785,10 @@ The hub treats patch contents as opaque within the namespace.</p>
   <summary>Provenance fields</summary>
   <p>purpose_name: semantic kind, doubles as the observation namespace key.
 purpose_id: instance UUID, distinguishes concurrent instances of the
-    same Purpose name.</p>
+    same Purpose name.
+based_on_event_id: the last_event_id of the CTO state this Delta was
+    derived from. Used by the hub to detect stale proposals. None if
+    the proposing Purpose did not record it.</p>
 </details>
 
 
@@ -852,7 +855,18 @@ purpose_id: instance UUID, distinguishes concurrent instances of the
 <span class="normal"><a href="#__codelineno-0-74">74</a></span>
 <span class="normal"><a href="#__codelineno-0-75">75</a></span>
 <span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-77">77</a></span>
+<span class="normal"><a href="#__codelineno-0-78">78</a></span>
+<span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span>
+<span class="normal"><a href="#__codelineno-0-83">83</a></span>
+<span class="normal"><a href="#__codelineno-0-84">84</a></span>
+<span class="normal"><a href="#__codelineno-0-85">85</a></span>
+<span class="normal"><a href="#__codelineno-0-86">86</a></span>
+<span class="normal"><a href="#__codelineno-0-87">87</a></span>
+<span class="normal"><a href="#__codelineno-0-88">88</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-22" name="__codelineno-0-22"></a><span class="k">class</span><span class="w"> </span><span class="nc">Delta</span><span class="p">:</span>
 <a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="sd">    A purpose-proposed change for hub merge.</span>
@@ -871,44 +885,55 @@ purpose_id: instance UUID, distinguishes concurrent instances of the
 <a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">        purpose_name: semantic kind, doubles as the observation namespace key.</span>
 <a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">        purpose_id: instance UUID, distinguishes concurrent instances of the</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">            same Purpose name.</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>    <span class="n">delta_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="n">purpose_name</span><span class="p">:</span> <span class="nb">str</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">purpose_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">        based_on_event_id: the last_event_id of the CTO state this Delta was</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">            derived from. Used by the hub to detect stale proposals. None if</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">            the proposing Purpose did not record it.</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="n">delta_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span>
 <a id="__codelineno-0-48" name="__codelineno-0-48"></a>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="c1"># Append-only patch for the purpose_name observation namespace.</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="c1"># All values must be lists — enforced by hub at merge time.</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="n">patch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="c1"># TODO(delta-versioning): Add based_on_event_id: UUID | None = None</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="c1"># The event_id of the cto_created or delta_merged event that produced</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>    <span class="c1"># the CTO state this Delta was derived from. Read from</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="c1"># CTOIndex.last_event_id in the triggering HubEvent payload — no</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="c1"># extra get_cto() call needed. The hub compares this against</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="c1"># CTO.last_event_id at merge time; a mismatch means the Purpose was</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1"># reasoning about stale state. Handling policy (reject, warn, or pass</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="c1"># to resolver Purpose) is deferred until Adjacency integration drives</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1"># the requirements.</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        Serialize to a JSON-safe dict for persistence and transport.</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">        UUIDs are rendered as strings. patch is expected to be JSON-safe</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">        by construction — callers are responsible for ensuring this.</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>            <span class="s2">&quot;delta_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_id</span><span class="p">),</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>            <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>            <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>            <span class="s2">&quot;purpose_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">purpose_name</span><span class="p">,</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>            <span class="s2">&quot;purpose_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">purpose_id</span><span class="p">),</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="s2">&quot;patch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">,</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="p">}</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="n">purpose_name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">purpose_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="c1"># Append-only patch for the purpose_name observation namespace.</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="c1"># All values must be lists — enforced by hub at merge time.</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="n">patch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="c1"># The event_id of the cto_created or delta_merged event that produced</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="c1"># the CTO state this Delta was derived from. Purposes read this from</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="c1"># CTOIndex.last_event_id in the triggering HubEvent payload — no extra</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1"># get_cto() call needed.</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="c1">#</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1"># Provenance only — not a conflict-detection mechanism. All observations</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="c1"># are append-only and namespace-scoped; there are no destructive writes</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1"># to conflict on. based_on_event_id answers &quot;what did this Purpose know</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="c1"># when it reasoned?&quot; for causal reconstruction and replay.</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="c1">#</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="c1"># None if the proposing Purpose did not record which CTO state it was</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="c1"># based on (e.g. Purposes written before delta versioning was introduced).</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="n">based_on_event_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        Serialize to a JSON-safe dict for persistence and transport.</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        UUIDs are rendered as strings, including based_on_event_id (None if</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">        absent). patch is expected to be JSON-safe by construction — callers</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">        are responsible for ensuring this.</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>        <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>            <span class="s2">&quot;delta_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_id</span><span class="p">),</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>            <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>            <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>            <span class="s2">&quot;purpose_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">purpose_name</span><span class="p">,</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>            <span class="s2">&quot;purpose_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">purpose_id</span><span class="p">),</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>            <span class="s2">&quot;patch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>            <span class="s2">&quot;based_on_event_id&quot;</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>                <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">based_on_event_id</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">based_on_event_id</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>            <span class="p">),</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>        <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -937,41 +962,50 @@ purpose_id: instance UUID, distinguishes concurrent instances of the
     <div class="doc doc-contents ">
 
         <p>Serialize to a JSON-safe dict for persistence and transport.</p>
-<p>UUIDs are rendered as strings. patch is expected to be JSON-safe
-by construction — callers are responsible for ensuring this.</p>
+<p>UUIDs are rendered as strings, including based_on_event_id (None if
+absent). patch is expected to be JSON-safe by construction — callers
+are responsible for ensuring this.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/turnturnturn/delta.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-70">70</a></span>
 <span class="normal"><a href="#__codelineno-0-71">71</a></span>
 <span class="normal"><a href="#__codelineno-0-72">72</a></span>
 <span class="normal"><a href="#__codelineno-0-73">73</a></span>
 <span class="normal"><a href="#__codelineno-0-74">74</a></span>
 <span class="normal"><a href="#__codelineno-0-75">75</a></span>
 <span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">    Serialize to a JSON-safe dict for persistence and transport.</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">    UUIDs are rendered as strings. patch is expected to be JSON-safe</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">    by construction — callers are responsible for ensuring this.</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="s2">&quot;delta_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_id</span><span class="p">),</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>        <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="s2">&quot;purpose_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">purpose_name</span><span class="p">,</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="s2">&quot;purpose_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">purpose_id</span><span class="p">),</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="s2">&quot;patch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">,</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>    <span class="p">}</span>
+<span class="normal"><a href="#__codelineno-0-77">77</a></span>
+<span class="normal"><a href="#__codelineno-0-78">78</a></span>
+<span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span>
+<span class="normal"><a href="#__codelineno-0-83">83</a></span>
+<span class="normal"><a href="#__codelineno-0-84">84</a></span>
+<span class="normal"><a href="#__codelineno-0-85">85</a></span>
+<span class="normal"><a href="#__codelineno-0-86">86</a></span>
+<span class="normal"><a href="#__codelineno-0-87">87</a></span>
+<span class="normal"><a href="#__codelineno-0-88">88</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">    Serialize to a JSON-safe dict for persistence and transport.</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">    UUIDs are rendered as strings, including based_on_event_id (None if</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">    absent). patch is expected to be JSON-safe by construction — callers</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">    are responsible for ensuring this.</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>        <span class="s2">&quot;delta_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_id</span><span class="p">),</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>        <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>        <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>        <span class="s2">&quot;purpose_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">purpose_name</span><span class="p">,</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="s2">&quot;purpose_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">purpose_id</span><span class="p">),</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>        <span class="s2">&quot;patch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>        <span class="s2">&quot;based_on_event_id&quot;</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">based_on_event_id</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">based_on_event_id</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>        <span class="p">),</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

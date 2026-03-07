@@ -287,7 +287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ttt_architecture_v0_17/" class="md-nav__link">
+      <a href="../../ttt_architecture_v0_18/" class="md-nav__link">
         
   
   
@@ -837,6 +837,11 @@ Each Purpose writes to its own namespace (keyed by purpose_name);
 the hub enforces append-only semantics across all namespaces.
 Purposes may read any namespace but may only propose Deltas into
 their own.</p>
+<p>last_event_id is the version handle for this CTO instance — the
+event_id of the hub event (cto_created or delta_merged) that produced
+it. The hub updates it on every state transition. Purposes record it
+as based_on_event_id when proposing Deltas so the hub can detect
+stale proposals at merge time.</p>
 
 
 
@@ -953,7 +958,20 @@ their own.</p>
 <span class="normal"><a href="#__codelineno-0-123">123</a></span>
 <span class="normal"><a href="#__codelineno-0-124">124</a></span>
 <span class="normal"><a href="#__codelineno-0-125">125</a></span>
-<span class="normal"><a href="#__codelineno-0-126">126</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-126">126</a></span>
+<span class="normal"><a href="#__codelineno-0-127">127</a></span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span>
+<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+<span class="normal"><a href="#__codelineno-0-134">134</a></span>
+<span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="k">class</span><span class="w"> </span><span class="nc">CTO</span><span class="p">:</span>
 <a id="__codelineno-0-22" name="__codelineno-0-22"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="sd">    Canonical Turn Object — the hub-authoritative unit of sequential work.</span>
@@ -978,88 +996,101 @@ their own.</p>
 <a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">    the hub enforces append-only semantics across all namespaces.</span>
 <a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">    Purposes may read any namespace but may only propose Deltas into</span>
 <a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">    their own.</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="n">created_at_ms</span><span class="p">:</span> <span class="nb">int</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="c1"># Plain dict: {&quot;id&quot;: str, &quot;version&quot;: int}</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="c1"># Serializable and loggable as-is. No object references.</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">content_profile</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="c1"># purpose-owned namespaces: {purpose_name: [obs, ...]}</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="c1"># written via Delta merge; never mutated directly.</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="n">observations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="c1"># TODO(delta-versioning): Add last_event_id: UUID | None = None</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1"># Set to the cto_created event_id at construction, updated to the</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="c1"># delta_merged event_id on each merge. Carried in CTOIndex so Purposes</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1"># can record based_on_event_id in their Delta proposals without calling</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="c1"># get_cto(). The hub validates based_on_event_id at merge time to detect</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="c1"># stale proposals — i.e. a Purpose reasoning about CTO state that has</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="c1"># since advanced. See Delta.based_on_event_id.</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        Delegate unknown attribute lookups to the registered Profile.</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        Called by Python only when normal attribute resolution fails — i.e.</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">        name is not a dataclass field. Looks up the Profile via</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        ProfileRegistry.resolve() using the (id, version) from content_profile.</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">        Raises AttributeError for names not registered as accessors on the</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">        profile, matching standard Python attribute access behavior.</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">        Note: uses object.__getattribute__ internally to avoid recursive calls</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        during dataclass initialization, when fields may not yet be set.</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>        <span class="c1"># Import here to avoid circular import at module load time.</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">.profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProfileRegistry</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>            <span class="n">cp</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;content_profile&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>            <span class="n">content</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a>            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a>            <span class="k">return</span> <span class="n">ProfileRegistry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">cp</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="n">cp</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span> <span class="n">name</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a>            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">    last_event_id is the version handle for this CTO instance — the</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">    event_id of the hub event (cto_created or delta_merged) that produced</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">    it. The hub updates it on every state transition. Purposes record it</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">    as based_on_event_id when proposing Deltas so the hub can detect</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">    stale proposals at merge time.</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>    <span class="n">created_at_ms</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="c1"># Plain dict: {&quot;id&quot;: str, &quot;version&quot;: int}</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="c1"># Serializable and loggable as-is. No object references.</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="n">content_profile</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="c1"># purpose-owned namespaces: {purpose_name: [obs, ...]}</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1"># written via Delta merge; never mutated directly.</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="n">observations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="c1"># Version handle — the event_id of the most recent hub event that produced</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="c1"># or updated this CTO instance. Set to the cto_created event_id at</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="c1"># construction; replaced with the delta_merged event_id on each merge.</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="c1"># None only for CTOs constructed outside the hub (e.g. in tests that</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="c1"># do not go through start_turn). Never None in canonical hub operation.</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="c1">#</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="c1"># Carried in CTOIndex so Purposes can record it as based_on_event_id in</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="c1"># their Delta proposals directly from the triggering event payload, without</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="c1"># a separate get_cto() call. The hub compares based_on_event_id against</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="c1"># last_event_id at merge time to detect stale proposals.</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>    <span class="n">last_event_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        Delegate unknown attribute lookups to the registered Profile.</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">        Called by Python only when normal attribute resolution fails — i.e.</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">        name is not a dataclass field. Looks up the Profile via</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">        ProfileRegistry.resolve() using the (id, version) from content_profile.</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">        Raises AttributeError for names not registered as accessors on the</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        profile, matching standard Python attribute access behavior.</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        Note: uses object.__getattribute__ internally to avoid recursive calls</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        during dataclass initialization, when fields may not yet be set.</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>        <span class="c1"># Import here to avoid circular import at module load time.</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">.profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProfileRegistry</span>
 <a id="__codelineno-0-94" name="__codelineno-0-94"></a>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">        Serialize to a JSON-safe dict for persistence and transport.</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">        UUIDs are rendered as strings. content_profile serializes as-is —</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">        it is already a plain dict containing only id (str) and version (int).</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">        Observations are passed through as-is; callers are responsible for</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        ensuring observation values are JSON-safe.</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>            <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>            <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>            <span class="s2">&quot;created_at_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a>            <span class="s2">&quot;content_profile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a>            <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a>            <span class="s2">&quot;observations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>        <span class="p">}</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_index</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CTOIndex&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        Return a CTOIndex for this CTO — a lightweight routing reference.</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">        Carries only the fields needed for Purposes to make dispatch decisions</span>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        without loading full content or observations. Purposes that need more</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        call TTT.get_cto(turn_id).</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>        <span class="k">return</span> <span class="n">CTOIndex</span><span class="p">(</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>            <span class="n">turn_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>            <span class="n">session_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>            <span class="n">content_profile</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>        <span class="p">)</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a>            <span class="n">cp</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;content_profile&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>            <span class="n">content</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a>        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>            <span class="k">return</span> <span class="n">ProfileRegistry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">cp</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="n">cp</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span> <span class="n">name</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        Serialize to a JSON-safe dict for persistence and transport.</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        UUIDs are rendered as strings. content_profile serializes as-is —</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        it is already a plain dict containing only id (str) and version (int).</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        Observations are passed through as-is; callers are responsible for</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        ensuring observation values are JSON-safe. last_event_id serializes</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        as a string UUID or None.</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>        <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>            <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>            <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>            <span class="s2">&quot;created_at_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>            <span class="s2">&quot;content_profile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>            <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a>            <span class="s2">&quot;observations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a>            <span class="s2">&quot;last_event_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a>        <span class="p">}</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_index</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CTOIndex&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">        Return a CTOIndex for this CTO — a lightweight routing reference.</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a><span class="sd">        Carries only the fields needed for Purposes to make dispatch decisions</span>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">        without loading full content or observations. Purposes that need more</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">        call ttt.librarian.get_cto(turn_id).</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>        <span class="k">return</span> <span class="n">CTOIndex</span><span class="p">(</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>            <span class="n">turn_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>            <span class="n">session_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>            <span class="n">content_profile</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>            <span class="n">last_event_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">,</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a>        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -1091,44 +1122,49 @@ their own.</p>
 <p>UUIDs are rendered as strings. content_profile serializes as-is —
 it is already a plain dict containing only id (str) and version (int).
 Observations are passed through as-is; callers are responsible for
-ensuring observation values are JSON-safe.</p>
+ensuring observation values are JSON-safe. last_event_id serializes
+as a string UUID or None.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/turnturnturn/cto.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-95"> 95</a></span>
-<span class="normal"><a href="#__codelineno-0-96"> 96</a></span>
-<span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
-<span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
-<span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
-<span class="normal"><a href="#__codelineno-0-100">100</a></span>
-<span class="normal"><a href="#__codelineno-0-101">101</a></span>
-<span class="normal"><a href="#__codelineno-0-102">102</a></span>
-<span class="normal"><a href="#__codelineno-0-103">103</a></span>
-<span class="normal"><a href="#__codelineno-0-104">104</a></span>
-<span class="normal"><a href="#__codelineno-0-105">105</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-105">105</a></span>
 <span class="normal"><a href="#__codelineno-0-106">106</a></span>
 <span class="normal"><a href="#__codelineno-0-107">107</a></span>
 <span class="normal"><a href="#__codelineno-0-108">108</a></span>
 <span class="normal"><a href="#__codelineno-0-109">109</a></span>
 <span class="normal"><a href="#__codelineno-0-110">110</a></span>
-<span class="normal"><a href="#__codelineno-0-111">111</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">    Serialize to a JSON-safe dict for persistence and transport.</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">    UUIDs are rendered as strings. content_profile serializes as-is —</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">    it is already a plain dict containing only id (str) and version (int).</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">    Observations are passed through as-is; callers are responsible for</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    ensuring observation values are JSON-safe.</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>        <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>        <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="s2">&quot;created_at_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a>        <span class="s2">&quot;content_profile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a>        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a>        <span class="s2">&quot;observations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>    <span class="p">}</span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span>
+<span class="normal"><a href="#__codelineno-0-120">120</a></span>
+<span class="normal"><a href="#__codelineno-0-121">121</a></span>
+<span class="normal"><a href="#__codelineno-0-122">122</a></span>
+<span class="normal"><a href="#__codelineno-0-123">123</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">    Serialize to a JSON-safe dict for persistence and transport.</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">    UUIDs are rendered as strings. content_profile serializes as-is —</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">    it is already a plain dict containing only id (str) and version (int).</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">    Observations are passed through as-is; callers are responsible for</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">    ensuring observation values are JSON-safe. last_event_id serializes</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">    as a string UUID or None.</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>        <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>        <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>        <span class="s2">&quot;created_at_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>        <span class="s2">&quot;content_profile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a>        <span class="s2">&quot;observations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a>        <span class="s2">&quot;last_event_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -1149,38 +1185,40 @@ ensuring observation values are JSON-safe.</p>
         <p>Return a CTOIndex for this CTO — a lightweight routing reference.</p>
 <p>Carries only the fields needed for Purposes to make dispatch decisions
 without loading full content or observations. Purposes that need more
-call TTT.get_cto(turn_id).</p>
+call ttt.librarian.get_cto(turn_id).</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/turnturnturn/cto.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-113">113</a></span>
-<span class="normal"><a href="#__codelineno-0-114">114</a></span>
-<span class="normal"><a href="#__codelineno-0-115">115</a></span>
-<span class="normal"><a href="#__codelineno-0-116">116</a></span>
-<span class="normal"><a href="#__codelineno-0-117">117</a></span>
-<span class="normal"><a href="#__codelineno-0-118">118</a></span>
-<span class="normal"><a href="#__codelineno-0-119">119</a></span>
-<span class="normal"><a href="#__codelineno-0-120">120</a></span>
-<span class="normal"><a href="#__codelineno-0-121">121</a></span>
-<span class="normal"><a href="#__codelineno-0-122">122</a></span>
-<span class="normal"><a href="#__codelineno-0-123">123</a></span>
-<span class="normal"><a href="#__codelineno-0-124">124</a></span>
-<span class="normal"><a href="#__codelineno-0-125">125</a></span>
-<span class="normal"><a href="#__codelineno-0-126">126</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_index</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CTOIndex&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">    Return a CTOIndex for this CTO — a lightweight routing reference.</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">    Carries only the fields needed for Purposes to make dispatch decisions</span>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">    without loading full content or observations. Purposes that need more</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">    call TTT.get_cto(turn_id).</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>    <span class="k">return</span> <span class="n">CTOIndex</span><span class="p">(</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>        <span class="n">turn_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>        <span class="n">session_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>        <span class="n">content_profile</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>        <span class="n">created_at_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-125">125</a></span>
+<span class="normal"><a href="#__codelineno-0-126">126</a></span>
+<span class="normal"><a href="#__codelineno-0-127">127</a></span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span>
+<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+<span class="normal"><a href="#__codelineno-0-134">134</a></span>
+<span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_index</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CTOIndex&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">    Return a CTOIndex for this CTO — a lightweight routing reference.</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a><span class="sd">    Carries only the fields needed for Purposes to make dispatch decisions</span>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">    without loading full content or observations. Purposes that need more</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">    call ttt.librarian.get_cto(turn_id).</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="k">return</span> <span class="n">CTOIndex</span><span class="p">(</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>        <span class="n">turn_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>        <span class="n">session_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="n">content_profile</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>        <span class="n">created_at_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>        <span class="n">last_event_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">,</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

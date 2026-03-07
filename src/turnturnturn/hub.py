@@ -12,7 +12,7 @@ from .base_purpose import BasePurpose
 from .cto import CTO
 from .delta import Delta
 from .events import HubEvent, HubEventType, payload_cto_created, payload_delta_merged
-from .profile import Profile, ProfileRegistry
+from .profile import ProfileRegistry
 from .protocols import PurposeProtocol
 from .registry import PurposeRegistration
 
@@ -34,26 +34,66 @@ def now_ms() -> int:
 
 
 @dataclass
+class Librarian:
+    """
+    Read interface for canonical CTO state.
+
+    ttt.librarian is the query path for Purposes that need full CTO content
+    or observations. HubEvent payloads carry only a CTOIndex (lightweight
+    routing reference); Purposes call librarian.get_cto() when they need
+    more. ctoPersistPurpose is the canonical consumer of this pattern.
+
+    The hub is the authority and router; the librarian is the read path.
+    Its responsibilities will grow: point lookups today, session readback
+    and replay queries later (likely against a persistence layer).
+    """
+
+    _ctos: dict[UUID, CTO]
+
+    def get_cto(self, turn_id: UUID) -> CTO | None:
+        """
+        Return the current canonical CTO for turn_id, or None if unknown.
+
+        The returned CTO reflects the hub's canonical state at the moment of
+        the call — for delta_merged events, this is the post-merge state.
+        Do not cache the result across event boundaries; the hub is the sole
+        writer and may replace the CTO instance on any merge.
+
+        Args:
+            turn_id: The turn_id of the CTO to retrieve.
+
+        Returns:
+            The canonical CTO, or None if turn_id is not known to this hub.
+        """
+        return self._ctos.get(turn_id)
+
+
+@dataclass
 class TTT:
     """
     TurnTurnTurn hub runtime.
 
     The hub is the sole authority for CTO creation, Delta merge, and event
-    emission. All content ingress goes through start_turn(); nothing constructs
-    CTOs directly.
+    emission. All content ingress goes through start_turn(); nothing
+    constructs CTOs directly.
 
-    Instantiate via TTT.create() — do not construct directly. TTT.create()
+    Instantiate via TTT.start() — do not construct directly. TTT.start()
     ensures built-in profiles are registered before the hub is used.
 
     Profile lookup delegates to the process-scoped ProfileRegistry class.
-    Custom profiles are registered via TTT.register_profile(), which delegates
-    to ProfileRegistry.register().
+    Profiles are registered directly on ProfileRegistry at process startup —
+    not through the hub.
 
     The hub maintains an opaque per-session context dict for each active
     session and passes it to Profile.apply_defaults() as a mutable dict.
     The hub never inspects context contents — profiles own them entirely.
     This allows profiles to maintain session-scoped state (e.g. speaker
     ordinals for label defaults) without leaking domain knowledge into the hub.
+
+    Attributes:
+        librarian: The read interface for canonical CTO state. Purposes
+            call ttt.librarian.get_cto(turn_id) when they need full CTO
+            content or observations beyond what CTOIndex carries.
     """
 
     registrations: dict[UUID, PurposeRegistration]
@@ -65,11 +105,16 @@ class TTT:
     # The hub is the sole writer. CTOs are replaced (not mutated) on Delta merge
     # because CTO is frozen — a new instance is constructed with updated observations.
     _ctos: dict[UUID, CTO] = field(default_factory=dict, init=False, repr=False)
+    librarian: Librarian = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """Wire the librarian to the hub's CTO store after dataclass init."""
+        self.librarian = Librarian(_ctos=self._ctos)
 
     @classmethod
-    def create(cls, *, strict_profiles: bool = False) -> "TTT":
+    def start(cls, *, strict_profiles: bool = False) -> "TTT":
         """
-        Construct a new TTT hub and ensure built-in profiles are loaded.
+        Start a new TTT hub and ensure built-in profiles are loaded.
 
         Calls ProfileRegistry.load_defaults() to register built-in profiles
         if not already present. Safe to call multiple times in the same process.
@@ -77,23 +122,12 @@ class TTT:
         Args:
             strict_profiles: If True, enforce strict key validation on all
                 profiles at start_turn() time.
+
+        Returns:
+            A new TTT hub instance ready to accept Purposes and turns.
         """
         ProfileRegistry.load_defaults()
         return cls(registrations={}, strict_profiles=strict_profiles)
-
-    @staticmethod
-    def register_profile(profile: Profile) -> None:
-        """
-        Register a custom Profile with the process-scoped ProfileRegistry.
-
-        Allows consuming projects to add profiles without modifying core
-        modules. Overwrites any existing registration for the same
-        (profile_id, version) pair.
-
-        Args:
-            profile: The Profile to register.
-        """
-        ProfileRegistry.register(profile)
 
     def _session_context(self, session_id: UUID) -> dict[str, Any]:
         """
@@ -107,18 +141,22 @@ class TTT:
             self._session_contexts[session_id] = {}
         return self._session_contexts[session_id]
 
-    async def register_purpose(
+    async def start_purpose(
         self,
         purpose: PurposeProtocol,
         *,
         subscriptions: list[dict[str, Any]] | None = None,
     ) -> None:
         """
-        Register a Purpose with the hub and assign its hub token.
+        Bootstrap a Purpose into the hub and assign its hub token.
+
+        start_purpose() is a bootstrap method: it stands outside the event
+        model because no token exists until the Purpose is registered, so no
+        authenticated event can represent this act.
 
         After registration, the Purpose will receive HubEvents via take_turn()
-        on each multicast. Re-registering an existing purpose.id overwrites the
-        prior registration and issues a new token.
+        on each multicast. Re-registering an existing purpose.id overwrites
+        the prior registration and issues a new token.
 
         If the Purpose is a BasePurpose instance, a cryptographically random
         token is generated and assigned via _assign_token(). This token is
@@ -135,7 +173,7 @@ class TTT:
                 Currently unused in v0 — all registered Purposes receive all
                 events. Will be enforced once the DAG/subscription layer lands.
         """
-        # v0: in-memory registry only. Later: emit PURPOSE_REGISTERED, persist, auth.
+        # v0: in-memory registry only. Later: emit PURPOSE_STARTED, persist, auth.
         token: str | None = None
         if isinstance(purpose, BasePurpose):
             token = secrets.token_hex(16)
@@ -162,10 +200,14 @@ class TTT:
         Look up the profile, validate content, apply defaults, create a CTO,
         emit cto_created, then dispatch to registered Purposes.
 
-        This is the sole ingress point for canonical turn creation. The hub is
-        the only entity permitted to construct CTOs. If the profile is unknown
-        or content fails validation, an exception is raised and no CTO or
-        event is created.
+        start_turn() is a bootstrap method: it stands outside the event model
+        because no CTOIndex exists until a CTO is created, so no well-formed
+        event can represent this act. Available to external callers, application
+        code, and Purposes alike.
+
+        The hub is the sole authority for CTO creation. Callers may not
+        construct CTOs directly. If the profile is unknown or content fails
+        validation, an exception is raised and no CTO or event is created.
 
         The profile's apply_defaults() receives the session's mutable context
         dict. The hub passes it through without inspection — the profile owns
@@ -244,13 +286,13 @@ class TTT:
         owned by the proposing Purpose (keyed by purpose_name). Values must be
         lists — the hub extends the existing list, never replaces it.
 
-        Staleness check: if delta.based_on_event_id does not match
-        cto.last_event_id (meaning the Purpose was reasoning about an older
-        CTO state), the merge still proceeds but the delta_merged event payload
-        carries stale_delta=True. Consumers (e.g. Adjacency) can inspect this
-        flag and decide on escalation policy. A None based_on_event_id is
-        treated as unverifiable and also sets stale_delta=True when the CTO
-        has a last_event_id.
+        based_on_event_id on the Delta is provenance: it records which CTO
+        state the proposing Purpose was reading when it decided to propose the
+        change. Because all observations are append-only and namespace-scoped,
+        there are no destructive writes to conflict on — two Purposes proposing
+        Deltas concurrently cannot corrupt each other's work. based_on_event_id
+        answers "what did this Purpose know when it reasoned?" and is carried
+        in the delta_merged event payload for causal reconstruction and replay.
 
         On success, the canonical CTO is updated (with last_event_id set to
         the new delta_merged event_id) and a DELTA_MERGED event is emitted
@@ -277,24 +319,6 @@ class TTT:
                     f"merge_delta: patch[{key!r}] must be a list, "
                     f"got {type(val).__name__!r} — hub enforces append-only semantics"
                 )
-
-        # Staleness check: compare delta.based_on_event_id against
-        # cto.last_event_id. A mismatch means the proposing Purpose was
-        # reasoning about an older CTO state — another Delta was merged
-        # between when the Purpose read the CTO and when it submitted this one.
-        #
-        # Policy (v0): do not reject — record the mismatch as stale_delta=True
-        # in the delta_merged event payload and proceed with the merge. This
-        # lets Adjacency observe and decide on escalation policy (hard-reject,
-        # resolver dispatch, etc.) from real usage rather than speculation.
-        #
-        # A None based_on_event_id (Purpose did not record it) is treated as
-        # unverifiable when the CTO has a last_event_id. We flag it the same
-        # way so consumers know the staleness check was inconclusive.
-        stale_delta = False
-        if cto.last_event_id is not None:
-            if delta.based_on_event_id != cto.last_event_id:
-                stale_delta = True
 
         # Build updated observations: purpose_name namespace, append-only.
         # CTO is frozen, so we construct a new instance with updated observations.
@@ -330,36 +354,10 @@ class TTT:
             payload=payload_delta_merged(
                 delta_dict=delta.to_dict(),
                 cto_index_dict=updated_cto.to_index().to_dict(),
-                stale_delta=stale_delta,
             ),
         )
         await self._multicast(event)
         return delta_merged_event_id
-
-    def get_cto(self, turn_id: UUID) -> CTO | None:
-        """
-        Return the current canonical CTO for turn_id, or None if unknown.
-
-        This is the intended read path for Purposes that need full CTO state
-        — content, observations, profile accessors. HubEvent payloads carry
-        only a CTOIndex (a lightweight routing reference); Purposes call this
-        method when they need more.
-
-        ctoPersistP is the canonical consumer: it receives a CTOIndex in the
-        event payload, calls get_cto(), and persists the full canonical state.
-
-        The returned CTO reflects the hub's current canonical state at the
-        moment of the call — for delta_merged events, this is the post-merge
-        state. The hub is the sole authority; do not cache the result across
-        event boundaries.
-
-        Args:
-            turn_id: The turn_id of the CTO to retrieve.
-
-        Returns:
-            The canonical CTO, or None if turn_id is not known to this hub.
-        """
-        return self._ctos.get(turn_id)
 
     async def _multicast(self, event: HubEvent) -> None:
         """

@@ -37,10 +37,10 @@ class EchoPurpose(BasePurpose):
         print(f"Received: {event.event_type.value}")
 
 async def main():
-    ttt = TTT.create()
+    ttt = TTT.start()
 
     purpose = EchoPurpose()
-    await ttt.register_purpose(purpose)
+    await ttt.start_purpose(purpose)
 
     turn_id = await ttt.start_turn(
         session_id=uuid4(),
@@ -58,7 +58,7 @@ asyncio.run(main())
 |---------|-------------|
 | **TTT** | The hub runtime. Authoritative for CTO creation, Delta merge, and event emission. |
 | **CTO** | Canonical Turn Object. The hub-authoritative work item. Frozen; replaced on each merge. |
-| **CTOIndex** | Lightweight routing reference carried in event payloads. Purposes call `TTT.get_cto()` for full state. |
+| **CTOIndex** | Lightweight routing reference carried in event payloads. Purposes call `ttt.librarian.get_cto()` for full state. |
 | **BasePurpose** | Abstract base class for Purposes. Enforces hub token validation. Subclasses implement `_handle_event()`. |
 | **Purpose** | A registered agenda-bearing actor that receives HubEvents and may propose Deltas. |
 | **Delta** | A purpose-proposed change, merged authoritatively by TTT into the Purpose's observation namespace. |
@@ -70,4 +70,4 @@ This project is in active architectural development. The core object model,
 hub semantics, profile system, and Purpose dispatch are stable. The DAG
 eligibility layer and persistence are not yet implemented.
 
-See the [Architecture](ttt_architecture_v0_17.md) doc for current design direction.
+See the [Architecture](ttt_architecture_v0_18.md) doc for current design direction.

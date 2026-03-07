@@ -128,7 +128,7 @@ class CTO:
 
         Carries only the fields needed for Purposes to make dispatch decisions
         without loading full content or observations. Purposes that need more
-        call TTT.get_cto(turn_id).
+        call ttt.librarian.get_cto(turn_id).
         """
         return CTOIndex(
             turn_id=self.turn_id,
@@ -150,7 +150,7 @@ class CTOIndex:
     observations.
 
     Purposes that need full CTO state (content, observations, profile
-    accessors) call TTT.get_cto(turn_id). ctoPersistP is the canonical
+    accessors) call ttt.librarian.get_cto(turn_id). ctoPersistPurpose is the canonical
     example: it receives a CTOIndex, calls get_cto(), and persists the
     full canonical state.
 

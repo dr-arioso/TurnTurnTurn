@@ -67,7 +67,7 @@ class NamedPurpose(BasePurpose):
 @pytest.fixture
 def hub() -> TTT:
     """Return a fresh TTT hub with default profiles loaded."""
-    return TTT.create()
+    return TTT.start()
 
 
 @pytest.fixture

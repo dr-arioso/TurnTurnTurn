@@ -3,7 +3,7 @@ Delta — a purpose-proposed change for hub merge.
 
 A Delta is the only mechanism by which a Purpose may influence canonical
 CTO state. Purposes never write to the CTO directly — they construct a
-Delta and submit it to the hub via TTT.merge_delta(). The hub validates,
+Delta and submit it to the hub via hub.take_turn(DeltaProposalEvent). The hub validates,
 merges, and emits a delta_merged event.
 
 Patch semantics are append-only: all values must be lists. The hub
@@ -56,15 +56,15 @@ class Delta:
     # The event_id of the cto_created or delta_merged event that produced
     # the CTO state this Delta was derived from. Purposes read this from
     # CTOIndex.last_event_id in the triggering HubEvent payload — no extra
-    # get_cto() call needed. The hub compares this against CTO.last_event_id
-    # at merge time; a mismatch means the Purpose was reasoning about stale
-    # state.
+    # get_cto() call needed.
     #
-    # None means the proposing Purpose did not record which CTO state it was
+    # Provenance only — not a conflict-detection mechanism. All observations
+    # are append-only and namespace-scoped; there are no destructive writes
+    # to conflict on. based_on_event_id answers "what did this Purpose know
+    # when it reasoned?" for causal reconstruction and replay.
+    #
+    # None if the proposing Purpose did not record which CTO state it was
     # based on (e.g. Purposes written before delta versioning was introduced).
-    # The hub treats a None based_on_event_id as unverifiable and still merges,
-    # but marks the delta_merged event payload with stale_delta=True when
-    # CTO.last_event_id is set — signalling that staleness cannot be confirmed.
     based_on_event_id: UUID | None = None
 
     def to_dict(self) -> dict[str, Any]:

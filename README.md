@@ -46,7 +46,7 @@ start_turn(session_id, content_profile, content)
         TTT.merge_delta(delta)  ────────────────► delta_merged event  { delta, cto_index }
 ```
 
-HubEvent payloads carry a **`CTOIndex`** — a lightweight routing reference, not a full CTO snapshot. Purposes that need full content or observations call `TTT.get_cto(turn_id)`. This keeps the event bus lean regardless of how much observation state accumulates.
+HubEvent payloads carry a **`CTOIndex`** — a lightweight routing reference, not a full CTO snapshot. Purposes that need full content or observations call `ttt.librarian.get_cto(turn_id)`. This keeps the event bus lean regardless of how much observation state accumulates.
 
 TTT does **not** define domain semantics. It provides the structure; you bring the content. The `content_profile` field is the extension point — `"conversation"` is the canonical example, but any profile can be registered with its own required shape.
 
@@ -83,10 +83,10 @@ class EchoPurpose(BasePurpose):
         print(f"Received: {event.event_type.value}")
 
 async def main():
-    ttt = TTT.create()
+    ttt = TTT.start()
 
     purpose = EchoPurpose()
-    await ttt.register_purpose(purpose)
+    await ttt.start_purpose(purpose)
 
     turn_id = await ttt.start_turn(
         session_id=uuid4(),
@@ -120,7 +120,7 @@ TTT is in active architectural development. The core object model, hub semantics
 profile system, and Purpose dispatch are stable. The DAG eligibility layer and
 persistence are not yet implemented.
 
-See [`docs/ttt_architecture_v0_17.md`](docs/ttt_architecture_v0_17.md) for the current design.
+See [`docs/ttt_architecture_v0_18.md`](docs/ttt_architecture_v0_18.md) for the current design.
 
 ---
 

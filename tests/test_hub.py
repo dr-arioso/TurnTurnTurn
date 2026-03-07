@@ -1,11 +1,11 @@
 """Tests for the TTT hub runtime (hub.py).
 
 Coverage areas:
-  - TTT.create() — profile loading, strict flag
-  - register_purpose() — token assignment, re-registration
+  - TTT.start() — profile loading, strict flag
+  - start_purpose() — token assignment, re-registration
   - start_turn() — CTO creation, profile validation, event emission, dispatch
   - merge_delta() — append-only merge, unknown turn_id, bad patch shape
-  - get_cto() — read path, returns None for unknown turn_id
+  - ttt.librarian.get_cto() — read path, returns None for unknown turn_id
   - _multicast() — per-recipient token stamping, all registered purposes receive event
 """
 
@@ -21,76 +21,82 @@ from turnturnturn.errors import UnauthorizedDispatchError
 from turnturnturn.events import HubEventType
 
 # ---------------------------------------------------------------------------
-# TTT.create()
+# TTT.start()
 # ---------------------------------------------------------------------------
 
 
-def test_create_returns_ttt_instance():
-    hub = TTT.create()
+def test_start_returns_ttt_instance():
+    hub = TTT.start()
     assert isinstance(hub, TTT)
 
 
-def test_create_loads_conversation_profile():
-    """TTT.create() must register the conversation profile so start_turn works."""
-    hub = TTT.create()
-    # If the profile is missing, start_turn raises KeyError — so a successful
-    # call here proves the profile is registered.
-    # (async assertion is in test_start_turn_* tests; this is a smoke check)
+def test_start_loads_conversation_profile():
+    """TTT.start() must register the conversation profile so start_turn works."""
+    hub = TTT.start()
     assert hub is not None
 
 
-def test_create_strict_profiles_flag():
-    hub = TTT.create(strict_profiles=True)
+def test_start_strict_profiles_flag():
+    hub = TTT.start(strict_profiles=True)
     assert hub.strict_profiles is True
 
 
-def test_create_strict_profiles_default_false():
-    hub = TTT.create()
+def test_start_strict_profiles_default_false():
+    hub = TTT.start()
     assert hub.strict_profiles is False
 
 
+def test_start_exposes_librarian():
+    """TTT.start() must wire ttt.librarian for CTO read access."""
+    from turnturnturn.hub import Librarian
+
+    hub = TTT.start()
+    assert hasattr(hub, "librarian")
+    assert isinstance(hub.librarian, Librarian)
+
+
 # ---------------------------------------------------------------------------
-# register_purpose()
+# start_purpose()
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_register_purpose_assigns_token(hub):
+async def test_start_purpose_assigns_token(hub):
     p = RecordingPurpose()
     assert p.token is None  # unbound before registration
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     assert p.token is not None
     assert isinstance(p.token, str)
     assert len(p.token) > 0
 
 
 @pytest.mark.asyncio
-async def test_register_purpose_stores_registration(hub):
+async def test_start_purpose_stores_registration(hub):
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     assert p.id in hub.registrations
 
 
 @pytest.mark.asyncio
-async def test_register_multiple_purposes_each_gets_unique_token(hub):
+async def test_start_multiple_purposes_each_gets_unique_token(hub):
     p1 = RecordingPurpose()
     p2 = RecordingPurpose()
-    await hub.register_purpose(p1)
-    await hub.register_purpose(p2)
+    await hub.start_purpose(p1)
+    await hub.start_purpose(p2)
     assert p1.token != p2.token
 
 
 @pytest.mark.asyncio
-async def test_reregister_purpose_issues_new_token(hub):
+async def test_restart_purpose_issues_new_token(hub):
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     first_token = p.token
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     assert p.token != first_token
 
 
 @pytest.mark.asyncio
-async def test_register_raw_protocol_purpose_no_token(hub):
+async def test_start_raw_protocol_purpose_no_token(hub):
     """A bare PurposeProtocol implementor (test double) gets registered without a token."""
 
     class RawPurpose:
@@ -103,7 +109,7 @@ async def test_register_raw_protocol_purpose_no_token(hub):
             self.received.append(event)
 
     raw = RawPurpose()
-    await hub.register_purpose(raw)
+    await hub.start_purpose(raw)
     assert raw.id in hub.registrations
     assert hub.registrations[raw.id].token is None
 
@@ -130,7 +136,7 @@ async def test_start_turn_stores_cto(hub, session_id, minimal_content):
         content_profile="conversation",
         content=minimal_content,
     )
-    cto = hub.get_cto(turn_id)
+    cto = hub.librarian.get_cto(turn_id)
     assert cto is not None
     assert isinstance(cto, CTO)
     assert cto.turn_id == turn_id
@@ -145,7 +151,7 @@ async def test_start_turn_cto_content_profile_dict(hub, session_id, minimal_cont
         content_profile="conversation",
         content=minimal_content,
     )
-    cto = hub.get_cto(turn_id)
+    cto = hub.librarian.get_cto(turn_id)
     assert cto.content_profile == {"id": "conversation", "version": 1}
 
 
@@ -156,7 +162,7 @@ async def test_start_turn_applies_speaker_role_default(hub, session_id):
         content_profile="conversation",
         content={"speaker": {"id": "usr_x"}, "text": "hi"},
     )
-    cto = hub.get_cto(turn_id)
+    cto = hub.librarian.get_cto(turn_id)
     assert cto.speaker_role == "speaker"
 
 
@@ -167,7 +173,7 @@ async def test_start_turn_applies_speaker_label_default(hub, session_id):
         content_profile="conversation",
         content={"speaker": {"id": "usr_x"}, "text": "hi"},
     )
-    cto = hub.get_cto(turn_id)
+    cto = hub.librarian.get_cto(turn_id)
     assert cto.speaker_label == "speaker_1"
 
 
@@ -184,7 +190,7 @@ async def test_start_turn_speaker_label_ordinal_increments(hub, session_id):
         content_profile="conversation",
         content={"speaker": {"id": "b"}, "text": "second"},
     )
-    cto2 = hub.get_cto(t2)
+    cto2 = hub.librarian.get_cto(t2)
     assert cto2.speaker_label == "speaker_2"
 
 
@@ -206,7 +212,11 @@ async def test_start_turn_same_speaker_same_ordinal(hub, session_id):
         content_profile="conversation",
         content={"speaker": {"id": "alice"}, "text": "turn 3"},
     )
-    assert hub.get_cto(t1).speaker_label == hub.get_cto(t3).speaker_label == "speaker_1"
+    assert (
+        hub.librarian.get_cto(t1).speaker_label
+        == hub.librarian.get_cto(t3).speaker_label
+        == "speaker_1"
+    )
 
 
 @pytest.mark.asyncio
@@ -219,7 +229,7 @@ async def test_start_turn_preserves_explicit_optional_fields(
         content_profile="conversation",
         content=full_content,
     )
-    cto = hub.get_cto(turn_id)
+    cto = hub.librarian.get_cto(turn_id)
     assert cto.speaker_role == "user"
     assert cto.speaker_label == "Tester"
 
@@ -256,7 +266,7 @@ async def test_start_turn_unknown_profile_raises(hub, session_id):
 
 @pytest.mark.asyncio
 async def test_start_turn_strict_rejects_unknown_keys(session_id):
-    hub = TTT.create(strict_profiles=True)
+    hub = TTT.start(strict_profiles=True)
     with pytest.raises(ValueError, match="unknown keys"):
         await hub.start_turn(
             session_id=session_id,
@@ -270,7 +280,7 @@ async def test_start_turn_dispatches_cto_created_event(
     hub, session_id, minimal_content
 ):
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -283,7 +293,7 @@ async def test_start_turn_dispatches_cto_created_event(
 @pytest.mark.asyncio
 async def test_start_turn_event_carries_cto_index(hub, session_id, minimal_content):
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -301,7 +311,7 @@ async def test_start_turn_event_does_not_carry_full_cto(
 ):
     """Event payload must use CTOIndex, not full CTO content."""
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -338,24 +348,24 @@ async def test_start_turn_does_not_dispatch_when_no_purposes(
         content_profile="conversation",
         content=minimal_content,
     )
-    assert hub.get_cto(turn_id) is not None
+    assert hub.librarian.get_cto(turn_id) is not None
 
 
 # ---------------------------------------------------------------------------
-# get_cto()
+# ttt.librarian.get_cto()
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_get_cto_returns_none_for_unknown_turn_id(hub):
-    assert hub.get_cto(uuid4()) is None
+async def test_librarian_get_cto_returns_none_for_unknown_turn_id(hub):
+    assert hub.librarian.get_cto(uuid4()) is None
 
 
 @pytest.mark.asyncio
-async def test_get_cto_returns_latest_state_after_merge(
+async def test_librarian_get_cto_returns_latest_state_after_merge(
     hub, session_id, minimal_content
 ):
-    """get_cto() must reflect the post-merge CTO, not the original."""
+    """librarian.get_cto() must reflect the post-merge CTO, not the original."""
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -370,7 +380,7 @@ async def test_get_cto_returns_latest_state_after_merge(
         patch={"tags": ["important"]},
     )
     await hub.merge_delta(delta)
-    cto = hub.get_cto(turn_id)
+    cto = hub.librarian.get_cto(turn_id)
     assert "tester" in cto.observations
     assert any(obs["value"] == "important" for obs in cto.observations["tester"])
 
@@ -425,7 +435,7 @@ async def test_merge_delta_appends_observations(hub, session_id, minimal_content
     )
     await hub.merge_delta(d1)
     await hub.merge_delta(d2)
-    obs = hub.get_cto(turn_id).observations["annotator"]
+    obs = hub.librarian.get_cto(turn_id).observations["annotator"]
     values = [o["value"] for o in obs]
     assert "a" in values
     assert "b" in values
@@ -463,7 +473,7 @@ async def test_merge_delta_does_not_overwrite_prior_observations(
             patch={"y": [2]},
         )
     )
-    obs = hub.get_cto(turn_id).observations["p"]
+    obs = hub.librarian.get_cto(turn_id).observations["p"]
     keys = [o["key"] for o in obs]
     assert "x" in keys
     assert "y" in keys
@@ -497,7 +507,7 @@ async def test_merge_delta_namespaces_are_isolated(hub, session_id, minimal_cont
             patch={"score": [0.1]},
         )
     )
-    obs = hub.get_cto(turn_id).observations
+    obs = hub.librarian.get_cto(turn_id).observations
     assert "purpose_a" in obs
     assert "purpose_b" in obs
     assert obs["purpose_a"] != obs["purpose_b"]
@@ -506,7 +516,7 @@ async def test_merge_delta_namespaces_are_isolated(hub, session_id, minimal_cont
 @pytest.mark.asyncio
 async def test_merge_delta_emits_delta_merged_event(hub, session_id, minimal_content):
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -532,7 +542,7 @@ async def test_merge_delta_event_payload_contains_cto_index(
     hub, session_id, minimal_content
 ):
     p = RecordingPurpose()
-    await hub.register_purpose(p)
+    await hub.start_purpose(p)
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -552,6 +562,32 @@ async def test_merge_delta_event_payload_contains_cto_index(
     payload = p.received[0].payload
     assert "cto_index" in payload
     assert payload["cto_index"]["turn_id"] == str(turn_id)
+
+
+@pytest.mark.asyncio
+async def test_merge_delta_payload_has_no_stale_delta_field(
+    hub, session_id, minimal_content
+):
+    """stale_delta was retired in v0.18 — must not appear in delta_merged payload."""
+    p = RecordingPurpose()
+    await hub.start_purpose(p)
+    turn_id = await hub.start_turn(
+        session_id=session_id,
+        content_profile="conversation",
+        content=minimal_content,
+    )
+    p.received.clear()
+    await hub.merge_delta(
+        Delta(
+            delta_id=uuid4(),
+            session_id=session_id,
+            turn_id=turn_id,
+            purpose_name="p",
+            purpose_id=uuid4(),
+            patch={"x": ["v"]},
+        )
+    )
+    assert "stale_delta" not in p.received[0].payload
 
 
 @pytest.mark.asyncio
@@ -603,8 +639,8 @@ async def test_multicast_stamps_correct_token_per_recipient(
     """Each Purpose must receive an event with its own token, not another's."""
     p1 = NamedPurpose("alpha")
     p2 = NamedPurpose("beta")
-    await hub.register_purpose(p1)
-    await hub.register_purpose(p2)
+    await hub.start_purpose(p1)
+    await hub.start_purpose(p2)
 
     await hub.start_turn(
         session_id=session_id,
@@ -621,7 +657,7 @@ async def test_multicast_stamps_correct_token_per_recipient(
 async def test_multicast_all_purposes_receive_event(hub, session_id, minimal_content):
     purposes = [NamedPurpose(f"p{i}") for i in range(4)]
     for p in purposes:
-        await hub.register_purpose(p)
+        await hub.start_purpose(p)
 
     await hub.start_turn(
         session_id=session_id,
@@ -640,8 +676,8 @@ async def test_multicast_token_from_one_purpose_rejected_by_another(
     """Feeding one Purpose's token-stamped event directly to another must raise."""
     p1 = NamedPurpose("alpha")
     p2 = NamedPurpose("beta")
-    await hub.register_purpose(p1)
-    await hub.register_purpose(p2)
+    await hub.start_purpose(p1)
+    await hub.start_purpose(p2)
 
     await hub.start_turn(
         session_id=session_id,

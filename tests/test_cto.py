@@ -40,7 +40,7 @@ def _make_cto(**kwargs) -> CTO:
 
 
 # Ensure conversation profile is loaded for accessor tests
-TTT.create()
+TTT.start()
 
 
 # ---------------------------------------------------------------------------

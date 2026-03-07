@@ -49,7 +49,7 @@ in `docs/api/` is generated from these docstrings at build time via
 `mkdocstrings` — you do not edit the API reference pages directly.
 
 **Layer 2 — Architecture doc (when the design changes)**
-`docs/ttt_architecture_v0_15.md` documents intent, principles, and settled
+`docs/ttt_architecture_v0_18.md` documents intent, principles, and settled
 decisions. Update it when you change *why* something works the way it does,
 not just *how*. See [When to update the arch doc](#when-to-update-the-arch-doc)
 below.
@@ -166,7 +166,7 @@ what the situation is.
 
 ## When to update the arch doc
 
-`docs/ttt_architecture_v0_15.md` is the design record. It documents *intent*
+`docs/ttt_architecture_v0_18.md` is the design record. It documents *intent*
 and *principles*, not implementation detail. Use this table:
 
 | Change | Update arch doc? |
@@ -212,9 +212,12 @@ locally it will pass in CI.
 
 No core module changes required. The profile system is designed for this.
 
-1. Construct a `Profile` with `FieldSpec` declarations for each field:
+1. Construct a `Profile` with `FieldSpec` declarations for each field, then
+   register it directly on `ProfileRegistry` at process startup. Profiles are
+   process-scoped and hub-independent — do not pass them through the hub:
    ```python
-   from turnturnturn import Profile, FieldSpec, TTT
+   from turnturnturn import Profile, FieldSpec
+   from turnturnturn.profile import ProfileRegistry
 
    my_profile = Profile(
        profile_id="annotation",
@@ -224,7 +227,7 @@ No core module changes required. The profile system is designed for this.
            "label":       FieldSpec(name="label",       required=True, expected_type=str),
        },
    )
-   TTT.register_profile(my_profile)
+   ProfileRegistry.register(my_profile)
    ```
 2. For optional fields with defaults, supply a `default_factory`. If the
    default depends on session-scoped state (e.g. an ordinal counter), read

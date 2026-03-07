@@ -13,12 +13,12 @@ to canonical state directly.
 - Profile system (Profile, ProfileRegistry, FieldSpec): stable
 - BasePurpose (hub token validation, `_handle_event` dispatch): stable
 - Error hierarchy (TTTError, UnauthorizedDispatchError, UnboundPurposeError): stable
-- CTOIndex and hub CTO store (`_ctos`, `get_cto()`): stable
+- CTOIndex and hub CTO store (`_ctos`, `ttt.librarian.get_cto()`): stable
 - Delta merge (`merge_delta()`): stable
 - DAG eligibility layer: not yet implemented (`dag.py` is a stub)
 - Persistence: not yet implemented
 - `ids.py`: empty stub, not yet implemented
-- Delta versioning (`last_event_id` / `based_on_event_id`): TODOs placed in code, not yet implemented
+- Delta versioning (`last_event_id` / `based_on_event_id`): landed in v0.18
 
 ## Key naming history
 
@@ -36,6 +36,12 @@ they are stragglers and should be updated:
 | `apply_conversation_defaults()` | `Profile.apply_defaults()` via `ProfileRegistry` |
 | `_speaker_registry` on hub | `_session_contexts` (opaque; profile-owned contents) |
 | full CTO in event payload (`cto_dict`) | `CTOIndex` in event payload (`cto_index_dict`) |
+| `TTT.create()` | `TTT.start()` |
+| `TTT.register_purpose()` | `ttt.start_purpose()` |
+| `TTT.register_profile()` | `ProfileRegistry.register()` (called directly at process startup) |
+| `TTT.get_cto()` | `ttt.librarian.get_cto()` |
+| `stale_delta` (in `delta_merged` payload) | — (concept removed; `based_on_event_id` is provenance only) |
+| `PURPOSE_REGISTERED` | `PURPOSE_STARTED` |
 
 ## The invariants that matter most
 
@@ -69,14 +75,15 @@ content key. The hub passes an opaque mutable `session_context` dict to
 `Profile.apply_defaults()` — profiles own its contents entirely.
 
 To add a new profile: construct a `Profile` with `FieldSpec` declarations,
-call `TTT.register_profile()`. No core changes required. See CONTRIBUTING.md.
+call `ProfileRegistry.register()` at process startup. No core changes
+required. See CONTRIBUTING.md.
 
 ## How event payloads work
 
 HubEvent payloads carry a `CTOIndex` — not a full CTO snapshot. This keeps
 the event bus lean. Purposes that need full CTO state call
-`TTT.get_cto(turn_id)`. The `ctoPersistP` pattern: receive `CTOIndex` in
-event, call `get_cto()`, persist full canonical state.
+`ttt.librarian.get_cto(turn_id)`. The `ctoPersistPurpose` pattern: receive
+`CTOIndex` in event, call `librarian.get_cto()`, persist full canonical state.
 
 Each HubEvent envelope is **per-recipient** — `_multicast()` constructs a
 fresh envelope per Purpose stamped with that Purpose's `hub_token`. Tokens
@@ -91,7 +98,7 @@ pre-commit run --all-files   # ruff, black, isort, mypy --strict, interrogate
 
 ## Before you change a public interface
 
-Read `docs/ttt_architecture_v0_17.md`. The principles in §2 are load-bearing.
+Read `docs/ttt_architecture_v0_18.md`. The principles in §2 are load-bearing.
 Changes that would require a Purpose to write canonical state directly, or that
 add domain semantics to the hub or CTO, are wrong by design, not by accident.
 

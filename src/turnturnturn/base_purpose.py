@@ -7,7 +7,7 @@ and must not be overridden — it validates the hub token before delegating
 to _handle_event().
 
 The hub assigns a token to each Purpose at registration time via
-TTT.register_purpose(). Until registered, the Purpose is unbound and
+ttt.start_purpose(). Until registered, the Purpose is unbound and
 take_turn() will raise UnboundPurposeError. After registration, only
 HubEvents carrying the matching token are accepted — any other call to
 take_turn() raises UnauthorizedDispatchError.
@@ -51,7 +51,7 @@ class BasePurpose(abc.ABC):
         id: Per-instance UUID. Assigned by the subclass or its factory.
 
     The token attribute is intentionally absent from __init__ — it is
-    assigned exclusively by TTT.register_purpose() and must not be set
+    assigned exclusively by ttt.start_purpose() and must not be set
     directly by subclasses or consuming code.
     """
 
@@ -74,7 +74,7 @@ class BasePurpose(abc.ABC):
         The hub-assigned token for this Purpose instance.
 
         None until registered with a hub. After registration, always a
-        non-empty string. Never set this directly — use TTT.register_purpose().
+        non-empty string. Never set this directly — use ttt.start_purpose().
         """
         if self._token is _UNBOUND:
             return None
@@ -82,7 +82,7 @@ class BasePurpose(abc.ABC):
 
     def _assign_token(self, token: str) -> None:
         """
-        Assign the hub token. Called exclusively by TTT.register_purpose().
+        Assign the hub token. Called exclusively by ttt.start_purpose().
 
         Not part of the public API. Consuming code must never call this
         directly — doing so would allow a Purpose to accept events from
@@ -122,7 +122,7 @@ class BasePurpose(abc.ABC):
         if self._token is _UNBOUND:
             raise UnboundPurposeError(
                 f"Purpose {self.name!r} (id={self.id}) has not been registered "
-                f"with a hub. Call TTT.register_purpose() before dispatch."
+                f"with a hub. Call ttt.start_purpose() before dispatch."
             )
         if event.hub_token != self._token:
             raise UnauthorizedDispatchError(

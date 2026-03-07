@@ -24,7 +24,8 @@ class CTO:
 
     Created exclusively by the TTT hub via start_turn(). Nothing writes to
     canonical CTO state directly; all changes are proposed as Deltas and
-    merged by the hub.
+    merged by the hub. Because CTO is frozen, each Delta merge produces a
+    new CTO instance; the hub replaces the stored instance in _ctos.
 
     content_profile is a plain dict carrying the profile id and version:
         {"id": "conversation", "version": 1}
@@ -37,7 +38,10 @@ class CTO:
     right profile.
 
     Observations are purpose-owned namespaces written via Delta merge.
-    Each Purpose writes to its own key; the hub enforces append-only semantics.
+    Each Purpose writes to its own namespace (keyed by purpose_name);
+    the hub enforces append-only semantics across all namespaces.
+    Purposes may read any namespace but may only propose Deltas into
+    their own.
     """
 
     turn_id: UUID
@@ -52,6 +56,14 @@ class CTO:
     # purpose-owned namespaces: {purpose_name: [obs, ...]}
     # written via Delta merge; never mutated directly.
     observations: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+
+    # TODO(delta-versioning): Add last_event_id: UUID | None = None
+    # Set to the cto_created event_id at construction, updated to the
+    # delta_merged event_id on each merge. Carried in CTOIndex so Purposes
+    # can record based_on_event_id in their Delta proposals without calling
+    # get_cto(). The hub validates based_on_event_id at merge time to detect
+    # stale proposals — i.e. a Purpose reasoning about CTO state that has
+    # since advanced. See Delta.based_on_event_id.
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -96,4 +108,67 @@ class CTO:
             "content_profile": self.content_profile,
             "content": self.content,
             "observations": self.observations,
+        }
+
+    def to_index(self) -> "CTOIndex":
+        """
+        Return a CTOIndex for this CTO — a lightweight routing reference.
+
+        Carries only the fields needed for Purposes to make dispatch decisions
+        without loading full content or observations. Purposes that need more
+        call TTT.get_cto(turn_id).
+        """
+        return CTOIndex(
+            turn_id=self.turn_id,
+            session_id=self.session_id,
+            content_profile=self.content_profile,
+            created_at_ms=self.created_at_ms,
+        )
+
+
+@dataclass(frozen=True)
+class CTOIndex:
+    """
+    Lightweight routing reference to a CTO.
+
+    Carried in HubEvent payloads in place of the full CTO. Contains enough
+    information for a Purpose to make a dispatch decision — profile type,
+    identity, session — without the cost of serializing content or
+    observations.
+
+    Purposes that need full CTO state (content, observations, profile
+    accessors) call TTT.get_cto(turn_id). ctoPersistP is the canonical
+    example: it receives a CTOIndex, calls get_cto(), and persists the
+    full canonical state.
+
+    The hub is the authority for canonical CTO state. A CTOIndex is a
+    pointer, not a snapshot — it does not carry a moment-in-time copy of
+    observations or content.
+    """
+
+    turn_id: UUID
+    session_id: UUID
+
+    # {"id": str, "version": int} — sufficient for profile-based routing
+    # decisions without loading full content.
+    content_profile: dict[str, Any]
+    created_at_ms: int
+
+    # TODO(delta-versioning): Add last_event_id: UUID | None = None
+    # Mirrors CTO.last_event_id. Carried here so Purposes can read the
+    # current CTO version handle directly from the event payload and record
+    # it as based_on_event_id in their Delta proposals — without needing
+    # a separate get_cto() call just to get the version handle.
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serialize to a JSON-safe dict for event payload embedding.
+
+        UUIDs are rendered as strings. content_profile serializes as-is.
+        """
+        return {
+            "turn_id": str(self.turn_id),
+            "session_id": str(self.session_id),
+            "content_profile": self.content_profile,
+            "created_at_ms": self.created_at_ms,
         }

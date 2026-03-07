@@ -1,6 +1,12 @@
-"""TurnTurnTurn public API. Import TTT, CTO, Delta, HubEvent, and Protocols from here."""
+"""TurnTurnTurn public API.
 
-from .cto import CTO
+Primary exports: TTT, CTO, CTOIndex, Delta, BasePurpose, HubEvent,
+HubEventType, Profile, ProfileRegistry, FieldSpec, PurposeProtocol,
+TurnTakerProtocol.
+"""
+
+from .base_purpose import BasePurpose
+from .cto import CTO, CTOIndex
 from .delta import Delta
 from .events import HubEvent, HubEventType
 from .hub import TTT
@@ -12,7 +18,10 @@ __all__ = [
     "TTT",
     # core objects
     "CTO",
+    "CTOIndex",
     "Delta",
+    # purposes
+    "BasePurpose",
     # events
     "HubEvent",
     "HubEventType",

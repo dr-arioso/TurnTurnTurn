@@ -23,15 +23,29 @@ not hard-coded to speaker/text semantics.
 ```python
 import asyncio
 from uuid import uuid4
-from turnturnturn import TTT
+from turnturnturn import TTT, BasePurpose
+from turnturnturn.events import HubEvent
+
+class EchoPurpose(BasePurpose):
+    name = "echo"
+
+    def __init__(self):
+        super().__init__()
+        self.id = uuid4()
+
+    async def _handle_event(self, event: HubEvent) -> None:
+        print(f"Received: {event.event_type.value}")
 
 async def main():
     ttt = TTT.create()
 
+    purpose = EchoPurpose()
+    await ttt.register_purpose(purpose)
+
     turn_id = await ttt.start_turn(
         session_id=uuid4(),
         content_profile="conversation",
-        content={"speaker_id": "usr_a3f9", "text": "hello"},
+        content={"speaker": {"id": "usr_a3f9"}, "text": "hello"},
     )
     print(f"Created turn: {turn_id}")
 
@@ -43,13 +57,17 @@ asyncio.run(main())
 | Concept | Description |
 |---------|-------------|
 | **TTT** | The hub runtime. Authoritative for CTO creation, Delta merge, and event emission. |
-| **CTO** | Canonical Turn Object. The hub-authoritative work item. |
-| **Purpose** | A registered agenda-bearing actor that receives HubEvents and may emit Deltas. |
-| **Delta** | A purpose-proposed change, merged authoritatively by TTT. |
-| **HubEvent** | An authoritative event emitted by TTT. The primary provenance surface. |
+| **CTO** | Canonical Turn Object. The hub-authoritative work item. Frozen; replaced on each merge. |
+| **CTOIndex** | Lightweight routing reference carried in event payloads. Purposes call `TTT.get_cto()` for full state. |
+| **BasePurpose** | Abstract base class for Purposes. Enforces hub token validation. Subclasses implement `_handle_event()`. |
+| **Purpose** | A registered agenda-bearing actor that receives HubEvents and may propose Deltas. |
+| **Delta** | A purpose-proposed change, merged authoritatively by TTT into the Purpose's observation namespace. |
+| **HubEvent** | An authoritative event emitted by TTT. Per-recipient envelope with hub token. The primary provenance surface. |
 
 ## Status
 
-This project is in active architectural development. Names, APIs, and module
-layout are still being refined. See the [Architecture](ttt_architecture_v0_16.md)
-doc for current design direction.
+This project is in active architectural development. The core object model,
+hub semantics, profile system, and Purpose dispatch are stable. The DAG
+eligibility layer and persistence are not yet implemented.
+
+See the [Architecture](ttt_architecture_v0_17.md) doc for current design direction.

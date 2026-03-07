@@ -36,15 +36,17 @@ start_turn(session_id, content_profile, content)
     ▼
   TTT hub
     ├── validate content profile
-    ├── create CTO  ──────────────────────────────► cto_created event
-    └── dispatch to registered Purposes
+    ├── create CTO  ──────────────────────────────► cto_created event  { cto_index }
+    └── dispatch to registered Purposes (per-recipient, hub_token stamped)
               │
               ▼
-        Purpose.take_turn(event)
+        Purpose._handle_event(event)
               │
               ▼
-           Delta  ────────────────────────────────► delta_merged event
+        TTT.merge_delta(delta)  ────────────────► delta_merged event  { delta, cto_index }
 ```
+
+HubEvent payloads carry a **`CTOIndex`** — a lightweight routing reference, not a full CTO snapshot. Purposes that need full content or observations call `TTT.get_cto(turn_id)`. This keeps the event bus lean regardless of how much observation state accumulates.
 
 TTT does **not** define domain semantics. It provides the structure; you bring the content. The `content_profile` field is the extension point — `"conversation"` is the canonical example, but any profile can be registered with its own required shape.
 
@@ -53,10 +55,12 @@ TTT does **not** define domain semantics. It provides the structure; you bring t
 | Concept | What it is |
 |---------|------------|
 | **TTT** | The hub runtime. Sole authority for CTO creation, Delta merge, and event emission. |
-| **CTO** | Canonical Turn Object. The hub-authoritative work item. Immutable once created. |
-| **Purpose** | A registered actor that receives HubEvents and may propose Deltas. |
+| **CTO** | Canonical Turn Object. The hub-authoritative work item. Frozen; replaced on each merge. |
+| **CTOIndex** | Lightweight routing reference carried in event payloads. Points to the CTO; does not copy it. |
+| **BasePurpose** | Abstract base class for Purposes. Validates hub token in `take_turn()`; subclasses implement `_handle_event()`. |
+| **Purpose** | A registered actor that receives HubEvents and may propose Deltas into its own namespace. |
 | **Delta** | A purpose-proposed change. Validated and merged by the hub; never applied directly. |
-| **HubEvent** | An authoritative event emitted by the hub on each state transition. The replay substrate. |
+| **HubEvent** | An authoritative event emitted by the hub on each state transition. Per-recipient envelope. |
 
 ---
 
@@ -65,15 +69,29 @@ TTT does **not** define domain semantics. It provides the structure; you bring t
 ```python
 import asyncio
 from uuid import uuid4
-from turnturnturn import TTT
+from turnturnturn import TTT, BasePurpose
+from turnturnturn.events import HubEvent
+
+class EchoPurpose(BasePurpose):
+    name = "echo"
+
+    def __init__(self):
+        super().__init__()
+        self.id = uuid4()
+
+    async def _handle_event(self, event: HubEvent) -> None:
+        print(f"Received: {event.event_type.value}")
 
 async def main():
     ttt = TTT.create()
 
+    purpose = EchoPurpose()
+    await ttt.register_purpose(purpose)
+
     turn_id = await ttt.start_turn(
         session_id=uuid4(),
         content_profile="conversation",
-        content={"speaker_id": "usr_a3f9", "text": "hello"},
+        content={"speaker": {"id": "usr_a3f9"}, "text": "hello"},
     )
     print(f"Created turn: {turn_id}")
 
@@ -98,9 +116,11 @@ pip install -e .[dev]
 
 ## Status
 
-TTT is in active architectural development. The core object model and hub semantics are stable; the DAG eligibility layer and persistence are in progress. Names and APIs may still shift before v1.0.
+TTT is in active architectural development. The core object model, hub semantics,
+profile system, and Purpose dispatch are stable. The DAG eligibility layer and
+persistence are not yet implemented.
 
-See [`docs/ttt_architecture_v0_15.md`](docs/ttt_architecture_v0_15.md) for the current design.
+See [`docs/ttt_architecture_v0_17.md`](docs/ttt_architecture_v0_17.md) for the current design.
 
 ---
 

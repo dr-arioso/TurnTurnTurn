@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID, uuid4
 
+from .base_purpose import BasePurpose
 from .cto import CTO
-from .events import HubEvent, HubEventType, payload_cto_created
+from .delta import Delta
+from .events import HubEvent, HubEventType, payload_cto_created, payload_delta_merged
 from .profile import Profile, ProfileRegistry
 from .protocols import PurposeProtocol
 from .registry import PurposeRegistration
@@ -39,24 +42,18 @@ class TTT:
     emission. All content ingress goes through start_turn(); nothing constructs
     CTOs directly.
 
+    Instantiate via TTT.create() — do not construct directly. TTT.create()
+    ensures built-in profiles are registered before the hub is used.
+
     Profile lookup delegates to the process-scoped ProfileRegistry class.
-    The hub calls ProfileRegistry.load_defaults() at creation time to ensure
-    built-in profiles are available. Custom profiles are registered via
-    TTT.register_profile(), which delegates to ProfileRegistry.register().
+    Custom profiles are registered via TTT.register_profile(), which delegates
+    to ProfileRegistry.register().
 
     The hub maintains an opaque per-session context dict for each active
     session and passes it to Profile.apply_defaults() as a mutable dict.
     The hub never inspects context contents — profiles own them entirely.
     This allows profiles to maintain session-scoped state (e.g. speaker
     ordinals for label defaults) without leaking domain knowledge into the hub.
-
-    Args:
-        registrations: Purpose registry, keyed by purpose.id.
-        strict_profiles: If True, all profiles enforce strict key validation
-            at start_turn() time, regardless of per-profile strict flag.
-        _session_contexts: Internal opaque per-session context store.
-            {session_id: dict}. Contents are profile-owned; hub passes
-            through without inspection. Not a constructor argument.
     """
 
     registrations: dict[UUID, PurposeRegistration]
@@ -64,6 +61,16 @@ class TTT:
     _session_contexts: dict[UUID, dict[str, Any]] = field(
         default_factory=dict, init=False, repr=False
     )
+    # Canonical CTO store: turn_id → CTO.
+    # The hub is the sole writer. CTOs are replaced (not mutated) on Delta merge
+    # because CTO is frozen — a new instance is constructed with updated observations.
+    _ctos: dict[UUID, CTO] = field(default_factory=dict, init=False, repr=False)
+
+    # TODO(delta-versioning): When CTO.last_event_id and Delta.based_on_event_id
+    # are added, merge_delta() should compare delta.based_on_event_id against
+    # cto.last_event_id before merging. Mismatch = Purpose was reasoning about
+    # stale state. Initial handling policy (reject / warn / resolver dispatch)
+    # to be decided by Adjacency integration requirements.
 
     @classmethod
     def create(cls, *, strict_profiles: bool = False) -> "TTT":
@@ -113,11 +120,20 @@ class TTT:
         subscriptions: list[dict[str, Any]] | None = None,
     ) -> None:
         """
-        Register a Purpose with the hub.
+        Register a Purpose with the hub and assign its hub token.
 
         After registration, the Purpose will receive HubEvents via take_turn()
         on each multicast. Re-registering an existing purpose.id overwrites the
-        prior registration.
+        prior registration and issues a new token.
+
+        If the Purpose is a BasePurpose instance, a cryptographically random
+        token is generated and assigned via _assign_token(). This token is
+        embedded in every HubEvent dispatched to that Purpose, allowing
+        BasePurpose.take_turn() to reject events from any other source.
+
+        Purposes that are not BasePurpose subclasses (e.g. test doubles
+        implementing PurposeProtocol directly) are registered without token
+        assignment — they receive events without validation.
 
         Args:
             purpose: The Purpose instance to register. Must satisfy PurposeProtocol.
@@ -126,10 +142,15 @@ class TTT:
                 events. Will be enforced once the DAG/subscription layer lands.
         """
         # v0: in-memory registry only. Later: emit PURPOSE_REGISTERED, persist, auth.
+        token: str | None = None
+        if isinstance(purpose, BasePurpose):
+            token = secrets.token_hex(16)
+            purpose._assign_token(token)
+
         subs = subscriptions or []
         self.registrations[purpose.id] = PurposeRegistration(
             purpose=purpose,
-            token=purpose.token,
+            token=token,
             subscriptions=subs,
         )
 
@@ -192,6 +213,7 @@ class TTT:
             content_profile={"id": content_profile, "version": profile_version},
             content=resolved_content,
         )
+        self._ctos[cto.turn_id] = cto
 
         event = HubEvent(
             event_type=HubEventType.CTO_CREATED,
@@ -200,7 +222,7 @@ class TTT:
             session_id=cto.session_id,
             turn_id=cto.turn_id,
             payload=payload_cto_created(
-                cto_dict=cto.to_dict(),
+                cto_index_dict=cto.to_index().to_dict(),
                 submitted_by_label=submitted_by_label,
             ),
         )
@@ -209,16 +231,128 @@ class TTT:
         # v0: no DAG yet; dispatch is "all registered purposes for this event"
         return cto.turn_id
 
+    async def merge_delta(self, delta: Delta) -> UUID:
+        """
+        Validate and merge a purpose-proposed Delta into canonical CTO state.
+
+        The hub is the sole authority for writing to canonical state. Purposes
+        propose changes via Deltas; this method decides what becomes canonical.
+
+        Merge semantics are append-only: each key in delta.patch is treated as
+        a list of observations to append to the CTO's observation namespace
+        owned by the proposing Purpose (keyed by purpose_name). Values must be
+        lists — the hub extends the existing list, never replaces it.
+
+        On success, the canonical CTO is updated and a DELTA_MERGED event is
+        emitted and multicast to all registered Purposes.
+
+        Args:
+            delta: The proposed change. Must reference a known turn_id.
+
+        Returns:
+            The event_id of the emitted DELTA_MERGED HubEvent.
+
+        Raises:
+            KeyError: If delta.turn_id does not reference a known CTO.
+            ValueError: If any patch value is not a list (append-only contract).
+        """
+        cto = self._ctos.get(delta.turn_id)
+        if cto is None:
+            raise KeyError(f"merge_delta: unknown turn_id {delta.turn_id!r}")
+
+        # Validate patch shape: all values must be lists (append-only contract).
+        for key, val in delta.patch.items():
+            if not isinstance(val, list):
+                raise ValueError(
+                    f"merge_delta: patch[{key!r}] must be a list, "
+                    f"got {type(val).__name__!r} — hub enforces append-only semantics"
+                )
+
+        # Build updated observations: purpose_name namespace, append-only.
+        # CTO is frozen, so we construct a new instance with updated observations.
+        namespace = delta.purpose_name
+        existing_obs = dict(cto.observations)
+        existing_ns = list(existing_obs.get(namespace, []))
+        for key, items in delta.patch.items():
+            existing_ns.extend({"key": key, "value": v} for v in items)
+        existing_obs[namespace] = existing_ns
+
+        updated_cto = CTO(
+            turn_id=cto.turn_id,
+            session_id=cto.session_id,
+            created_at_ms=cto.created_at_ms,
+            content_profile=cto.content_profile,
+            content=cto.content,
+            observations=existing_obs,
+        )
+        self._ctos[updated_cto.turn_id] = updated_cto
+
+        event_id = uuid4()
+        event = HubEvent(
+            event_type=HubEventType.DELTA_MERGED,
+            event_id=event_id,
+            created_at_ms=now_ms(),
+            session_id=updated_cto.session_id,
+            turn_id=updated_cto.turn_id,
+            payload=payload_delta_merged(
+                delta_dict=delta.to_dict(),
+                cto_index_dict=updated_cto.to_index().to_dict(),
+            ),
+        )
+        await self._multicast(event)
+        return event_id
+
+    def get_cto(self, turn_id: UUID) -> CTO | None:
+        """
+        Return the current canonical CTO for turn_id, or None if unknown.
+
+        This is the intended read path for Purposes that need full CTO state
+        — content, observations, profile accessors. HubEvent payloads carry
+        only a CTOIndex (a lightweight routing reference); Purposes call this
+        method when they need more.
+
+        ctoPersistP is the canonical consumer: it receives a CTOIndex in the
+        event payload, calls get_cto(), and persists the full canonical state.
+
+        The returned CTO reflects the hub's current canonical state at the
+        moment of the call — for delta_merged events, this is the post-merge
+        state. The hub is the sole authority; do not cache the result across
+        event boundaries.
+
+        Args:
+            turn_id: The turn_id of the CTO to retrieve.
+
+        Returns:
+            The canonical CTO, or None if turn_id is not known to this hub.
+        """
+        return self._ctos.get(turn_id)
+
     async def _multicast(self, event: HubEvent) -> None:
         """
         Broadcast a HubEvent to all registered Purposes.
+
+        Constructs a per-recipient envelope for each Purpose, stamping
+        hub_token with the token assigned to that Purpose at registration.
+        This ensures BasePurpose.take_turn() can validate that the event
+        originated from this hub and not from a point-to-point call.
+
+        Purposes registered without a token (e.g. bare PurposeProtocol
+        implementations in tests) receive the event with hub_token=None.
 
         v0: naive broadcast — every registered Purpose receives every event.
 
         Later:
           - subscription matching by event_type (+ filters)
           - DAG eligibility gating
-          - persistence via a persist Purpose
         """
         for reg in self.registrations.values():
-            await reg.purpose.take_turn(event)
+            addressed = HubEvent(
+                event_type=event.event_type,
+                event_id=event.event_id,
+                created_at_ms=event.created_at_ms,
+                session_id=event.session_id,
+                turn_id=event.turn_id,
+                payload=event.payload,
+                hub_token=reg.token,
+            )
+            await reg.purpose.take_turn(addressed)

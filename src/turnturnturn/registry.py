@@ -11,13 +11,21 @@ from .protocols import PurposeProtocol
 @dataclass(frozen=True)
 class PurposeRegistration:
     """
-    Hub registry record for a Purpose instance.
+    Hub registry record for a registered Purpose instance.
+
+    Created by TTT.register_purpose() and stored in TTT.registrations,
+    keyed by purpose.id. The hub consults this record at dispatch time
+    to stamp hub_token onto each per-recipient HubEvent envelope.
     """
 
     purpose: PurposeProtocol
 
-    # token is assigned/managed by hub; purpose.token may be None until assigned
+    # Hub-assigned token for this registration. Matches the token assigned
+    # to the Purpose via BasePurpose._assign_token(). None for raw
+    # PurposeProtocol implementors that are not BasePurpose subclasses.
     token: str | None
 
-    # subscriptions are a v0 placeholder; later you’ll likely formalize this
+    # Subscription filter hints. Currently unused in v0 — all registered
+    # Purposes receive all events. Will drive subscription matching once
+    # the DAG/subscription layer is implemented.
     subscriptions: list[dict[str, Any]]

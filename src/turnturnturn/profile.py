@@ -74,6 +74,76 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
 # ---------------------------------------------------------------------------
+# Path-walking helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_by_path(content: Any, path: tuple[str, ...]) -> Any:
+    """
+    Traverse a nested dict by a sequence of keys and return the value.
+
+    Returns None if any intermediate key is absent or if a value along the
+    path is not a dict. Does not raise — callers check the return value.
+
+    Args:
+        content: The root dict to traverse.
+        path: Sequence of string keys describing the nested location,
+            e.g. ("speaker", "id") for content["speaker"]["id"].
+
+    Returns:
+        The value at the final key, or None if the path cannot be resolved.
+    """
+    val: Any = content
+    for key in path:
+        if not isinstance(val, dict):
+            return None
+        val = val.get(key)
+    return val
+
+
+def _set_by_path(
+    content: dict[str, Any],
+    path: tuple[str, ...],
+    value: Any,
+) -> None:
+    """
+    Write a value into a nested dict at the location described by path.
+
+    Creates intermediate dicts as needed. Mutates content in place.
+
+    Args:
+        content: The root dict to write into.
+        path: Sequence of string keys describing the nested location.
+            Must have at least one element.
+        value: The value to write at the final key.
+    """
+    node: dict[str, Any] = content
+    for key in path[:-1]:
+        if key not in node or not isinstance(node[key], dict):
+            node[key] = {}
+        node = node[key]
+    node[path[-1]] = value
+
+
+def _deep_copy_content(content: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a copy of a content dict suitable for apply_defaults mutation.
+
+    Copies the top-level dict and any immediately nested dicts so that
+    _set_by_path writes do not mutate the caller's original content.
+    Values that are not dicts are not copied — they are immutable by
+    convention (str, int, etc.).
+
+    Args:
+        content: The content dict to copy.
+
+    Returns:
+        A new dict with top-level nested dicts also copied one level deep.
+    """
+    return {k: dict(v) if isinstance(v, dict) else v for k, v in content.items()}
+
+
+# ---------------------------------------------------------------------------
 # FieldSpec
 # ---------------------------------------------------------------------------
 
@@ -84,17 +154,19 @@ class FieldSpec:
     Declaration for a single field in a content profile.
 
     Combines required/optional status, type contract, and default resolution.
-    The Profile uses FieldSpecs to validate content and apply defaults.
-    Accessor resolution uses the field name as the content key by default;
-    computed accessors (fields derived from multiple content keys) are
-    handled by overriding Profile.resolve() on a subclass (not v0).
+    The Profile uses FieldSpecs to validate content, apply defaults, and
+    resolve CTO accessors — all by walking the `path` tuple into the nested
+    content dict. The flat `name` (e.g. "speaker_id") is the CTO accessor
+    handle only; it is never used as a content key.
 
     Args:
         name: The accessor name on the CTO (e.g. "speaker_id"). Derived
             by the parent_child convention from the content path.
         path: Location of this field in the nested content dict, as a
             tuple of keys (e.g. ("speaker", "id") for content["speaker"]["id"],
-            ("text",) for a root-level field).
+            ("text",) for a root-level field). This is the source of truth
+            for all content traversal — validate(), apply_defaults(), and
+            resolve() all walk this path.
         required: If True, must be present and correctly typed at validation.
         expected_type: Python type checked via isinstance() during validation.
         default_factory: Called with (content, session_context) to produce a
@@ -155,33 +227,41 @@ class Profile:
         """
         Validate that content satisfies this profile's field contract.
 
-        Checks required fields for presence and correct type. Optional fields
-        are not checked for presence — they will be filled by apply_defaults().
+        Checks required fields for presence and correct type by traversing
+        each FieldSpec's path tuple into the nested content dict. Optional
+        fields are not checked for presence — they will be filled by
+        apply_defaults().
 
         Args:
-            content: The content dict to validate.
-            strict: If True (or self.strict is True), reject unknown keys.
-                Full parent_child key convention enforcement is deferred
+            content: The content dict to validate. May be arbitrarily nested;
+                field locations are determined by FieldSpec.path, not by the
+                flat accessor name.
+            strict: If True (or self.strict is True), reject unknown top-level
+                keys. Full parent_child key convention enforcement is deferred
                 pending real usage driving requirements.
 
         Raises:
             ValueError: If a required field is missing or wrong type, or if
-                strict mode finds unknown keys.
+                strict mode finds unknown top-level keys.
         """
         effective_strict = strict or self.strict
 
         for name, spec in self.fields.items():
             if not spec.required:
                 continue
-            if not isinstance(content.get(name), spec.expected_type):
+            value = _get_by_path(content, spec.path)
+            if not isinstance(value, spec.expected_type):
+                path_str = ".".join(spec.path)
                 raise ValueError(
                     f"{self.profile_id!r} profile requires "
-                    f"content[{name!r}]: {spec.expected_type.__name__}"
+                    f"content[{path_str!r}]: {spec.expected_type.__name__}"
                 )
 
         if effective_strict:
-            # v0: unknown key rejection only. Full convention enforcement deferred.
-            unknown = set(content.keys()) - set(self.fields.keys())
+            # v0: unknown top-level key rejection only.
+            # Full convention enforcement deferred pending real usage.
+            top_level_known = {spec.path[0] for spec in self.fields.values()}
+            unknown = set(content.keys()) - top_level_known
             if unknown:
                 raise ValueError(
                     f"{self.profile_id!r} profile (strict): "
@@ -197,6 +277,11 @@ class Profile:
         Fill optional fields with defaults where absent or None.
 
         Returns a new content dict — does not mutate the caller's content.
+        Traverses each FieldSpec's path tuple to locate the field in the
+        nested content structure. If the value at that path is absent or not
+        the expected type, the default_factory is called and the result is
+        written back at the correct nested location via _set_by_path.
+
         May read from and write to session_context to maintain per-session
         state across calls. The hub passes the same mutable context dict for
         all turns within a session; the profile owns its contents entirely.
@@ -208,24 +293,28 @@ class Profile:
                 session-scoped state (e.g. speaker ordinals for label defaults).
 
         Returns:
-            New content dict with defaults applied.
+            New content dict with defaults applied at their correct nested paths.
         """
-        out = dict(content)
+        out = _deep_copy_content(content)
         for name, spec in self.fields.items():
             if spec.required:
                 continue
-            if not isinstance(out.get(name), spec.expected_type):
+            value = _get_by_path(out, spec.path)
+            if not isinstance(value, spec.expected_type):
                 if spec.default_factory is not None:
-                    out[name] = spec.default_factory(out, session_context)
+                    _set_by_path(
+                        out, spec.path, spec.default_factory(out, session_context)
+                    )
         return out
 
     def resolve(self, name: str, content: dict[str, Any]) -> Any:
         """
-        Resolve a named accessor against content.
+        Resolve a named accessor against content by traversing FieldSpec.path.
 
-        Called by ProfileRegistry.resolve(). Returns content.get(name) for
-        known fields; raises KeyError for unknown names so that
-        CTO.__getattr__ can convert to AttributeError.
+        Called by ProfileRegistry.resolve(). Walks the path tuple into the
+        nested content dict to retrieve the value. Raises KeyError for
+        unknown accessor names so that CTO.__getattr__ can convert to
+        AttributeError.
 
         Computed accessors (fields derived from multiple content keys) are
         not supported in v0. Override this method on a Profile subclass for
@@ -233,11 +322,12 @@ class Profile:
         No core changes required.
 
         Args:
-            name: Attribute name to resolve.
-            content: The CTO's content dict.
+            name: Attribute name to resolve (e.g. "speaker_id").
+            content: The CTO's content dict (nested structure).
 
         Returns:
-            The field value, or None if the field is absent.
+            The field value at FieldSpec.path, or None if any intermediate
+            key is absent.
 
         Raises:
             KeyError: If name is not a registered field for this profile.
@@ -246,7 +336,7 @@ class Profile:
             raise KeyError(
                 f"{self.profile_id!r} v{self.version} has no accessor {name!r}"
             )
-        return content.get(name)
+        return _get_by_path(content, self.fields[name].path)
 
 
 # ---------------------------------------------------------------------------

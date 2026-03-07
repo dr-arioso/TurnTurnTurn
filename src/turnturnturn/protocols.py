@@ -36,10 +36,10 @@ class PurposeProtocol(TurnTakerProtocol, Protocol):
     take_turn() rejects events whose hub_token does not match the assigned
     token, closing the point-to-point bypass. Raw PurposeProtocol
     implementors (e.g. test doubles) receive hub_token=None and bypass
-    validation. TTT.register_purpose() accepts either.
+    validation. ttt.start_purpose() accepts either.
 
     The hub uses (id, token) for per-recipient dispatch. Purposes are
-    registered via TTT.register_purpose(), which assigns the token.
+    registered via ttt.start_purpose(), which assigns the token.
     """
 
     name: str

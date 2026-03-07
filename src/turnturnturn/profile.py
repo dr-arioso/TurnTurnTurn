@@ -352,11 +352,12 @@ class ProfileRegistry:
     This is correct: profiles are declarative metadata registered once at
     startup, not runtime state that varies per hub.
 
-    TTT.register_profile() delegates here. CTO.__getattr__ calls
+    ProfileRegistry is called directly — no hub indirection needed.
+    CTO.__getattr__ calls
     ProfileRegistry.resolve() directly — no instance reference needed.
 
     Pre-loaded with built-in profiles via ProfileRegistry.load_defaults(),
-    called automatically by TTT.create().
+    called automatically by TTT.start().
     """
 
     _profiles: dict[tuple[str, int], Profile] = {}
@@ -434,7 +435,7 @@ class ProfileRegistry:
         """
         Register built-in profiles if not already loaded.
 
-        Idempotent — safe to call multiple times. Called by TTT.create().
+        Idempotent — safe to call multiple times. Called by TTT.start().
         Built-in profiles are defined in the profiles/ subpackage.
         Currently registers: conversation v1.
         """

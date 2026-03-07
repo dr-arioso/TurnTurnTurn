@@ -1,35 +1,18 @@
-"""TurnTurnTurn public API.
+"""
+Built-in content profiles for TurnTurnTurn.
 
-Primary exports: TTT, CTO, CTOIndex, Delta, BasePurpose, HubEvent,
-HubEventType, Profile, ProfileRegistry, FieldSpec, PurposeProtocol,
-TurnTakerProtocol.
+Each profile is defined in its own module. Profiles are registered with
+ProfileRegistry via ProfileRegistry.load_defaults(), called automatically
+by TTT.start().
+
+Built-in profiles:
+  - conversation (v1) — human/AI interaction turns with speaker identity
+    and role semantics. See profiles/conversation.py for full documentation.
+
+To add a new built-in profile: create a module here, implement a build
+function, and register it in load_defaults() in profile.py.
 """
 
-from .base_purpose import BasePurpose
-from .cto import CTO, CTOIndex
-from .delta import Delta
-from .events import HubEvent, HubEventType
-from .hub import TTT
-from .profile import FieldSpec, Profile, ProfileRegistry
-from .protocols import PurposeProtocol, TurnTakerProtocol
+from .profiles.conversation import build as build_conversation
 
-__all__ = [
-    # hub
-    "TTT",
-    # core objects
-    "CTO",
-    "CTOIndex",
-    "Delta",
-    # purposes
-    "BasePurpose",
-    # events
-    "HubEvent",
-    "HubEventType",
-    # profile system
-    "Profile",
-    "ProfileRegistry",
-    "FieldSpec",
-    # protocols
-    "PurposeProtocol",
-    "TurnTakerProtocol",
-]
+__all__ = ["build_conversation"]

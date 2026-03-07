@@ -13,7 +13,7 @@ class PurposeRegistration:
     """
     Hub registry record for a registered Purpose instance.
 
-    Created by TTT.register_purpose() and stored in TTT.registrations,
+    Created by ttt.start_purpose() and stored in TTT.registrations,
     keyed by purpose.id. The hub consults this record at dispatch time
     to stamp hub_token onto each per-recipient HubEvent envelope.
     """

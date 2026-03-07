@@ -33,5 +33,5 @@ class UnboundPurposeError(TTTError):
     to receive a HubEvent via take_turn().
 
     A Purpose is unbound if its token has not yet been assigned by a hub.
-    Register the Purpose with TTT.register_purpose() before use.
+    Register the Purpose with ttt.start_purpose() before use.
     """

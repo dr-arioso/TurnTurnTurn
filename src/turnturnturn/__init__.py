@@ -20,7 +20,13 @@ from .events import (
     HubEventType,
 )
 from .hub import TTT
-from .protocols import EventPayloadProtocol, EventProtocol, PurposeEventProtocol
+from .persistence import InMemoryPersistencePurpose, PersistencePurpose
+from .protocols import (
+    CTOPersistencePurposeProtocol,
+    EventPayloadProtocol,
+    EventProtocol,
+    PurposeEventProtocol,
+)
 
 __all__ = [
     "BasePurpose",
@@ -42,4 +48,7 @@ __all__ = [
     "UnauthorizedDispatchError",
     "UnboundPurposeError",
     "UnknownEventTypeError",
+    "CTOPersistencePurposeProtocol",
+    "InMemoryPersistencePurpose",
+    "PersistencePurpose",
 ]

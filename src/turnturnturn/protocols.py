@@ -86,3 +86,35 @@ class PurposeProtocol(TurnTakerProtocol, Protocol):
     name: str
     id: UUID
     token: str | None
+
+
+@runtime_checkable
+class CTOPersistencePurposeProtocol(PurposeProtocol, Protocol):
+    """
+    Runtime-checkable protocol for TTT persistence Purposes.
+
+    Required by TTT.start() — the hub will not initialise without a
+    registered instance satisfying this protocol. Defines the minimal
+    contract that all persistence backends must satisfy.
+
+    PersistencePurpose (persistence.py) satisfies this protocol by
+    construction and is the recommended base class for backends.
+    Raw implementations are accepted but must honour both contracts below.
+
+    is_durable:
+        Declares whether write_event() persists events beyond the current
+        process. False is valid for development and test contexts;
+        TTT.start() emits UserWarning when is_durable=False. Implementors
+        must not return True unless the backend actually survives process
+        termination — this property protects irreplaceable provenance data.
+
+    write_event():
+        Must await completion before returning. The hub calls write_event()
+        before delivering any event to other registered Purposes (enforced
+        in Commit 6 / _multicast rewrite). Idempotent on event_id —
+        backends must handle duplicate delivery without data corruption.
+    """
+
+    is_durable: bool
+
+    async def write_event(self, event: "HubEvent") -> None: ...

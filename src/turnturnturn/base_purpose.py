@@ -104,7 +104,7 @@ class BasePurpose(abc.ABC):
 
     async def take_turn(self, event: HubEvent) -> None:
         """
-        Validate hub-issued routing credentials and delegate to _handle_event().
+        Validate the hub token and downlink signature, then delegate to _handle_event().
 
         This is the hub-facing downlink entry point. It must not be overridden
         by subclasses — override _handle_event() instead.

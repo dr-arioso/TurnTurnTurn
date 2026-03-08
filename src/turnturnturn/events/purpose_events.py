@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from uuid import UUID
 
 from ..delta import Delta
 from ..protocols import EventPayloadProtocol
-from .hub_events import HubEventType
+
+
+class PurposeEventType(str, Enum):
+    """
+    Purpose-authored event types submitted to the hub.
+
+    These are proposals or lifecycle signals from a registered Purpose, not
+    hub-authored facts.
+    """
+
+    DELTA_PROPOSAL = "delta_proposal"
+    PURPOSE_COMPLETED = "purpose_completed"
 
 
 @dataclass(frozen=True)
@@ -29,13 +41,12 @@ class DeltaProposalPayload(EventPayloadProtocol):
 @dataclass(frozen=True)
 class DeltaProposalEvent:
     """
-    Purpose-originated ingress event used to propose a Delta to the hub.
-
+    Purpose-authored event used to propose a Delta to the hub.
     The hub validates purpose_id, purpose_name, and hub_token against the
     registration resolved from hub_token before routing the event.
     """
 
-    event_type: HubEventType
+    event_type: PurposeEventType
     event_id: UUID
     created_at_ms: int
     purpose_id: UUID

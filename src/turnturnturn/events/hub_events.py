@@ -21,9 +21,7 @@ class HubEventType(str, Enum):
 
     CTO_CREATED = "cto_created"
     DELTA_MERGED = "delta_merged"
-    DELTA_PROPOSAL = "delta_proposal"
     PURPOSE_STARTED = "purpose_started"
-    PURPOSE_COMPLETED = "purpose_completed"
 
 
 @dataclass(frozen=True)

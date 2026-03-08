@@ -171,6 +171,14 @@ writes to conflict. Two Purposes proposing Deltas concurrently cannot corrupt
 each other's work. `based_on_event_id` answers "what did this Purpose know
 when it reasoned?" — a provenance question, not a safety question.
 
+### Event Policy
+
+The hub maintains an internal event policy registry mapping
+Purpose-authored event types to optional built-in handlers.
+
+Events without handlers are still accepted and routed through
+the hub substrate path but do not trigger built-in hub behavior.
+
 ### HubEvent
 
 An authoritative event emitted by TTT.

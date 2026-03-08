@@ -16,7 +16,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from turnturnturn import CTO, TTT, CTOIndex
+from turnturnturn import CTO, TTT
+from turnturnturn.cto import CTOIndex
 
 # ---------------------------------------------------------------------------
 # Fixtures

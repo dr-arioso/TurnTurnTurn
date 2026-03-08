@@ -7,7 +7,7 @@ from .hub_events import (
     HubEvent,
     HubEventType,
 )
-from .purpose_events import DeltaProposalEvent, DeltaProposalPayload
+from .purpose_events import DeltaProposalEvent, DeltaProposalPayload, PurposeEventType
 
 __all__ = [
     "CTOCreatedPayload",
@@ -17,4 +17,5 @@ __all__ = [
     "EmptyPayload",
     "HubEvent",
     "HubEventType",
+    "PurposeEventType",
 ]

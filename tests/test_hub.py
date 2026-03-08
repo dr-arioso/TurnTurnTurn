@@ -2,11 +2,11 @@
 
 Coverage areas:
   - TTT.start() — profile loading, strict flag
-  - start_purpose() — token assignment, re-registration
+  - start_purpose() — token/downlink assignment, re-registration
   - start_turn() — CTO creation, profile validation, event emission, dispatch
-  - merge_delta() — append-only merge, unknown turn_id, bad patch shape
+  - _merge_delta() via hub.take_turn() — append-only merge and event emission
   - ttt.librarian.get_cto() — read path, returns None for unknown turn_id
-  - _multicast() — per-recipient token stamping, all registered purposes receive event
+  - _multicast() — per-recipient route credential stamping
 """
 
 from __future__ import annotations
@@ -18,7 +18,25 @@ from conftest import NamedPurpose, RecordingPurpose
 
 from turnturnturn import CTO, TTT, Delta
 from turnturnturn.errors import UnauthorizedDispatchError
-from turnturnturn.events import HubEventType
+from turnturnturn.events import (
+    DeltaProposalEvent,
+    DeltaProposalPayload,
+    HubEventType,
+    PurposeEventType,
+)
+
+
+def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
+    return DeltaProposalEvent(
+        event_type=PurposeEventType.DELTA_PROPOSAL,
+        event_id=uuid4(),
+        created_at_ms=0,
+        purpose_id=purpose.id,
+        purpose_name=purpose.name,
+        hub_token=purpose.token,
+        payload=DeltaProposalPayload(delta=delta),
+    )
+
 
 # ---------------------------------------------------------------------------
 # TTT.start()
@@ -68,6 +86,9 @@ async def test_start_purpose_assigns_token(hub):
     assert p.token is not None
     assert isinstance(p.token, str)
     assert len(p.token) > 0
+    assert p.downlink_signature is not None
+    assert isinstance(p.downlink_signature, str)
+    assert len(p.downlink_signature) > 0
 
 
 @pytest.mark.asyncio
@@ -84,6 +105,7 @@ async def test_start_multiple_purposes_each_gets_unique_token(hub):
     await hub.start_purpose(p1)
     await hub.start_purpose(p2)
     assert p1.token != p2.token
+    assert p1.downlink_signature != p2.downlink_signature
 
 
 @pytest.mark.asyncio
@@ -91,8 +113,12 @@ async def test_restart_purpose_issues_new_token(hub):
     p = RecordingPurpose()
     await hub.start_purpose(p)
     first_token = p.token
+    first_signature = p.downlink_signature
+
     await hub.start_purpose(p)
+
     assert p.token != first_token
+    assert p.downlink_signature != first_signature
 
 
 @pytest.mark.asyncio
@@ -300,7 +326,7 @@ async def test_start_turn_event_carries_cto_index(hub, session_id, minimal_conte
         content=minimal_content,
     )
     event = p.received[0]
-    cto_index = event.payload["cto_index"]
+    cto_index = event.payload.as_dict()["cto_index"]
     assert cto_index["turn_id"] == str(turn_id)
     assert cto_index["session_id"] == str(session_id)
 
@@ -317,7 +343,7 @@ async def test_start_turn_event_does_not_carry_full_cto(
         content_profile="conversation",
         content=minimal_content,
     )
-    payload = p.received[0].payload
+    payload = p.received[0].payload.as_dict()
     assert "content" not in payload
     assert "observations" not in payload
     assert "cto_index" in payload
@@ -366,6 +392,9 @@ async def test_librarian_get_cto_returns_latest_state_after_merge(
     hub, session_id, minimal_content
 ):
     """librarian.get_cto() must reflect the post-merge CTO, not the original."""
+    purpose = NamedPurpose("tester")
+    await hub.start_purpose(purpose)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -375,23 +404,26 @@ async def test_librarian_get_cto_returns_latest_state_after_merge(
         delta_id=uuid4(),
         session_id=session_id,
         turn_id=turn_id,
-        purpose_name="tester",
-        purpose_id=uuid4(),
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
         patch={"tags": ["important"]},
     )
-    await hub.merge_delta(delta)
+    await hub.take_turn(_proposal_event_for(delta, purpose))
     cto = hub.librarian.get_cto(turn_id)
     assert "tester" in cto.observations
     assert any(obs["value"] == "important" for obs in cto.observations["tester"])
 
 
 # ---------------------------------------------------------------------------
-# merge_delta()
+# _merge_delta() via hub.take_turn()
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_merge_delta_returns_event_id(hub, session_id, minimal_content):
+    purpose = NamedPurpose("annotator")
+    await hub.start_purpose(purpose)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -401,41 +433,43 @@ async def test_merge_delta_returns_event_id(hub, session_id, minimal_content):
         delta_id=uuid4(),
         session_id=session_id,
         turn_id=turn_id,
-        purpose_name="p",
-        purpose_id=uuid4(),
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
         patch={"result": ["ok"]},
     )
-    event_id = await hub.merge_delta(delta)
+    event_id = await hub.take_turn(_proposal_event_for(delta, purpose))
     assert isinstance(event_id, UUID)
 
 
 @pytest.mark.asyncio
 async def test_merge_delta_appends_observations(hub, session_id, minimal_content):
+    purpose = NamedPurpose("annotator")
+    await hub.start_purpose(purpose)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
         content=minimal_content,
     )
-    pid = uuid4()
     d1 = Delta(
         delta_id=uuid4(),
         session_id=session_id,
         turn_id=turn_id,
-        purpose_name="annotator",
-        purpose_id=pid,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
         patch={"tags": ["a"]},
     )
     d2 = Delta(
         delta_id=uuid4(),
         session_id=session_id,
         turn_id=turn_id,
-        purpose_name="annotator",
-        purpose_id=pid,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
         patch={"tags": ["b"]},
     )
-    await hub.merge_delta(d1)
-    await hub.merge_delta(d2)
-    obs = hub.librarian.get_cto(turn_id).observations["annotator"]
+    await hub.take_turn(_proposal_event_for(d1, purpose))
+    await hub.take_turn(_proposal_event_for(d2, purpose))
+    obs = hub.librarian.get_cto(turn_id).observations[purpose.name]
     values = [o["value"] for o in obs]
     assert "a" in values
     assert "b" in values
@@ -453,26 +487,32 @@ async def test_merge_delta_does_not_overwrite_prior_observations(
         content=minimal_content,
     )
     pid = uuid4()
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=pid,
-            patch={"x": [1]},
-        )
+
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=pid,
+        patch={"x": [1]},
     )
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=pid,
-            patch={"y": [2]},
-        )
+    await hub.take_turn(_proposal_event_for(delta, purpose))
+
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=pid,
+        patch={"y": [2]},
     )
+    await hub.take_turn(_proposal_event_for(delta, purpose))
+
     obs = hub.librarian.get_cto(turn_id).observations["p"]
     keys = [o["key"] for o in obs]
     assert "x" in keys
@@ -487,26 +527,32 @@ async def test_merge_delta_namespaces_are_isolated(hub, session_id, minimal_cont
         content_profile="conversation",
         content=minimal_content,
     )
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="purpose_a",
-            purpose_id=uuid4(),
-            patch={"score": [0.9]},
-        )
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name="purpose_a",
+        purpose_id=purpose.id,
+        patch={"score": [0.9]},
     )
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="purpose_b",
-            purpose_id=uuid4(),
-            patch={"score": [0.1]},
-        )
+    await hub.take_turn(_proposal_event_for(delta, purpose))
+
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name="purpose_b",
+        purpose_id=purpose.id,
+        patch={"score": [0.1]},
     )
+    await hub.take_turn(_proposal_event_for(delta, purpose))
+
     obs = hub.librarian.get_cto(turn_id).observations
     assert "purpose_a" in obs
     assert "purpose_b" in obs
@@ -523,16 +569,18 @@ async def test_merge_delta_emits_delta_merged_event(hub, session_id, minimal_con
         content=minimal_content,
     )
     p.received.clear()  # ignore the cto_created event
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": ["v"]},
-        )
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": ["v"]},
     )
+    await hub.take_turn(_proposal_event_for(delta, purpose))
     assert len(p.received) == 1
     assert p.received[0].event_type == HubEventType.DELTA_MERGED
 
@@ -549,17 +597,19 @@ async def test_merge_delta_event_payload_contains_cto_index(
         content=minimal_content,
     )
     p.received.clear()
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": ["v"]},
-        )
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": ["v"]},
     )
-    payload = p.received[0].payload
+    await hub.take_turn(_proposal_event_for(delta, purpose))
+    payload = p.received[0].payload.as_dict()
     assert "cto_index" in payload
     assert payload["cto_index"]["turn_id"] == str(turn_id)
 
@@ -577,54 +627,64 @@ async def test_merge_delta_payload_has_no_stale_delta_field(
         content=minimal_content,
     )
     p.received.clear()
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": ["v"]},
-        )
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": ["v"]},
     )
-    assert "stale_delta" not in p.received[0].payload
+    await hub.take_turn(_proposal_event_for(delta, purpose))
+    payload = p.received[0].payload.as_dict()
+    assert "stale_delta" not in payload
 
 
 @pytest.mark.asyncio
 async def test_merge_delta_unknown_turn_id_raises(hub, session_id):
-    with pytest.raises(KeyError):
-        await hub.merge_delta(
-            Delta(
-                delta_id=uuid4(),
-                session_id=session_id,
-                turn_id=uuid4(),
-                purpose_name="p",
-                purpose_id=uuid4(),
-                patch={"x": ["v"]},
-            )
-        )
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=uuid4(),
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": ["v"]},
+    )
+
+    with pytest.raises(KeyError, match="_merge_delta: unknown turn_id"):
+        await hub.take_turn(_proposal_event_for(delta, purpose))
 
 
 @pytest.mark.asyncio
 async def test_merge_delta_non_list_patch_value_raises(
     hub, session_id, minimal_content
 ):
+    purpose = NamedPurpose("p")
+    await hub.start_purpose(purpose)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
         content=minimal_content,
     )
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"bad": "not_a_list"},
+    )
+
     with pytest.raises(ValueError, match="must be a list"):
-        await hub.merge_delta(
-            Delta(
-                delta_id=uuid4(),
-                session_id=session_id,
-                turn_id=turn_id,
-                purpose_name="p",
-                purpose_id=uuid4(),
-                patch={"bad": "not_a_list"},
-            )
-        )
+        await hub.take_turn(_proposal_event_for(delta, purpose))
 
 
 # ---------------------------------------------------------------------------
@@ -651,6 +711,9 @@ async def test_multicast_stamps_correct_token_per_recipient(
     assert p1.received[0].hub_token == p1.token
     assert p2.received[0].hub_token == p2.token
     assert p1.received[0].hub_token != p2.received[0].hub_token
+    assert p1.received[0].downlink_signature == p1.downlink_signature
+    assert p2.received[0].downlink_signature == p2.downlink_signature
+    assert p1.received[0].downlink_signature != p2.received[0].downlink_signature
 
 
 @pytest.mark.asyncio

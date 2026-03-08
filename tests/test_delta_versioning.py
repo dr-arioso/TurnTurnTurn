@@ -30,7 +30,26 @@ from uuid import UUID, uuid4
 import pytest
 from conftest import RecordingPurpose
 
-from turnturnturn import CTO, CTOIndex, Delta
+from turnturnturn import CTO, Delta
+from turnturnturn.cto import CTOIndex
+from turnturnturn.events import (
+    DeltaProposalEvent,
+    DeltaProposalPayload,
+    PurposeEventType,
+)
+
+
+def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
+    return DeltaProposalEvent(
+        event_type=PurposeEventType.DELTA_PROPOSAL,
+        event_id=uuid4(),
+        created_at_ms=0,
+        purpose_id=purpose.id,
+        purpose_name=purpose.name,
+        hub_token=purpose.token,
+        payload=DeltaProposalPayload(delta=delta),
+    )
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -132,7 +151,7 @@ async def test_cto_index_in_event_payload_carries_last_event_id(
     )
 
     cto = hub.librarian.get_cto(turn_id)
-    payload_index = p.received[0].payload["cto_index"]
+    payload_index = p.received[0].payload.as_dict()["cto_index"]
     assert payload_index["last_event_id"] == str(cto.last_event_id)
 
 
@@ -168,6 +187,9 @@ def test_cto_index_last_event_id_uuid_serialises_as_string():
 
 @pytest.mark.asyncio
 async def test_merge_delta_updates_last_event_id(hub, session_id, minimal_content):
+    purpose = RecordingPurpose()
+    await hub.start_purpose(purpose)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -175,16 +197,16 @@ async def test_merge_delta_updates_last_event_id(hub, session_id, minimal_conten
     )
     original_last_event_id = hub.librarian.get_cto(turn_id).last_event_id
 
-    event_id = await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": [1]},
-        )
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": [1]},
     )
+
+    event_id = await hub.take_turn(_proposal_event_for(delta, purpose))
 
     updated_cto = hub.librarian.get_cto(turn_id)
     assert updated_cto.last_event_id == event_id
@@ -206,16 +228,16 @@ async def test_merge_delta_last_event_id_matches_emitted_event_id(
     )
     p.received.clear()
 
-    returned_event_id = await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": [1]},
-        )
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=p.name,
+        purpose_id=p.id,
+        patch={"x": [1]},
     )
+
+    returned_event_id = await hub.take_turn(_proposal_event_for(delta, p))
 
     emitted_event_id = p.received[0].event_id
     assert returned_event_id == emitted_event_id
@@ -226,33 +248,34 @@ async def test_merge_delta_last_event_id_matches_emitted_event_id(
 async def test_consecutive_merges_each_advance_last_event_id(
     hub, session_id, minimal_content
 ):
+    purpose = RecordingPurpose()
+    await hub.start_purpose(purpose)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
         content=minimal_content,
     )
-    pid = uuid4()
 
-    eid1 = await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=pid,
-            patch={"x": [1]},
-        )
+    d1 = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": [1]},
     )
-    eid2 = await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=pid,
-            patch={"x": [2]},
-        )
+    d2 = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"x": [2]},
     )
+
+    eid1 = await hub.take_turn(_proposal_event_for(d1, purpose))
+    eid2 = await hub.take_turn(_proposal_event_for(d2, purpose))
 
     assert eid1 != eid2
     assert hub.librarian.get_cto(turn_id).last_event_id == eid2
@@ -354,19 +377,19 @@ async def test_based_on_event_id_carried_in_delta_merged_payload(
     current_last_event_id = hub.librarian.get_cto(turn_id).last_event_id
     p.received.clear()
 
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": [1]},
-            based_on_event_id=current_last_event_id,
-        )
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=p.name,
+        purpose_id=p.id,
+        patch={"x": [1]},
+        based_on_event_id=current_last_event_id,
     )
 
-    delta_in_payload = p.received[0].payload["delta"]
+    await hub.take_turn(_proposal_event_for(delta, p))
+
+    delta_in_payload = p.received[0].payload.as_dict()["delta"]
     assert delta_in_payload["based_on_event_id"] == str(current_last_event_id)
 
 
@@ -375,6 +398,14 @@ async def test_merge_succeeds_regardless_of_based_on_event_id(
     hub, session_id, minimal_content
 ):
     """based_on_event_id is provenance only — any value (including stale) is merged."""
+    first = RecordingPurpose()
+    first.name = "first"
+    await hub.start_purpose(first)
+
+    second = RecordingPurpose()
+    second.name = "second"
+    await hub.start_purpose(second)
+
     turn_id = await hub.start_turn(
         session_id=session_id,
         content_profile="conversation",
@@ -382,32 +413,27 @@ async def test_merge_succeeds_regardless_of_based_on_event_id(
     )
     original_event_id = hub.librarian.get_cto(turn_id).last_event_id
 
-    # Advance CTO state past the original event_id
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="first",
-            purpose_id=uuid4(),
-            patch={"x": [1]},
-            based_on_event_id=original_event_id,
-        )
+    d1 = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=first.name,
+        purpose_id=first.id,
+        patch={"x": [1]},
+        based_on_event_id=original_event_id,
     )
+    await hub.take_turn(_proposal_event_for(d1, first))
 
-    # Propose a second Delta still referencing the now-superseded event_id.
-    # The hub must merge it without raising — no conflict rejection.
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="second",
-            purpose_id=uuid4(),
-            patch={"y": [2]},
-            based_on_event_id=original_event_id,  # superseded, but provenance only
-        )
+    d2 = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=second.name,
+        purpose_id=second.id,
+        patch={"y": [2]},
+        based_on_event_id=original_event_id,
     )
+    await hub.take_turn(_proposal_event_for(d2, second))
 
     obs = hub.librarian.get_cto(turn_id).observations
     assert "first" in obs
@@ -429,15 +455,15 @@ async def test_delta_merged_payload_has_no_stale_delta_field(
     )
     p.received.clear()
 
-    await hub.merge_delta(
-        Delta(
-            delta_id=uuid4(),
-            session_id=session_id,
-            turn_id=turn_id,
-            purpose_name="p",
-            purpose_id=uuid4(),
-            patch={"x": [1]},
-        )
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=p.name,
+        purpose_id=p.id,
+        patch={"x": [1]},
     )
+    await hub.take_turn(_proposal_event_for(delta, p))
 
-    assert "stale_delta" not in p.received[0].payload
+    payload = p.received[0].payload.as_dict()
+    assert "stale_delta" not in payload

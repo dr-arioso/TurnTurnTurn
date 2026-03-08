@@ -7,16 +7,45 @@ import hmac
 import secrets
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
+
+from turnturnturn.errors import UnauthorizedDispatchError
+from turnturnturn.events.purpose_events import DeltaProposalPayload
 
 from .base_purpose import BasePurpose
 from .cto import CTO
 from .delta import Delta
-from .events import CTOCreatedPayload, DeltaMergedPayload, HubEvent, HubEventType
+from .errors import UnknownEventTypeError
+from .events import (
+    CTOCreatedPayload,
+    DeltaMergedPayload,
+    HubEvent,
+    HubEventType,
+    PurposeEventType,
+)
 from .profile import ProfileRegistry
-from .protocols import PurposeProtocol
+from .protocols import EventPayloadProtocol, PurposeEventProtocol, PurposeProtocol
 from .registry import PurposeRegistration
+
+# ---------------------------------------------------------------------------
+# Hub event policy
+#
+# Determines which Purpose-authored events trigger built-in hub action.
+# All events still pass through the hub substrate path.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _EventPolicy:
+    handler: str | None = None
+
+
+_EVENT_POLICY: dict[PurposeEventType, _EventPolicy] = {
+    PurposeEventType.DELTA_PROPOSAL: _EventPolicy(handler="_handle_delta_proposal"),
+    PurposeEventType.PURPOSE_COMPLETED: _EventPolicy(handler=None),
+}
+
 
 """
 CTO creation boundary:
@@ -148,9 +177,8 @@ class TTT:
         """
         Derive a per-hub-instance, per-Purpose downlink signature.
 
-        This is an anti-bypass / route-integrity check. It is intended to
-        catch local architectural violations, not to provide adversarial
-        cryptographic security guarantees.
+        This is an anti-bypass / route-integrity check, not a claim of
+        adversarial cryptographic security.
         """
         message = f"{token}:{purpose_id}".encode("utf-8")
         return hmac.new(
@@ -159,6 +187,21 @@ class TTT:
             hashlib.sha256,
         ).hexdigest()
 
+    def _resolve_registration_for_token(self, token: str) -> PurposeRegistration:
+        """
+        Resolve a registration from a hub-issued ingress token.
+
+        Raises:
+            UnauthorizedDispatchError: If the token does not resolve to
+                exactly one current registration.
+        """
+        matches = [reg for reg in self.registrations.values() if reg.token == token]
+        if len(matches) != 1:
+            raise UnauthorizedDispatchError(
+                "Purpose-originated event rejected — invalid hub token."
+            )
+        return matches[0]
+
     async def start_purpose(
         self,
         purpose: PurposeProtocol,
@@ -166,34 +209,22 @@ class TTT:
         subscriptions: list[dict[str, Any]] | None = None,
     ) -> None:
         """
-        Bootstrap a Purpose into the hub and assign its hub token.
+        Bootstrap a Purpose into the hub and assign its route credentials.
 
-        start_purpose() is a bootstrap method: it stands outside the event
-        model because no token exists until the Purpose is registered, so no
-        authenticated event can represent this act.
+        start_purpose() stands outside the event model because no authenticated
+        ingress event can exist until the Purpose has been registered.
 
-        After registration, the Purpose will receive HubEvents via take_turn()
-        on each multicast. Re-registering an existing purpose.id overwrites
-        the prior registration and issues a new token.
+        BasePurpose instances receive two hub-issued credentials:
 
-        If the Purpose is a BasePurpose instance, a cryptographically random
-        token is generated and assigned via _assign_token(). This token is
-        embedded in every HubEvent dispatched to that Purpose, allowing
-        BasePurpose.take_turn() to reject events from any other source.
+        - token: authenticates Purpose -> hub communication
+        - downlink_signature: verifies hub -> Purpose downlink routing
 
-        Purposes that are not BasePurpose subclasses (e.g. test doubles
-        implementing PurposeProtocol directly) are registered without token
-        assignment — they receive events without validation.
-
-        Args:
-            purpose: The Purpose instance to register. Must satisfy PurposeProtocol.
-            subscriptions: Event filter hints for future subscription matching.
-                Currently unused in v0 — all registered Purposes receive all
-                events. Will be enforced once the DAG/subscription layer lands.
+        Raw PurposeProtocol implementors may still be registered for tests, but
+        they do not participate in BasePurpose route validation.
         """
-        # v0: in-memory registry only. Later: emit PURPOSE_STARTED, persist, auth.
         token: str | None = None
         downlink_signature: str | None = None
+
         if isinstance(purpose, BasePurpose):
             token = secrets.token_hex(16)
             downlink_signature = self._build_downlink_signature(token, purpose.id)
@@ -296,57 +327,105 @@ class TTT:
         # v0: no DAG yet; dispatch is "all registered purposes for this event"
         return cto.turn_id
 
-    async def merge_delta(self, delta: Delta) -> UUID:
+    def _validate_purpose_event(
+        self, event: PurposeEventProtocol
+    ) -> tuple[PurposeRegistration, EventPayloadProtocol]:
         """
-        Validate and merge a purpose-proposed Delta into canonical CTO state.
+        Validate a Purpose-originated event and return its registration and payload.
 
-        The hub is the sole authority for writing to canonical state. Purposes
-        propose changes via Deltas; this method decides what becomes canonical.
+        Validation rules:
+          1. hub_token resolves to exactly one current registration
+          2. purpose_id matches that registration
+          3. purpose_name matches that registration
+          4. payload satisfies the EventPayloadProtocol serialization contract
+        """
+        reg = self._resolve_registration_for_token(event.hub_token)
 
-        Merge semantics are append-only: each key in delta.patch is treated as
-        a list of observations to append to the CTO's observation namespace
-        owned by the proposing Purpose (keyed by purpose_name). Values must be
-        lists — the hub extends the existing list, never replaces it.
+        if event.purpose_id != reg.purpose.id:
+            raise UnauthorizedDispatchError(
+                "Purpose-originated event rejected — purpose_id does not match "
+                "the registration resolved from hub_token."
+            )
 
-        based_on_event_id on the Delta is provenance: it records which CTO
-        state the proposing Purpose was reading when it decided to propose the
-        change. Because all observations are append-only and namespace-scoped,
-        there are no destructive writes to conflict on — two Purposes proposing
-        Deltas concurrently cannot corrupt each other's work. based_on_event_id
-        answers "what did this Purpose know when it reasoned?" and is carried
-        in the delta_merged event payload for causal reconstruction and replay.
+        if event.purpose_name != reg.purpose.name:
+            raise UnauthorizedDispatchError(
+                "Purpose-originated event rejected — purpose_name does not match "
+                "the registration resolved from hub_token."
+            )
 
-        On success, the canonical CTO is updated (with last_event_id set to
-        the new delta_merged event_id) and a DELTA_MERGED event is emitted
-        and multicast to all registered Purposes.
+        payload = event.payload
+        payload_dict = payload.as_dict()
+        if not isinstance(payload_dict, dict):
+            raise TypeError(
+                "Purpose-originated event rejected — payload.as_dict() "
+                "must return a dict."
+            )
 
-        Args:
-            delta: The proposed change. Must reference a known turn_id.
+        return reg, payload
 
-        Returns:
-            The event_id of the emitted DELTA_MERGED HubEvent.
+    async def take_turn(self, event: PurposeEventProtocol) -> UUID | None:
+        """
+        Canonical ingress path for Purpose-originated events.
 
-        Raises:
-            KeyError: If delta.turn_id does not reference a known CTO.
-            ValueError: If any patch value is not a list (append-only contract).
+        The hub validates the claimed sender against the registration
+        resolved from hub_token, then consults event policy to determine
+        whether the event triggers built-in hub action.
+
+        Events without built-in handlers are still accepted and processed
+        by the hub substrate. Built-in handlers represent built-in hub behavior
+        for a subset of events; all others may still be observed by subscribers
+        or persistence layers.
+        """
+
+        reg, payload = self._validate_purpose_event(event)
+
+        event_type = PurposeEventType(event.event_type)
+        policy = _EVENT_POLICY.get(event_type)
+
+        if event_type is PurposeEventType.DELTA_PROPOSAL:
+            return await self._handle_delta_proposal(reg, payload)
+
+        if policy and policy.handler:
+            raise UnknownEventTypeError(
+                f"hub.take_turn: no built-in handler implemented for {event_type!r}"
+            )
+
+        # No built-in action — accepted but not acted upon.
+        return None
+
+    async def _handle_delta_proposal(
+        self,
+        reg: PurposeRegistration,
+        payload: EventPayloadProtocol,
+    ) -> UUID:
+        """
+        Built-in handler for DELTA_PROPOSAL Purpose events.
+        """
+
+        # At this point we know the payload must contain a Delta.
+        delta_payload = cast(DeltaProposalPayload, payload)
+        delta: Delta = delta_payload.delta
+
+        return await self._merge_delta(delta)
+
+    async def _merge_delta(self, delta: Delta) -> UUID:
+        """
+        Validate and merge a Purpose-proposed Delta into canonical CTO state.
+
+        This is a hub-internal mutation helper. Purposes submit proposals via
+        hub.take_turn(); validated input routing calls _merge_delta().
         """
         cto = self._ctos.get(delta.turn_id)
         if cto is None:
-            raise KeyError(f"merge_delta: unknown turn_id {delta.turn_id!r}")
+            raise KeyError(f"_merge_delta: unknown turn_id {delta.turn_id!r}")
 
-        # Validate patch shape: all values must be lists (append-only contract).
         for key, val in delta.patch.items():
             if not isinstance(val, list):
                 raise ValueError(
-                    f"merge_delta: patch[{key!r}] must be a list, "
+                    f"_merge_delta: patch[{key!r}] must be a list, "
                     f"got {type(val).__name__!r} — hub enforces append-only semantics"
                 )
 
-        # Build updated observations: purpose_name namespace, append-only.
-        # CTO is frozen, so we construct a new instance with updated observations.
-        # Mint the event_id before constructing the updated CTO so that
-        # last_event_id is set to the delta_merged event_id at construction,
-        # keeping the version handle and emitted event in sync.
         delta_merged_event_id = uuid4()
 
         namespace = delta.purpose_name
@@ -383,21 +462,13 @@ class TTT:
 
     async def _multicast(self, event: HubEvent) -> None:
         """
-        Broadcast a HubEvent to all registered Purposes.
+        Broadcast a hub-authored event to all registered Purposes.
 
-        Constructs a per-recipient envelope for each Purpose, stamping
-        hub_token with the token assigned to that Purpose at registration.
-        This ensures BasePurpose.take_turn() can validate that the event
-        originated from this hub and not from a point-to-point call.
-
-        Purposes registered without a token (e.g. bare PurposeProtocol
-        implementations in tests) receive the event with hub_token=None.
+        Constructs a per-recipient envelope for each Purpose, stamping both
+        hub_token and downlink_signature with the route credentials assigned
+        at registration time.
 
         v0: naive broadcast — every registered Purpose receives every event.
-
-        Later:
-          - subscription matching by event_type (+ filters)
-          - DAG eligibility gating
         """
         for reg in self.registrations.values():
             addressed = HubEvent(
@@ -408,5 +479,6 @@ class TTT:
                 turn_id=event.turn_id,
                 payload=event.payload,
                 hub_token=reg.token,
+                downlink_signature=reg.downlink_signature,
             )
             await reg.purpose.take_turn(addressed)

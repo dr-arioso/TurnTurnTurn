@@ -26,7 +26,7 @@ from turnturnturn.events.purpose_events import DeltaProposalPayload
 from .base_purpose import BasePurpose
 from .cto import CTO
 from .delta import Delta
-from .errors import UnknownEventTypeError
+from .errors import PersistenceFailureError, UnknownEventTypeError
 from .events import (
     CTOCreatedPayload,
     DeltaMergedPayload,
@@ -672,14 +672,43 @@ class TTT:
 
     async def _multicast(self, event: HubEvent) -> None:
         """
-        Broadcast a hub-authored event to all registered Purposes.
+        Deliver a hub-authored event: persistence first, then broadcast.
 
-        Constructs a per-recipient envelope for each Purpose, stamping both
-        hub_token and downlink_signature with the route credentials assigned
-        at registration time.
+        Phase 1 — Persistence (unconditional):
+            If a persistence Purpose is registered, write_event() is called
+            before any domain Purpose receives the event. Failure raises
+            PersistenceFailureError and halts delivery — no domain Purpose
+            receives an event that was not persisted.
 
-        v0: naive broadcast — every registered Purpose receives every event.
+        Phase 2 — Broadcast (domain Purposes):
+            Each registered domain Purpose receives a per-recipient envelope
+            stamped with its own hub_token and downlink_signature.
+
+        v0: naive broadcast to all registered Purposes — no subscription
+        filtering or DAG eligibility gating yet.
         """
+        # Phase 1: persistence write before any domain delivery.
+        if self.persistence_purpose is not None:
+            p = self.persistence_purpose
+            try:
+                await p.write_event(event)
+            except Exception as exc:
+                _logger.critical(
+                    "persistence write failed: persister=%r event_id=%s event_type=%s — "
+                    "halting delivery (no domain Purpose will receive this event)",
+                    p.name,
+                    event.event_id,
+                    event.event_type,
+                    exc_info=exc,
+                )
+                raise PersistenceFailureError(
+                    f"Persistence write failed for event {event.event_id} "
+                    f"(persister={p.name!r}): {exc}",
+                    persister_name=p.name,
+                    event_id=event.event_id,
+                ) from exc
+
+        # Phase 2: per-recipient broadcast to domain Purposes.
         for reg in self.registrations.values():
             addressed = HubEvent(
                 event_type=event.event_type,

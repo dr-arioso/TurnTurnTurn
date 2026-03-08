@@ -5,6 +5,7 @@ from .cto import CTO
 from .delta import Delta
 from .errors import (
     InvalidDownlinkSignatureError,
+    PersistenceFailureError,
     TTTError,
     UnauthorizedDispatchError,
     UnboundPurposeError,
@@ -55,4 +56,5 @@ __all__ = [
     "PersistencePurpose",
     "PurposeStartedPayload",
     "SessionStartPayload",
+    "PersistenceFailureError",
 ]

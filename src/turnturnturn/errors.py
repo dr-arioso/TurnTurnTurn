@@ -52,3 +52,24 @@ class UnboundPurposeError(TTTError):
     been assigned by a hub. Register the Purpose with ttt.start_purpose()
     before use.
     """
+
+
+class PersistenceFailureError(TTTError):
+    """
+    Raised when the persistence Purpose's write_event() fails during multicast.
+
+    The hub treats persistence failure as fatal for the affected event — no
+    domain Purposes receive the event if the persistence write does not
+    complete successfully. This enforces the invariant that every event
+    reaches a durable sink before any other routing.
+
+    Attributes:
+        persister_name: The name of the persistence Purpose that failed.
+        event_id: The event_id of the event that could not be persisted.
+    """
+
+    def __init__(self, message: str, *, persister_name: str, event_id: object) -> None:
+        """Initialise with a message and structured failure context."""
+        super().__init__(message)
+        self.persister_name = persister_name
+        self.event_id = event_id

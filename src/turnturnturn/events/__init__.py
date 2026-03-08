@@ -6,6 +6,8 @@ from .hub_events import (
     EmptyPayload,
     HubEvent,
     HubEventType,
+    PurposeStartedPayload,
+    SessionStartPayload,
 )
 from .purpose_events import DeltaProposalEvent, DeltaProposalPayload, PurposeEventType
 
@@ -18,4 +20,6 @@ __all__ = [
     "HubEvent",
     "HubEventType",
     "PurposeEventType",
+    "PurposeStartedPayload",
+    "SessionStartPayload",
 ]

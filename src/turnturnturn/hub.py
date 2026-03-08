@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import importlib.metadata
 import logging
 import secrets
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, cast
 from uuid import UUID, uuid4
@@ -31,9 +33,16 @@ from .events import (
     HubEvent,
     HubEventType,
     PurposeEventType,
+    PurposeStartedPayload,
+    SessionStartPayload,
 )
 from .profile import ProfileRegistry
-from .protocols import EventPayloadProtocol, PurposeEventProtocol, PurposeProtocol
+from .protocols import (
+    CTOPersistencePurposeProtocol,
+    EventPayloadProtocol,
+    PurposeEventProtocol,
+    PurposeProtocol,
+)
 from .registry import PurposeRegistration
 
 # ---------------------------------------------------------------------------
@@ -140,6 +149,8 @@ class TTT:
             validation.
         strict_profiles: When True, unknown content keys are rejected at
             start_turn() time for all profiles.
+        hub_id: Unique identifier for this hub instance. Recorded in the
+            session_started event for audit and replay provenance.
         librarian: The read interface for canonical CTO state. Purposes
             call ttt.librarian.get_cto(turn_id) when they need full CTO
             content or observations beyond what CTOIndex carries.
@@ -147,6 +158,10 @@ class TTT:
 
     registrations: dict[UUID, PurposeRegistration]
     strict_profiles: bool = False
+    hub_id: UUID = field(default_factory=uuid4)
+    persistence_purpose: CTOPersistencePurposeProtocol | None = field(
+        default=None, repr=False
+    )
     _session_contexts: dict[UUID, dict[str, Any]] = field(
         default_factory=dict, init=False, repr=False
     )
@@ -164,31 +179,132 @@ class TTT:
     @classmethod
     def start(
         cls,
+        persistence_purpose: CTOPersistencePurposeProtocol,
         *,
         strict_profiles: bool = False,
     ) -> "TTT":
         """
         Start a new TTT hub and ensure built-in profiles are loaded.
 
+        persistence_purpose is a required positional argument. The hub will
+        not start without a registered persistence backend. This enforces the
+        architectural invariant that every event reaches a durable sink before
+        any other routing.
+
+        Emits session_started directly to the persistence Purpose as its
+        first act — before any other registration or dispatch. This event
+        is the first record in the event log and carries hub provenance
+        (hub_id, ttt_version, persister identity, is_durable).
+
+        A UserWarning is issued if persistence_purpose.is_durable is False.
+        Non-durable backends (e.g. InMemoryPersistencePurpose) are valid
+        for development but should not be used in production.
+
         Calls ProfileRegistry.load_defaults() to register built-in profiles
         if not already present. Safe to call multiple times in the same process.
 
-        Note: This signature is temporary. A subsequent commit (v0.19
-        persistence architecture) will require a CTOPersistencePurposeProtocol
-        instance as a mandatory argument.
-
         Args:
+            persistence_purpose: A CTOPersistencePurposeProtocol implementor.
+                Must be provided; there is no default.
             strict_profiles: If True, enforce strict key validation on all
                 profiles at start_turn() time.
 
         Returns:
             A new TTT hub instance ready to accept Purposes and turns.
+
+        Raises:
+            TypeError: If persistence_purpose does not satisfy
+                CTOPersistencePurposeProtocol.
         """
+        if not isinstance(persistence_purpose, CTOPersistencePurposeProtocol):
+            raise TypeError(
+                "TTT.start() requires a CTOPersistencePurposeProtocol instance; "
+                f"got {type(persistence_purpose)!r}. "
+                "Pass an InMemoryPersistencePurpose for development."
+            )
+
+        if not persistence_purpose.is_durable:
+            warnings.warn(
+                f"Persistence backend {persistence_purpose.name!r} has "
+                "is_durable=False. Events will not survive process restart. "
+                "Use a durable backend in production.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         ProfileRegistry.load_defaults()
-        return cls(
+
+        hub = cls(
             registrations={},
             strict_profiles=strict_profiles,
+            persistence_purpose=persistence_purpose,
         )
+        # Bootstrap the persister: assign credentials, emit session_started.
+        # This is synchronous because start() is a classmethod and no event
+        # loop is available at this point. The persister's write_event() is
+        # called via a synchronous shim for this one bootstrap event only.
+        hub._bootstrap_persister()
+        return hub
+
+    def _bootstrap_persister(self) -> None:
+        """
+        Assign route credentials to the persistence Purpose and emit session_started.
+
+        Called once by TTT.start() before any other registration or dispatch.
+        The session_started event is written directly to the persister — it is
+        never multicast and predates the event mesh.
+
+        This method is synchronous because TTT.start() is a classmethod with
+        no event loop. The persister's write_event() is called via
+        asyncio.get_event_loop().run_until_complete() only for this bootstrap
+        event; all subsequent writes go through the normal async path.
+        """
+        import asyncio
+
+        p = self.persistence_purpose
+        assert p is not None  # invariant: called only from start()
+
+        if isinstance(p, BasePurpose):
+            token = secrets.token_hex(16)
+            downlink_signature = self._build_downlink_signature(token, p.id)
+            p._assign_token(token)
+            p._assign_downlink_signature(downlink_signature)
+
+        try:
+            ttt_version = importlib.metadata.version("turnturnturn")
+        except importlib.metadata.PackageNotFoundError:
+            ttt_version = "unknown"
+
+        event = HubEvent(
+            event_type=HubEventType.SESSION_STARTED,
+            event_id=uuid4(),
+            created_at_ms=now_ms(),
+            payload=SessionStartPayload(
+                hub_id=str(self.hub_id),
+                ttt_version=ttt_version,
+                persister_name=p.name,
+                persister_id=str(p.id),
+                persister_is_durable=p.is_durable,
+                strict_profiles=self.strict_profiles,
+                created_at_ms=now_ms(),
+            ),
+        )
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Inside an async context (e.g. pytest-asyncio) — schedule
+                # as a task. This path is only hit in tests; production
+                # callers use TTT.start() before any event loop is running.
+                # Schedule the write as a task. We cannot await here because
+                # _bootstrap_persister() is synchronous. The write will
+                # complete before the first start_purpose/start_turn because
+                # those are async and will yield to the event loop first.
+                asyncio.ensure_future(p.write_event(event))
+            else:
+                loop.run_until_complete(p.write_event(event))
+        except RuntimeError:
+            asyncio.run(p.write_event(event))
 
     def _session_context(self, session_id: UUID) -> dict[str, Any]:
         """
@@ -278,6 +394,20 @@ class TTT:
             purpose.id,
             token is not None,
         )
+
+        is_persistence = isinstance(purpose, CTOPersistencePurposeProtocol)
+        purpose_started_event = HubEvent(
+            event_type=HubEventType.PURPOSE_STARTED,
+            event_id=uuid4(),
+            created_at_ms=now_ms(),
+            payload=PurposeStartedPayload(
+                purpose_name=purpose.name,
+                purpose_id=str(purpose.id),
+                is_persistence_purpose=is_persistence,
+                created_at_ms=now_ms(),
+            ),
+        )
+        await self._multicast(purpose_started_event)
 
     async def start_turn(
         self,

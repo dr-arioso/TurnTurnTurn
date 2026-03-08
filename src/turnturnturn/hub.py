@@ -1,9 +1,17 @@
-"""TTT hub runtime — authoritative CTO creation, Delta merge, and event emission."""
+"""
+TTT hub runtime — authoritative CTO creation, Delta merge, and event emission.
+
+Internal observability uses the standard library logger ``turnturnturn.hub``.
+Configure it in the consuming application; no handlers are attached here.
+Key events logged: purpose registration (DEBUG), CTO creation (DEBUG),
+delta merge (DEBUG), auth failures (WARNING), merge errors (WARNING).
+"""
 
 from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 import time
 from dataclasses import dataclass, field
@@ -62,6 +70,11 @@ start_turn(session_id, content_profile, content, ...)
 def now_ms() -> int:
     """Return current Unix time in milliseconds. Used for CTO and event timestamps."""
     return int(time.time() * 1000)
+
+
+_logger = logging.getLogger("turnturnturn.hub")
+# Configure via standard logging — e.g. logging.getLogger("turnturnturn.hub").setLevel(logging.DEBUG)
+# No handlers are attached here; the consuming application owns handler configuration.
 
 
 @dataclass
@@ -209,10 +222,15 @@ class TTT:
 
         Raises:
             UnauthorizedDispatchError: If the token does not resolve to
-                exactly one current registration.
+                exactly one current registration. Logged at WARNING before
+                raising.
         """
         matches = [reg for reg in self.registrations.values() if reg.token == token]
         if len(matches) != 1:
+            _logger.warning(
+                "hub token not resolved: %d matching registrations (expected 1)",
+                len(matches),
+            )
             raise UnauthorizedDispatchError(
                 "Purpose-originated event rejected — invalid hub token."
             )
@@ -253,6 +271,12 @@ class TTT:
             token=token,
             downlink_signature=downlink_signature,
             subscriptions=subs,
+        )
+        _logger.debug(
+            "purpose registered: name=%r id=%s token_assigned=%s",
+            purpose.name,
+            purpose.id,
+            token is not None,
         )
 
     async def start_turn(
@@ -326,6 +350,12 @@ class TTT:
             last_event_id=cto_created_event_id,
         )
         self._ctos[cto.turn_id] = cto
+        _logger.debug(
+            "CTO created: turn_id=%s session_id=%s profile=%s",
+            cto.turn_id,
+            cto.session_id,
+            content_profile,
+        )
 
         event = HubEvent(
             event_type=HubEventType.CTO_CREATED,
@@ -358,12 +388,26 @@ class TTT:
         reg = self._resolve_registration_for_token(event.hub_token)
 
         if event.purpose_id != reg.purpose.id:
+            _logger.warning(
+                "purpose event rejected: purpose_id mismatch "
+                "(event=%s registered=%s event_type=%s)",
+                event.purpose_id,
+                reg.purpose.id,
+                event.event_type,
+            )
             raise UnauthorizedDispatchError(
                 "Purpose-originated event rejected — purpose_id does not match "
                 "the registration resolved from hub_token."
             )
 
         if event.purpose_name != reg.purpose.name:
+            _logger.warning(
+                "purpose event rejected: purpose_name mismatch "
+                "(event=%r registered=%r event_type=%s)",
+                event.purpose_name,
+                reg.purpose.name,
+                event.event_type,
+            )
             raise UnauthorizedDispatchError(
                 "Purpose-originated event rejected — purpose_name does not match "
                 "the registration resolved from hub_token."
@@ -433,10 +477,24 @@ class TTT:
         """
         cto = self._ctos.get(delta.turn_id)
         if cto is None:
+            _logger.warning(
+                "_merge_delta: unknown turn_id %r (purpose=%r delta_id=%s)",
+                delta.turn_id,
+                delta.purpose_name,
+                delta.delta_id,
+            )
             raise KeyError(f"_merge_delta: unknown turn_id {delta.turn_id!r}")
 
         for key, val in delta.patch.items():
             if not isinstance(val, list):
+                _logger.warning(
+                    "_merge_delta: non-list patch value rejected "
+                    "(key=%r type=%s purpose=%r turn_id=%s)",
+                    key,
+                    type(val).__name__,
+                    delta.purpose_name,
+                    delta.turn_id,
+                )
                 raise ValueError(
                     f"_merge_delta: patch[{key!r}] must be a list, "
                     f"got {type(val).__name__!r} — hub enforces append-only semantics"
@@ -461,6 +519,12 @@ class TTT:
             last_event_id=delta_merged_event_id,
         )
         self._ctos[updated_cto.turn_id] = updated_cto
+        _logger.debug(
+            "delta merged: turn_id=%s purpose=%r last_event_id=%s",
+            updated_cto.turn_id,
+            delta.purpose_name,
+            updated_cto.last_event_id,
+        )
 
         event = HubEvent(
             event_type=HubEventType.DELTA_MERGED,

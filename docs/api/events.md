@@ -1,22 +1,57 @@
 # Events
 
-HubEvents are the authoritative record of what TTT has made true. The event
-stream is the primary provenance surface — the canonical answer to "who
-contributed what, when" comes from replaying events, not from in-memory state.
+TTT has one event substrate with two authorship categories:
+
+- **Hub-authored events** describe facts the hub has made true
+- **Purpose-authored events** are submitted to the hub for validation,
+  persistence/routing, and optional built-in hub action
+
+All event payloads implement `EventPayloadProtocol` and serialize through
+`.as_dict()`.
 
 ## Event types
 
-| Event | When emitted |
-| ----- | ------------ |
-| `cto_created` | A new CTO now exists and is canonical. |
-| `delta_merged` | TTT has accepted and merged a Delta. |
-| `purpose_registered` | TTT has accepted a Purpose registration. |
-| `purpose_completed` | A Purpose has completed a unit of work for a CTO. |
+## Hub-authored event types
+
+| Event | Meaning |
+| ----- | ------- |
+| `cto_created` | A new canonical CTO now exists. |
+| `delta_merged` | The hub accepted and merged a Delta into canonical state. |
+| `purpose_started` | The hub has registered and started a Purpose. |
+
+## Purpose-authored event types
+
+| Event | Meaning |
+| ----- | ------- |
+| `delta_proposal` | A Purpose proposes a Delta for authoritative merge. |
+| `purpose_completed` | A Purpose reports completion and may trigger built-in hub behavior in future policy. |
+
+## Payload classes
+
+Hub-authored payloads include:
+
+- `CTOCreatedPayload`
+- `DeltaMergedPayload`
+- `EmptyPayload`
+
+Purpose-authored payloads currently include:
+
+- `DeltaProposalPayload`
 
 ## Reference
 
 ::: turnturnturn.events.HubEventType
 
+::: turnturnturn.events.PurposeEventType
+
 ::: turnturnturn.events.HubEvent
 
-::: turnturnturn.events.payload_cto_created
+::: turnturnturn.events.DeltaProposalEvent
+
+::: turnturnturn.events.CTOCreatedPayload
+
+::: turnturnturn.events.DeltaMergedPayload
+
+::: turnturnturn.events.DeltaProposalPayload
+
+::: turnturnturn.events.EmptyPayload

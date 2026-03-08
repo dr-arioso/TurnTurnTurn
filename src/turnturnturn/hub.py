@@ -24,7 +24,6 @@ from .events import (
     HubEventType,
     PurposeEventType,
 )
-from .historian import HistorianProtocol
 from .profile import ProfileRegistry
 from .protocols import EventPayloadProtocol, PurposeEventProtocol, PurposeProtocol
 from .registry import PurposeRegistration
@@ -123,6 +122,11 @@ class TTT:
     ordinals for label defaults) without leaking domain knowledge into the hub.
 
     Attributes:
+        registrations: Registry of all non-persistence Purposes, keyed by
+            purpose.id. Consulted for multicast delivery and take_turn()
+            validation.
+        strict_profiles: When True, unknown content keys are rejected at
+            start_turn() time for all profiles.
         librarian: The read interface for canonical CTO state. Purposes
             call ttt.librarian.get_cto(turn_id) when they need full CTO
             content or observations beyond what CTOIndex carries.
@@ -130,7 +134,6 @@ class TTT:
 
     registrations: dict[UUID, PurposeRegistration]
     strict_profiles: bool = False
-    historian: HistorianProtocol | None = None
     _session_contexts: dict[UUID, dict[str, Any]] = field(
         default_factory=dict, init=False, repr=False
     )
@@ -145,33 +148,21 @@ class TTT:
         """Wire the librarian to the hub's CTO store after dataclass init."""
         self.librarian = Librarian(_ctos=self._ctos)
 
-    async def _record_hub_event(self, event: HubEvent) -> None:
-        """Forward a hub-authored event to the historian if one is configured."""
-        if self.historian is not None:
-            await self.historian.record_hub_event(event)
-
-    async def _record_purpose_event(self, event: PurposeEventProtocol) -> None:
-        """Forward an accepted Purpose-originated event to the historian."""
-        if self.historian is not None:
-            await self.historian.record_purpose_event(event)
-
-    async def _record_cto_snapshot(self, cto: CTO) -> None:
-        """Forward canonical CTO state to the historian if configured."""
-        if self.historian is not None:
-            await self.historian.record_cto_snapshot(cto)
-
     @classmethod
     def start(
         cls,
         *,
         strict_profiles: bool = False,
-        historian: HistorianProtocol | None = None,
     ) -> "TTT":
         """
         Start a new TTT hub and ensure built-in profiles are loaded.
 
         Calls ProfileRegistry.load_defaults() to register built-in profiles
         if not already present. Safe to call multiple times in the same process.
+
+        Note: This signature is temporary. A subsequent commit (v0.19
+        persistence architecture) will require a CTOPersistencePurposeProtocol
+        instance as a mandatory argument.
 
         Args:
             strict_profiles: If True, enforce strict key validation on all
@@ -184,7 +175,6 @@ class TTT:
         return cls(
             registrations={},
             strict_profiles=strict_profiles,
-            historian=historian,
         )
 
     def _session_context(self, session_id: UUID) -> dict[str, Any]:
@@ -349,8 +339,6 @@ class TTT:
             ),
         )
 
-        await self._record_hub_event(event)
-        await self._record_cto_snapshot(cto)
         await self._multicast(event)
         # v0: no DAG yet; dispatch is "all registered purposes for this event"
         return cto.turn_id
@@ -406,7 +394,6 @@ class TTT:
         """
 
         reg, payload = self._validate_purpose_event(event)
-        await self._record_purpose_event(event)
 
         event_type = PurposeEventType(event.event_type)
         policy = _EVENT_POLICY.get(event_type)
@@ -486,8 +473,6 @@ class TTT:
                 cto_index=updated_cto.to_index().to_dict(),
             ),
         )
-        await self._record_hub_event(event)
-        await self._record_cto_snapshot(updated_cto)
         await self._multicast(event)
         return delta_merged_event_id
 

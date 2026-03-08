@@ -484,6 +484,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -676,6 +687,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -740,11 +762,19 @@
 
 
 <h1 id="delta">Delta<a class="headerlink" href="#delta" title="Permanent link">&para;</a></h1>
-<p>A <code>Delta</code> is a purpose-proposed change submitted to the hub for authoritative
-merge. Purposes never mutate CTO state directly — they propose, TTT decides.</p>
-<p>Deltas are append-only: TTT does not silently overwrite prior contributions.
-The <code>patch</code> field is treated as opaque by the hub; its semantics are
-owned by the proposing Purpose.</p>
+<p>A <code>Delta</code> is a Purpose-proposed change submitted to the hub for authoritative
+merge. Purposes never mutate CTO state directly — they submit
+<code>DeltaProposalEvent</code>s through <code>hub.take_turn(...)</code>, and TTT decides whether and
+how the proposal becomes canonical state.</p>
+<p>Deltas are append-only. The hub enforces that every <code>patch</code> value is a list and
+extends the proposing Purpose’s observation namespace with those values. TTT
+does not silently overwrite or delete prior observations.</p>
+<p>The <code>Delta</code> itself is the payload-level proposal object. The hub-facing event
+envelope is <code>DeltaProposalEvent</code>.</p>
+<h2 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h2>
+<p><code>based_on_event_id</code> records which canonical CTO version the proposing Purpose
+was reasoning from when it constructed the Delta. This is provenance metadata,
+not an optimistic-locking or conflict-rejection mechanism.</p>
 <h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
 
 

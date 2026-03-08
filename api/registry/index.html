@@ -568,6 +568,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#key-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -659,6 +670,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#key-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -706,9 +728,18 @@
 
 
 <h1 id="registry">Registry<a class="headerlink" href="#registry" title="Permanent link">&para;</a></h1>
-<p>The <code>PurposeRegistration</code> is the hub's internal record for each registered
-Purpose. You don't construct these directly — TTT creates them via
-<code>register_purpose()</code>.</p>
+<p><code>PurposeRegistration</code> is the hub’s internal record for each registered
+Purpose. You do not construct these directly — <code>TTT.start_purpose()</code> creates
+and stores them.</p>
+<p>A registration holds the Purpose object itself plus the hub-issued route
+credentials used for Purpose-to-hub submission and hub-to-Purpose delivery.</p>
+<h2 id="key-fields">Key fields<a class="headerlink" href="#key-fields" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>purpose</code> — the registered Purpose instance</li>
+<li><code>token</code> — hub-issued Purpose token used for authenticated submission</li>
+<li><code>downlink_signature</code> — hub-issued route-integrity token for hub-to-Purpose delivery</li>
+<li><code>subscriptions</code> — current subscription hints for future routing/DAG work</li>
+</ul>
 <h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
 
 
@@ -733,8 +764,10 @@ Purpose. You don't construct these directly — TTT creates them via
 
         <p>Hub registry record for a registered Purpose instance.</p>
 <p>Created by ttt.start_purpose() and stored in TTT.registrations,
-keyed by purpose.id. The hub consults this record at dispatch time
-to stamp hub_token onto each per-recipient HubEvent envelope.</p>
+keyed by purpose.id.</p>
+<p>The hub consults this record at dispatch time to stamp both the
+per-recipient ingress token and the per-recipient downlink signature
+onto each HubEvent envelope.</p>
 
 
 
@@ -765,27 +798,35 @@ to stamp hub_token onto each per-recipient HubEvent envelope.</p>
 <span class="normal"><a href="#__codelineno-0-28">28</a></span>
 <span class="normal"><a href="#__codelineno-0-29">29</a></span>
 <span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-11" name="__codelineno-0-11"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#__codelineno-0-34">34</a></span>
+<span class="normal"><a href="#__codelineno-0-35">35</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-11" name="__codelineno-0-11"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="k">class</span><span class="w"> </span><span class="nc">PurposeRegistration</span><span class="p">:</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14"></a><span class="sd">    Hub registry record for a registered Purpose instance.</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15"></a>
 <a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">    Created by ttt.start_purpose() and stored in TTT.registrations,</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">    keyed by purpose.id. The hub consults this record at dispatch time</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">    to stamp hub_token onto each per-recipient HubEvent envelope.</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20"></a>
-<a id="__codelineno-0-21" name="__codelineno-0-21"></a>    <span class="n">purpose</span><span class="p">:</span> <span class="n">PurposeProtocol</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>    <span class="c1"># Hub-assigned token for this registration. Matches the token assigned</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24"></a>    <span class="c1"># to the Purpose via BasePurpose._assign_token(). None for raw</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="c1"># PurposeProtocol implementors that are not BasePurpose subclasses.</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26"></a>    <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="c1"># Subscription filter hints. Currently unused in v0 — all registered</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="c1"># Purposes receive all events. Will drive subscription matching once</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="c1"># the DAG/subscription layer is implemented.</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="n">subscriptions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">    keyed by purpose.id.</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="sd">    The hub consults this record at dispatch time to stamp both the</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="sd">    per-recipient ingress token and the per-recipient downlink signature</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="sd">    onto each HubEvent envelope.</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24"></a>    <span class="n">purpose</span><span class="p">:</span> <span class="n">PurposeProtocol</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26"></a>    <span class="c1"># Hub-assigned token for Purpose -&gt; hub ingress authentication.</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27"></a>    <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28"></a>
+<a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="c1"># Hub-issued signature for hub -&gt; Purpose downlink verification.</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="n">downlink_signature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="c1"># Subscription filter hints. Currently unused in v0 — all registered</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="c1"># Purposes receive all events. Will drive subscription matching once</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="c1"># the DAG/subscription layer is implemented.</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="n">subscriptions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

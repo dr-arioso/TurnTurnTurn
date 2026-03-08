@@ -456,10 +456,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-handle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version handle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#content-profiles" class="md-nav__link">
     <span class="md-ellipsis">
       
         Content profiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ctoindex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTOIndex
       
     </span>
   </a>
@@ -505,6 +527,34 @@
     <span class="md-ellipsis">
       
         <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;to_index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#turnturnturn.cto.CTOIndex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;CTOIndex
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" CTOIndex">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#turnturnturn.cto.CTOIndex.to_dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;to_dict
       
     </span>
   </a>
@@ -698,10 +748,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-handle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version handle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#content-profiles" class="md-nav__link">
     <span class="md-ellipsis">
       
         Content profiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ctoindex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTOIndex
       
     </span>
   </a>
@@ -758,6 +830,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#turnturnturn.cto.CTOIndex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;CTOIndex
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" CTOIndex">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#turnturnturn.cto.CTOIndex.to_dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;to_dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -787,13 +887,24 @@
 <p>A <code>CTO</code> is the hub-authoritative work item created by <code>TTT.start_turn()</code>. It is
 immutable once created. Purposes read CTOs and propose changes via
 <a href="../delta/">Deltas</a> rather than mutating them directly.</p>
+<h2 id="version-handle">Version handle<a class="headerlink" href="#version-handle" title="Permanent link">&para;</a></h2>
+<p>Each <code>CTO</code> carries <code>last_event_id</code>, the event ID of the hub-authored event
+that most recently produced this canonical state (<code>cto_created</code> or
+<code>delta_merged</code>).</p>
+<p>Purposes use <code>CTOIndex.last_event_id</code> as provenance when constructing
+<a href="../delta/">Deltas</a>, typically by recording it as <code>based_on_event_id</code>.</p>
 <h2 id="content-profiles">Content profiles<a class="headerlink" href="#content-profiles" title="Permanent link">&para;</a></h2>
 <p>The <code>content_profile</code> field determines the required shape of <code>content</code>. The
 canonical example profile is <code>"conversation"</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">content_profile</span> <span class="o">=</span> <span class="s2">&quot;conversation&quot;</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">content</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">}</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">content</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">},</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">}</span>
 </code></pre></div>
 <p>Unknown profiles are accepted in v0 but must still provide a dict-like <code>content</code>.</p>
+<h2 id="ctoindex">CTOIndex<a class="headerlink" href="#ctoindex" title="Permanent link">&para;</a></h2>
+<p><code>CTOIndex</code> is the lightweight routing reference carried in hub-authored event
+payloads. It contains enough information for a Purpose to make routing decisions without loading the full CTO.</p>
+<p>Purposes that need full content or observations call
+<code>ttt.librarian.get_cto(turn_id)</code>.</p>
 <h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
 
 
@@ -1219,6 +1330,226 @@ call ttt.librarian.get_cto(turn_id).</p>
 <a id="__codelineno-0-137" name="__codelineno-0-137"></a>        <span class="n">created_at_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a>        <span class="n">last_event_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">,</span>
 <a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="turnturnturn.cto.CTOIndex" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>CTOIndex</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#turnturnturn.cto.CTOIndex" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Lightweight routing reference to a CTO.</p>
+<p>Carried in HubEvent payloads in place of the full CTO. Contains enough
+information for a Purpose to make a dispatch decision — profile type,
+identity, session — without the cost of serializing content or
+observations.</p>
+<p>Purposes that need full CTO state (content, observations, profile
+accessors) call ttt.librarian.get_cto(turn_id). ctoPersistPurpose is the canonical
+example: it receives a CTOIndex, calls get_cto(), and persists the
+full canonical state.</p>
+<p>The hub is the authority for canonical CTO state. A CTOIndex is a
+pointer, not a snapshot — it does not carry a moment-in-time copy of
+observations or content.</p>
+<p>last_event_id mirrors CTO.last_event_id at the moment the index was
+produced. Purposes use it as based_on_event_id when constructing Delta
+proposals — it records which CTO state the Purpose was reading when it
+decided to propose the change.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/turnturnturn/cto.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span>
+<span class="normal"><a href="#__codelineno-0-152">152</a></span>
+<span class="normal"><a href="#__codelineno-0-153">153</a></span>
+<span class="normal"><a href="#__codelineno-0-154">154</a></span>
+<span class="normal"><a href="#__codelineno-0-155">155</a></span>
+<span class="normal"><a href="#__codelineno-0-156">156</a></span>
+<span class="normal"><a href="#__codelineno-0-157">157</a></span>
+<span class="normal"><a href="#__codelineno-0-158">158</a></span>
+<span class="normal"><a href="#__codelineno-0-159">159</a></span>
+<span class="normal"><a href="#__codelineno-0-160">160</a></span>
+<span class="normal"><a href="#__codelineno-0-161">161</a></span>
+<span class="normal"><a href="#__codelineno-0-162">162</a></span>
+<span class="normal"><a href="#__codelineno-0-163">163</a></span>
+<span class="normal"><a href="#__codelineno-0-164">164</a></span>
+<span class="normal"><a href="#__codelineno-0-165">165</a></span>
+<span class="normal"><a href="#__codelineno-0-166">166</a></span>
+<span class="normal"><a href="#__codelineno-0-167">167</a></span>
+<span class="normal"><a href="#__codelineno-0-168">168</a></span>
+<span class="normal"><a href="#__codelineno-0-169">169</a></span>
+<span class="normal"><a href="#__codelineno-0-170">170</a></span>
+<span class="normal"><a href="#__codelineno-0-171">171</a></span>
+<span class="normal"><a href="#__codelineno-0-172">172</a></span>
+<span class="normal"><a href="#__codelineno-0-173">173</a></span>
+<span class="normal"><a href="#__codelineno-0-174">174</a></span>
+<span class="normal"><a href="#__codelineno-0-175">175</a></span>
+<span class="normal"><a href="#__codelineno-0-176">176</a></span>
+<span class="normal"><a href="#__codelineno-0-177">177</a></span>
+<span class="normal"><a href="#__codelineno-0-178">178</a></span>
+<span class="normal"><a href="#__codelineno-0-179">179</a></span>
+<span class="normal"><a href="#__codelineno-0-180">180</a></span>
+<span class="normal"><a href="#__codelineno-0-181">181</a></span>
+<span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span>
+<span class="normal"><a href="#__codelineno-0-192">192</a></span>
+<span class="normal"><a href="#__codelineno-0-193">193</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="k">class</span><span class="w"> </span><span class="nc">CTOIndex</span><span class="p">:</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">    Lightweight routing reference to a CTO.</span>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    Carried in HubEvent payloads in place of the full CTO. Contains enough</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">    information for a Purpose to make a dispatch decision — profile type,</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">    identity, session — without the cost of serializing content or</span>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">    observations.</span>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a>
+<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    Purposes that need full CTO state (content, observations, profile</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">    accessors) call ttt.librarian.get_cto(turn_id). ctoPersistPurpose is the canonical</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">    example: it receives a CTOIndex, calls get_cto(), and persists the</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a><span class="sd">    full canonical state.</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="sd">    The hub is the authority for canonical CTO state. A CTOIndex is a</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="sd">    pointer, not a snapshot — it does not carry a moment-in-time copy of</span>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">    observations or content.</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">    last_event_id mirrors CTO.last_event_id at the moment the index was</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">    produced. Purposes use it as based_on_event_id when constructing Delta</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">    proposals — it records which CTO state the Purpose was reading when it</span>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">    decided to propose the change.</span>
+<a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a>    <span class="n">turn_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-168" name="__codelineno-0-168"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="n">UUID</span>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a>
+<a id="__codelineno-0-170" name="__codelineno-0-170"></a>    <span class="c1"># {&quot;id&quot;: str, &quot;version&quot;: int} — sufficient for profile-based routing</span>
+<a id="__codelineno-0-171" name="__codelineno-0-171"></a>    <span class="c1"># decisions without loading full content.</span>
+<a id="__codelineno-0-172" name="__codelineno-0-172"></a>    <span class="n">content_profile</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<a id="__codelineno-0-173" name="__codelineno-0-173"></a>    <span class="n">created_at_ms</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-0-174" name="__codelineno-0-174"></a>
+<a id="__codelineno-0-175" name="__codelineno-0-175"></a>    <span class="c1"># Version handle mirroring CTO.last_event_id. Carried here so Purposes</span>
+<a id="__codelineno-0-176" name="__codelineno-0-176"></a>    <span class="c1"># can read the current CTO version handle directly from the event payload</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177"></a>    <span class="c1"># and record it as based_on_event_id in their Delta proposals — without</span>
+<a id="__codelineno-0-178" name="__codelineno-0-178"></a>    <span class="c1"># a separate get_cto() call just to get the version handle.</span>
+<a id="__codelineno-0-179" name="__codelineno-0-179"></a>    <span class="n">last_event_id</span><span class="p">:</span> <span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-180" name="__codelineno-0-180"></a>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">        Serialize to a JSON-safe dict for event payload embedding.</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">        UUIDs are rendered as strings, including last_event_id (None if absent). content_profile serializes as-is.</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a>        <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a>            <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a>            <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a>            <span class="s2">&quot;content_profile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a>            <span class="s2">&quot;created_at_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a>            <span class="s2">&quot;last_event_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a>        <span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="turnturnturn.cto.CTOIndex.to_dict" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">to_dict</span><span class="p">()</span></code>
+
+<a href="#turnturnturn.cto.CTOIndex.to_dict" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Serialize to a JSON-safe dict for event payload embedding.</p>
+<p>UUIDs are rendered as strings, including last_event_id (None if absent). content_profile serializes as-is.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/turnturnturn/cto.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-181">181</a></span>
+<span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span>
+<span class="normal"><a href="#__codelineno-0-192">192</a></span>
+<span class="normal"><a href="#__codelineno-0-193">193</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">    Serialize to a JSON-safe dict for event payload embedding.</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">    UUIDs are rendered as strings, including last_event_id (None if absent). content_profile serializes as-is.</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a>        <span class="s2">&quot;turn_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turn_id</span><span class="p">),</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a>        <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a>        <span class="s2">&quot;content_profile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a>        <span class="s2">&quot;created_at_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a>        <span class="s2">&quot;last_event_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_event_id</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

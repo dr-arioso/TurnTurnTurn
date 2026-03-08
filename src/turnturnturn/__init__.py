@@ -19,6 +19,7 @@ from .events import (
     HubEvent,
     HubEventType,
 )
+from .historian import HistorianProtocol, InMemoryHistorian, JsonlHistorian
 from .hub import TTT
 from .protocols import EventPayloadProtocol, EventProtocol, PurposeEventProtocol
 
@@ -42,4 +43,7 @@ __all__ = [
     "UnauthorizedDispatchError",
     "UnboundPurposeError",
     "UnknownEventTypeError",
+    "InMemoryHistorian",
+    "JsonlHistorian",
+    "HistorianProtocol",
 ]

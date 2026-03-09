@@ -12,12 +12,6 @@ from .errors import (
     UnknownEventTypeError,
 )
 from .events import (
-    CTOCreatedPayload,  # deprecated alias for CTOStartedPayload; remove in v0.21
-)
-from .events import (
-    SessionStartPayload,  # deprecated alias for SessionStartedPayload; remove in v0.21
-)
-from .events import (
     CTOCloseRequestEvent,
     CTOCloseRequestPayload,
     CTOCompletedPayload,
@@ -34,6 +28,7 @@ from .events import (
     SessionClosingPayload,
     SessionCompletedPayload,
     SessionStartedPayload,
+    SessionStartPayload,
 )
 from .hub import TTT
 from .persistence import InMemoryPersistencePurpose, PersistencePurpose
@@ -69,7 +64,6 @@ __all__ = [
     "HubEventType",
     # CTO lifecycle payloads
     "CTOStartedPayload",
-    "CTOCreatedPayload",  # deprecated alias; remove in v0.21
     "CTOCompletedPayload",
     # Delta lifecycle payloads
     "DeltaMergedPayload",

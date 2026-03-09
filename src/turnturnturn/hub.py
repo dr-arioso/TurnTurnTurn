@@ -5,6 +5,12 @@ Internal observability uses the standard library logger ``turnturnturn.hub``.
 Configure it in the consuming application; no handlers are attached here.
 Key events logged: purpose registration (DEBUG), CTO creation (DEBUG),
 delta merge (DEBUG), auth failures (WARNING), merge errors (WARNING).
+
+# TODO(future-pr): TTT.start() uses a synchronous shim (asyncio.get_event_loop /
+# run_until_complete) to write the session_started bootstrap event because start()
+# is a classmethod with no event loop. The clean fix is to make TTT.start() async
+# or to accept a pre-built event loop. Deferred until the bootstrap ergonomics are
+# revisited holistically.
 """
 
 from __future__ import annotations
@@ -21,7 +27,6 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 from turnturnturn.errors import UnauthorizedDispatchError
-from turnturnturn.events.purpose_events import DeltaProposalPayload
 
 from .base_purpose import BasePurpose
 from .cto import CTO
@@ -30,12 +35,16 @@ from .errors import PersistenceFailureError, UnknownEventTypeError
 from .events import (
     CTOStartedPayload,
     DeltaMergedPayload,
+    DeltaRejectedPayload,
     HubEvent,
     HubEventType,
     PurposeEventType,
     PurposeStartedPayload,
-    SessionStartPayload,
+    SessionClosingPayload,
+    SessionCompletedPayload,
+    SessionStartedPayload,
 )
+from .events.hub_events import DeltaProposalPayload
 from .profile import ProfileRegistry
 from .protocols import (
     CTOPersistencePurposeProtocol,
@@ -49,7 +58,8 @@ from .registry import PurposeRegistration
 # Hub event policy
 #
 # Determines which Purpose-authored events trigger built-in hub action.
-# All events still pass through the hub substrate path.
+# All events still pass through the hub substrate path regardless of whether
+# a built-in handler is registered.
 # ---------------------------------------------------------------------------
 
 
@@ -61,12 +71,15 @@ class _EventPolicy:
 _EVENT_POLICY: dict[PurposeEventType, _EventPolicy] = {
     PurposeEventType.DELTA_PROPOSAL: _EventPolicy(handler="_handle_delta_proposal"),
     PurposeEventType.PURPOSE_COMPLETED: _EventPolicy(handler=None),
+    # CTOCloseRequest is accepted but not yet acted upon. The DAG layer will
+    # implement quiescence detection and CTO_COMPLETED emission.
+    PurposeEventType.CTO_CLOSE_REQUEST: _EventPolicy(handler=None),
 }
 
 
 """
 CTO creation boundary:
-start_turn(session_id, content_profile, content, ...)
+start_turn(content_profile, content, hub_token, ...)
     -> look up Profile from ProfileRegistry
     -> validate content against profile contract
     -> apply profile defaults (profile reads/writes opaque session context)
@@ -279,7 +292,7 @@ class TTT:
             event_type=HubEventType.SESSION_STARTED,
             event_id=uuid4(),
             started_at_ms=now_ms(),
-            payload=SessionStartPayload(
+            payload=SessionStartedPayload(
                 hub_id=str(self.hub_id),
                 ttt_version=ttt_version,
                 persister_name=p.name,
@@ -296,10 +309,8 @@ class TTT:
                 # Inside an async context (e.g. pytest-asyncio) — schedule
                 # as a task. This path is only hit in tests; production
                 # callers use TTT.start() before any event loop is running.
-                # Schedule the write as a task. We cannot await here because
-                # _bootstrap_persister() is synchronous. The write will
-                # complete before the first start_purpose/start_turn because
-                # those are async and will yield to the event loop first.
+                # The write will complete before the first start_purpose/start_turn
+                # because those are async and will yield to the event loop first.
                 asyncio.ensure_future(p.write_event(event))
             else:
                 loop.run_until_complete(p.write_event(event))
@@ -357,7 +368,8 @@ class TTT:
         Resolve a registration from a hub-issued token, searching both
         domain registrations and the persistence Purpose.
 
-        Used by start_turn() to authenticate the submitting caller.
+        Used by start_turn() to authenticate the submitting caller. Any
+        registered Purpose — domain or persistence — may submit turns.
 
         Raises:
             UnauthorizedDispatchError: If the token does not resolve to
@@ -366,7 +378,7 @@ class TTT:
         # Check domain registrations first.
         matches = [reg for reg in self.registrations.values() if reg.token == token]
 
-        # Also check the persistence Purpose.
+        # Also check the persistence Purpose — it may legitimately submit turns.
         p = self.persistence_purpose
         if p is not None and isinstance(p, BasePurpose) and p.token == token:
             matches.append(
@@ -408,6 +420,10 @@ class TTT:
 
         Raw PurposeProtocol implementors may still be registered for tests, but
         they do not participate in BasePurpose route validation.
+
+        Emits purpose_started via _multicast() after registration, so all
+        previously registered Purposes (and the persistence backend) learn
+        about each new participant.
         """
         token: str | None = None
         downlink_signature: str | None = None
@@ -481,14 +497,15 @@ class TTT:
         dict. The hub passes it through without inspection — the profile owns
         its contents and may update them to maintain session-scoped state.
 
-        The CTO's content_profile field is set to {\"id\": content_profile,
-        \"version\": profile_version} — a plain serializable dict.
+        The CTO's content_profile field is set to {"id": content_profile,
+        "version": profile_version} — a plain serializable dict.
 
         Args:
             content_profile: Profile identifier string. Must be registered
                 in ProfileRegistry.
             content: Profile-conformant content dict. Copied at construction.
             hub_token: Hub-issued token of the submitting Purpose. Required.
+                Any registered Purpose (domain or persistence) may submit turns.
             session_id: The session this turn belongs to. Hub mints a UUID
                 if not provided.
             profile_version: Version of the profile to use. Defaults to 1.
@@ -556,6 +573,53 @@ class TTT:
         # v0: no DAG yet; dispatch is "all registered purposes for this event"
         return cto.turn_id
 
+    async def close(self, *, reason: str = "normal") -> None:
+        """
+        Initiate an orderly session shutdown.
+
+        Phase 1 — SESSION_CLOSING broadcast:
+            Emitted via _multicast() to all registered Purposes. Domain Purposes
+            should use this as their evacuation signal: flush in-flight state,
+            submit any final Deltas, and send PURPOSE_COMPLETED to the hub.
+
+        Phase 2 — Quiescence (v0: immediate):
+            In v0, the hub does not wait for Purposes to acknowledge the closing
+            signal before proceeding. Quiescence detection (waiting for all
+            Purposes to send PURPOSE_COMPLETED, or enforcing a timeout) is
+            deferred to the DAG layer.
+
+        Phase 3 — SESSION_COMPLETED (persistence-only):
+            Written directly to the persistence backend after domain Purposes
+            have cleared. Never multicast. This is the final record in the
+            event log.
+
+        Args:
+            reason: Human-readable shutdown reason (e.g. "normal", "timeout").
+                Recorded in the SESSION_CLOSING payload for audit consumers.
+        """
+        closing_event = HubEvent(
+            event_type=HubEventType.SESSION_CLOSING,
+            event_id=uuid4(),
+            started_at_ms=now_ms(),
+            payload=SessionClosingPayload(
+                reason=reason,
+                # timeout_ms is None in v0 — quiescence enforcement is a DAG concern.
+                timeout_ms=None,
+            ),
+        )
+        await self._multicast(closing_event)
+
+        # v0: no quiescence wait — proceed immediately to SESSION_COMPLETED.
+        # The DAG layer will introduce PURPOSE_COMPLETED tracking and timeouts.
+
+        completed_event = HubEvent(
+            event_type=HubEventType.SESSION_COMPLETED,
+            event_id=uuid4(),
+            started_at_ms=now_ms(),
+            payload=SessionCompletedPayload(is_last_out=True),
+        )
+        await self._multicast(completed_event, persistence_only=True)
+
     def _validate_purpose_event(
         self, event: PurposeEventProtocol
     ) -> tuple[PurposeRegistration, EventPayloadProtocol]:
@@ -619,7 +683,6 @@ class TTT:
         for a subset of events; all others may still be observed by subscribers
         or persistence layers.
         """
-
         reg, payload = self._validate_purpose_event(event)
 
         event_type = PurposeEventType(event.event_type)
@@ -628,12 +691,13 @@ class TTT:
         if event_type is PurposeEventType.DELTA_PROPOSAL:
             return await self._handle_delta_proposal(reg, payload)
 
-        if policy and policy.handler:
+        if policy is None:
+            # Event type is unknown to the hub — not in _EVENT_POLICY at all.
             raise UnknownEventTypeError(
-                f"hub.take_turn: no built-in handler implemented for {event_type!r}"
+                f"hub.take_turn: unrecognised event_type {event_type!r}"
             )
 
-        # No built-in action — accepted but not acted upon.
+        # Known event type with no built-in handler — accepted, no action taken.
         return None
 
     async def _handle_delta_proposal(
@@ -644,7 +708,6 @@ class TTT:
         """
         Built-in handler for DELTA_PROPOSAL Purpose events.
         """
-
         # At this point we know the payload must contain a Delta.
         delta_payload = cast(DeltaProposalPayload, payload)
         delta: Delta = delta_payload.delta
@@ -654,6 +717,9 @@ class TTT:
     async def _merge_delta(self, delta: Delta) -> UUID:
         """
         Validate and merge a Purpose-proposed Delta into canonical CTO state.
+
+        On validation failure, emits DELTA_REJECTED (for the event log) then
+        re-raises the underlying exception so callers are not silently swallowed.
 
         This is a hub-internal mutation helper. Purposes submit proposals via
         hub.take_turn(); validated input routing calls _merge_delta().
@@ -666,7 +732,9 @@ class TTT:
                 delta.purpose_name,
                 delta.delta_id,
             )
-            raise KeyError(f"_merge_delta: unknown turn_id {delta.turn_id!r}")
+            reason = f"unknown turn_id {delta.turn_id!r}"
+            await self._emit_delta_rejected(delta, reason)
+            raise KeyError(f"_merge_delta: {reason}")
 
         for key, val in delta.patch.items():
             if not isinstance(val, list):
@@ -678,10 +746,12 @@ class TTT:
                     delta.purpose_name,
                     delta.turn_id,
                 )
-                raise ValueError(
-                    f"_merge_delta: patch[{key!r}] must be a list, "
+                reason = (
+                    f"patch[{key!r}] must be a list, "
                     f"got {type(val).__name__!r} — hub enforces append-only semantics"
                 )
+                await self._emit_delta_rejected(delta, reason)
+                raise ValueError(f"_merge_delta: {reason}")
 
         delta_merged_event_id = uuid4()
 
@@ -723,7 +793,30 @@ class TTT:
         await self._multicast(event)
         return delta_merged_event_id
 
-    async def _multicast(self, event: HubEvent) -> None:
+    async def _emit_delta_rejected(self, delta: Delta, reason: str) -> None:
+        """
+        Emit a DELTA_REJECTED event for a failed merge attempt.
+
+        This is a provenance record — it does not replace the exception that
+        the caller raises after this method returns. The event is multicast
+        so that Purposes and the persistence backend both see the rejection.
+        """
+        event = HubEvent(
+            event_type=HubEventType.DELTA_REJECTED,
+            event_id=uuid4(),
+            started_at_ms=now_ms(),
+            session_id=None,
+            turn_id=delta.turn_id,
+            payload=DeltaRejectedPayload(
+                delta_dict=delta.to_dict(),
+                reason=reason,
+            ),
+        )
+        await self._multicast(event)
+
+    async def _multicast(
+        self, event: HubEvent, *, persistence_only: bool = False
+    ) -> None:
         """
         Deliver a hub-authored event: persistence first, then broadcast.
 
@@ -734,8 +827,12 @@ class TTT:
             receives an event that was not persisted.
 
         Phase 2 — Broadcast (domain Purposes):
-            Each registered domain Purpose receives a per-recipient envelope
-            stamped with its own hub_token and downlink_signature.
+            Skipped when persistence_only=True. Otherwise, each registered
+            domain Purpose receives a per-recipient envelope stamped with its
+            own hub_token and downlink_signature.
+
+        persistence_only=True is used for SESSION_COMPLETED, which is the
+        final record and must not be delivered to domain Purposes.
 
         v0: naive broadcast to all registered Purposes — no subscription
         filtering or DAG eligibility gating yet.
@@ -762,6 +859,9 @@ class TTT:
                 ) from exc
 
         # Phase 2: per-recipient broadcast to domain Purposes.
+        if persistence_only:
+            return
+
         for reg in self.registrations.values():
             addressed = HubEvent(
                 event_type=event.event_type,

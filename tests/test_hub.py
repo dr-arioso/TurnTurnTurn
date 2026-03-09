@@ -175,7 +175,7 @@ async def test_start_turn_stores_cto(hub, session_id, minimal_content, submitter
 async def test_start_turn_cto_content_profile_dict(
     hub, session_id, minimal_content, submitter
 ):
-    """content_profile on the created CTO must be {"id": ..., "version": ...}."""
+    """content_profile on the started CTO must be {"id": ..., "version": ...}."""
     turn_id = await hub.start_turn(
         "conversation",
         minimal_content,

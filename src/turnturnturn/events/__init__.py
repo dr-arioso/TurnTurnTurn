@@ -1,9 +1,6 @@
 """Public event and payload surface for hub and Purpose routing."""
 
 from .hub_events import (
-    CTOCreatedPayload,  # deprecated alias for CTOStartedPayload; remove in v0.21
-)
-from .hub_events import (
     SessionStartPayload,  # deprecated alias for SessionStartedPayload; remove in v0.21
 )
 from .hub_events import (
@@ -33,7 +30,6 @@ __all__ = [
     "HubEventType",
     # CTO lifecycle payloads
     "CTOStartedPayload",
-    "CTOCreatedPayload",  # deprecated alias; remove in v0.21
     "CTOCompletedPayload",
     # Delta lifecycle payloads
     "DeltaMergedPayload",

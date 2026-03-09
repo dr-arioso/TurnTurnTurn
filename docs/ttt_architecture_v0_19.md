@@ -1,4 +1,4 @@
-# TurnTurnTurn (TTT) — Architecture v0.18
+# TurnTurnTurn (TTT) — Architecture v0.19
 
 ## 0. Positioning
 
@@ -35,6 +35,8 @@ These are the hard commitments. Everything else in this document is mechanism de
 - Event payloads carry references, not full state snapshots.
 - `based_on_event_id` is provenance only — not conflict detection.
 - Bootstrap methods (`start_turn`, `start_purpose`) stand outside the event model by necessity, not by exception.
+- Every HubEvent reaches the persistence sink before any domain Purpose receives it.
+- The hub will not start without a registered `CTOPersistencePurposeProtocol` implementor.
 
 ## 1. Core nouns
 
@@ -64,10 +66,17 @@ event because it is the *precondition* for the event model: no CTOIndex
 exists until a CTO is created, so no well-formed event can represent this
 act.
 
-A caller invokes `ttt.start_turn(...)` with a session ID, content profile
-identifier, and content dict. TTT looks up the profile in `ProfileRegistry`,
-validates the content, applies defaults, creates a CTO, emits `cto_created`,
-and dispatches interested Purposes.
+A caller invokes `ttt.start_turn(content_profile, content, hub_token)` with
+a content profile identifier, content dict, and a hub-issued token
+identifying the submitting Purpose. `session_id` is an optional keyword
+argument; the hub mints a UUID if absent. TTT looks up the profile in
+`ProfileRegistry`, validates the content, applies defaults, creates a CTO,
+emits `cto_created`, and dispatches interested Purposes.
+
+Every `start_turn()` caller must hold a valid hub-issued token — obtained by
+registering a Purpose via `start_purpose()`. There is no anonymous ingress.
+`submitted_by_label` has been retired; attribution is always via Purpose
+identity.
 
 ### CTO
 
@@ -216,6 +225,37 @@ Planned interface (TODO):
 - Readback requests will generate `ReadbackEvent` or `RewindEvent` so the
   event stream records what was served
 
+### PersistencePurpose and CTOPersistencePurposeProtocol
+
+The persistence seam is the hub's mandatory write-ahead sink.
+
+`CTOPersistencePurposeProtocol` is a structural protocol (duck-typed) that
+any persistence backend must satisfy:
+
+- `name: str` — identifies the backend in error messages and payloads
+- `id: UUID` — instance identity
+- `is_durable: bool` — whether writes survive process restart; the hub
+  logs a `UserWarning` at startup if `False`
+- `async write_event(event: HubEvent) -> None` — called by `_multicast()`
+  before any domain Purpose receives the event; raises on failure
+
+`PersistencePurpose` is the abstract base class for production backends.
+It subclasses `BasePurpose` and `abc.ABC`, inheriting hub token validation
+and providing a default `_handle_event()` stub. Subclasses implement
+`write_event()`.
+
+`InMemoryPersistencePurpose` ships in core as a development backend
+(`is_durable=False`). It appends serialized event dicts to an in-memory
+list and deduplicates by `event_id`. Not suitable for production.
+
+The persistence Purpose is registered at `TTT.start()` time, not via
+`start_purpose()`. The hub calls `_bootstrap_persister()` immediately —
+assigning a hub token and downlink signature, emitting `session_started`
+(written to the persistence backend before any other event), and storing
+the registration outside `self.registrations` so it is not included in
+domain Purpose broadcast. Callers pass the persistence Purpose as the
+first positional argument to `TTT.start()`; omitting it raises `TypeError`.
+
 ## 2. Core principles
 
 ### 2.1 TTT is authoritative
@@ -322,7 +362,7 @@ consumer of this pattern.
 The complete public-facing API of a running TTT hub:
 
 ```
-TTT.start()                        # factory + service start
+TTT.start(persistence_purpose)     # factory + service start; persistence_purpose required
 ttt.start_turn(...)                # bootstrap a CTO into the mesh
 ttt.start_purpose(purpose)         # bootstrap a Purpose into the mesh
 ttt.take_turn(event)               # all post-bootstrap communication, both directions
@@ -332,7 +372,10 @@ ttt.librarian.get_cto(turn_id)     # point query (synchronous, in-memory)
 `ProfileRegistry` is called directly at process setup — not through the hub.
 Profiles are process-scoped metadata, hub-independent.
 
-### API clarifications for the next implementation step
+`ttt.librarian` is a named object on the hub. It is the read path for CTO
+state and will grow to support session readback queries against persistence.
+
+### API clarifications
 
 `ttt.take_turn(event)` is the canonical ingress path for Purpose-originated
 post-bootstrap events.
@@ -356,21 +399,24 @@ validation on all profiles at `start_turn()` time.
 # 1. Register any custom profiles directly on ProfileRegistry (process-scoped)
 ProfileRegistry.register(my_profile)
 
-# 2. Start the hub
-ttt = TTT.start()
+# 2. Start the hub — persistence_purpose is required
+ttt = TTT.start(MyPersistencePurpose())
 
-# 3. Start purposes — persistence/logging first, by convention
-await ttt.start_purpose(cto_persist_purpose)
+# 3. Register a submitter Purpose to obtain a hub token
+submitter = MySubmitterPurpose()
+await ttt.start_purpose(submitter)
+
+# 4. Register any additional domain Purposes
 await ttt.start_purpose(other_purpose)
 
-# 4. Begin turn processing
-await ttt.start_turn(session_id=..., content_profile="conversation", content={...})
+# 5. Begin turn processing — hub_token is required
+await ttt.start_turn("conversation", content, submitter.token)
 ```
 
-Attaching `ctoPersistPurpose` first ensures it is present and registered
-before any CTO-creating or Delta-proposing events fire. Its DAG declaration
-of `dependencies=["*"]` (see §dag) ensures it runs last regardless of
-registration order — but it must be registered before processing begins.
+The persistence Purpose is bootstrapped inside `TTT.start()` before any
+other registration or turn processing. `session_started` is the first event
+written to the persistence backend; it is not broadcast to domain Purposes.
+Every subsequent event passes through `write_event()` before domain delivery.
 
 ## 4. Minimal lifecycle
 
@@ -403,12 +449,12 @@ Example:
 
 ```python
 await ttt.start_turn(
-    session_id=...,
-    content_profile="conversation",
-    content={
+    "conversation",
+    {
         "speaker": {"id": "usr_a3f9"},
         "text": "hello",
     },
+    submitter.token,
 )
 ```
 
@@ -623,7 +669,7 @@ register the subclass. No core changes required.
 profiles at `start_turn()` time. Per-profile `strict=True` activates it for
 that profile regardless of the hub setting.
 
-## 7. Event taxonomy (v0.18)
+## 7. Event taxonomy (v0.19)
 
 ### Event model clarification
 
@@ -668,6 +714,25 @@ When the hub receives a Purpose event it validates:
 Events failing these checks are rejected with
 `UnauthorizedDispatchError`.
 
+### `session_started`
+
+The hub has initialized and the persistence backend is ready.
+
+Emitted by `_bootstrap_persister()` immediately after the persistence
+Purpose receives its hub token. Written directly to `write_event()` —
+not routed through `_multicast()`, not delivered to domain Purposes.
+This is the first event in every session's durable record.
+
+Payload includes:
+
+- `hub_id` — UUID of this hub instance
+- `ttt_version` — package version string
+- `persister_name` — `persistence_purpose.name`
+- `persister_id` — `persistence_purpose.id` as string
+- `persister_is_durable` — `persistence_purpose.is_durable`
+- `strict_profiles` — hub strict_profiles flag
+- `_schema` / `_v` metadata
+
 ### `cto_created`
 
 A new CTO now exists and is canonical.
@@ -676,8 +741,9 @@ Payload includes:
 
 - `cto_index` — `CTOIndex` dict (turn_id, session_id, content_profile,
   created_at_ms, last_event_id)
-- optional submitter attribution (`submitted_by_label`,
-  `submitted_by_purpose_id`, `submitted_by_purpose_name`)
+- submitter attribution (`submitted_by_purpose_id`,
+  `submitted_by_purpose_name`) — always present; every `start_turn()`
+  caller must hold a valid hub token. `submitted_by_label` has been retired.
 - `_schema` / `_v` metadata for deserializer dispatch
 
 ### `delta_merged`
@@ -705,6 +771,17 @@ claimed sender identity, routes to internal `_merge_delta()`, and emits
 This event replaces direct `merge_delta()` calls as the public-facing
 mechanism.
 
+### `purpose_started`
+
+TTT has accepted a Purpose registration.
+
+Emitted by `start_purpose()` and delivered via `_multicast()` to all
+registered domain Purposes. Payload includes `purpose_id`,
+`purpose_name`, and `_schema` / `_v` metadata.
+
+Also emitted for the persistence Purpose during `_bootstrap_persister()`,
+written directly via `write_event()` before broadcast begins.
+
 ### `subscription_update` (TODO)
 
 A Purpose-submitted request to update its event subscriptions. Submitted
@@ -716,13 +793,6 @@ method.
 A Purpose-submitted request to update its DAG dependency declarations.
 Submitted via `hub.take_turn()`. Allows a Purpose to declare or revise what
 must have completed before it is eligible to fire on a given CTO.
-
-### `purpose_started`
-
-TTT has accepted a Purpose registration.
-
-The taxonomy entry is settled. Emission remains the natural follow-on after
-`hub.take_turn()` lands as the established ingress pattern.
 
 ### `purpose_completed`
 
@@ -787,8 +857,10 @@ Primary modules:
 - `hub.py` — TTT runtime; `librarian.py` or inline `Librarian` class
 - `base_purpose.py` — BasePurpose abstract base class; hub token validation;
   `_handle_event()` override point
+- `persistence.py` — `PersistencePurpose` abstract base; `InMemoryPersistencePurpose`
+  development backend; `CTOPersistencePurposeProtocol` lives in `protocols.py`
 - `protocols.py` — EventProtocol, PurposeEventProtocol,
-  EventPayloadProtocol, and related structural contracts
+  EventPayloadProtocol, CTOPersistencePurposeProtocol, and related structural contracts
 - `cto.py` — CTO and CTOIndex; no profile-specific code
 - `profile.py` — Profile, ProfileRegistry, FieldSpec, path-walking helpers
 - `events/` — event definitions and payload classes
@@ -798,18 +870,18 @@ Primary modules:
 - `delta.py` — Delta
 - `registry.py` — PurposeRegistration
 - `errors.py` — TTTError, UnauthorizedDispatchError,
-  UnknownEventTypeError, UnboundPurposeError
+  UnknownEventTypeError, UnboundPurposeError, PersistenceFailureError
 - `dag.py` — eligibility model (stub)
 - `ids.py` — identifier utilities (stub)
 
 This document is only the front door.
 
-## 10. Non-goals for v0.18
+## 10. Non-goals for v0.19
 
-TTT v0.18 does not yet attempt to fully specify:
+TTT v0.19 does not yet attempt to fully specify:
 
 - cross-process transport
-- durable persistence layout
+- durable persistence layout (schema, storage backend, migration)
 - auth policy beyond hub token seam
 - domain semantics for observations
 - final naming for `purpose_completed` event
@@ -818,8 +890,8 @@ TTT v0.18 does not yet attempt to fully specify:
 - `SubscriptionUpdateEvent` and `DependencyUpdateEvent`
   (taxonomy settled, implementation pending)
 - custom event type registration by consuming projects
-- `ttt.librarian` as a named object (designed, not yet extracted)
 - `ttt.librarian.get_turns()` readback interface
+- multiple concurrent persistence backends
 
 ## 11. Immediate open questions
 
@@ -852,10 +924,68 @@ TTT v0.18 does not yet attempt to fully specify:
   or YAML. Design sketched in `profile.py` module docstring. Seam: the three
   stable method signatures `Profile.validate()`, `Profile.apply_defaults()`,
   `Profile.resolve()` must not change when this lands.
+- **Persister recovery detection** — currently the hub has no mechanism to
+  detect that a persistence backend has recovered after a `PersistenceFailureError`.
+  Whether recovery is signaled via a new bootstrap call, a sentinel event, or
+  a health-check protocol is open. For now, a `PersistenceFailureError` is
+  terminal for the hub instance.
+- **`write_event()` idempotency enforcement** — `InMemoryPersistencePurpose`
+  deduplicates by `event_id`. Whether the hub should enforce idempotency at
+  the call site (e.g. by tracking emitted `event_id`s) or delegate it entirely
+  to the backend is open.
+- **`ReadbackRequestEvent`** — when `ttt.librarian.get_turns()` lands, should
+  the read request itself be recorded in the event stream? Recording it enables
+  full audit of what was served and when, but adds noise to the primary record.
+  Design deferred.
+- **Multiple persistence backends** — the current model is a single mandatory
+  persister. Whether "all must confirm" fan-out (stronger durability) or
+  "primary + async replica" patterns belong in core or in a composing wrapper
+  is open.
 
 ## 12. Migration notes
 
-### v0.18 (this revision)
+### v0.19 (this revision)
+
+**Persistence architecture:**
+- `TTT.start()` now requires a `CTOPersistencePurposeProtocol` implementor
+  as its first positional argument. Omitting it raises `TypeError`. This
+  is an intentional hard requirement — there is no anonymous or persistence-free
+  hub start.
+- `PersistencePurpose(BasePurpose, abc.ABC)` added as the abstract base for
+  production persistence backends. `InMemoryPersistencePurpose` ships in core
+  as a development backend (`is_durable=False`).
+- `CTOPersistencePurposeProtocol` added to `protocols.py`.
+- `PersistenceFailureError(TTTError)` added to `errors.py`. Raised when
+  `write_event()` throws; carries `persister_name` and `event_id`. Halts
+  domain delivery — no Purpose receives an event that was not durably written.
+- `_multicast()` rewritten with two phases: Phase 1 calls
+  `persistence_purpose.write_event()` unconditionally; Phase 2 broadcasts to
+  domain Purposes. Phase 2 does not run if Phase 1 raises.
+- `session_started` event added. Emitted during `_bootstrap_persister()`;
+  written to the persistence backend only, not broadcast to domain Purposes.
+  First event in every session's durable record.
+
+**`start_turn()` signature change:**
+- `start_turn(content_profile, content, hub_token, *, session_id=None)`
+  replaces the previous keyword-argument-heavy signature.
+- `hub_token` is now a required positional argument. Every caller must hold
+  a valid hub-issued token. There is no anonymous ingress.
+- `session_id` moves to a keyword-only optional; the hub mints a UUID if absent.
+- `submitted_by_label` retired entirely. Submitter attribution in
+  `cto_created` payload is always via `submitted_by_purpose_id` and
+  `submitted_by_purpose_name`, resolved from the token.
+
+**`purpose_started` now emitted:**
+- `start_purpose()` now emits `purpose_started` with `PurposeStartedPayload`
+  via `_multicast()`. Previously the taxonomy entry was settled but emission
+  was pending.
+
+**`ttt.librarian` landed:**
+- `ttt.librarian` is now a named `Librarian` object on the hub (not a bare
+  method). `ttt.librarian.get_cto(turn_id)` is the stable read path.
+  Removed from non-goals.
+
+### v0.18 (from v0.17)
 
 **API surface:**
 - `TTT.create()` → `TTT.start()`. Same semantics; renamed to reflect that

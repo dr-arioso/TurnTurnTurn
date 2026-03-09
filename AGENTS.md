@@ -12,11 +12,12 @@ to canonical state directly.
 - Core object model and hub semantics: stable
 - Profile system (Profile, ProfileRegistry, FieldSpec): stable
 - BasePurpose (hub token validation, `_handle_event` dispatch): stable
-- Error hierarchy (TTTError, UnauthorizedDispatchError, UnboundPurposeError): stable
+- Error hierarchy (TTTError, UnauthorizedDispatchError, UnboundPurposeError, PersistenceFailureError): stable
 - CTOIndex and hub CTO store (`_ctos`, `ttt.librarian.get_cto()`): stable
 - Delta merge (`merge_delta()`): stable
+- Persistence seam (PersistencePurpose, InMemoryPersistencePurpose, CTOPersistencePurposeProtocol): landed in v0.19
+- `ttt.librarian` as named Librarian object: landed in v0.19
 - DAG eligibility layer: not yet implemented (`dag.py` is a stub)
-- Persistence: not yet implemented
 - `ids.py`: empty stub, not yet implemented
 - Delta versioning (`last_event_id` / `based_on_event_id`): landed in v0.18
 
@@ -42,6 +43,10 @@ they are stragglers and should be updated:
 | `TTT.get_cto()` | `ttt.librarian.get_cto()` |
 | `stale_delta` (in `delta_merged` payload) | — (concept removed; `based_on_event_id` is provenance only) |
 | `PURPOSE_REGISTERED` | `PURPOSE_STARTED` |
+| `submitted_by_label` (in `cto_created` payload) | — (retired; submitter attribution is always via `submitted_by_purpose_id` / `submitted_by_purpose_name`) |
+| `session_id` as required positional arg to `start_turn()` | — (now optional keyword-only; hub mints UUID if absent) |
+| `TTT.start()` with no args | `TTT.start(persistence_purpose)` — persistence Purpose is required |
+| `InMemoryHistorian` / `JsonlHistorian` | `InMemoryPersistencePurpose` / subclass `PersistencePurpose` |
 
 ## The invariants that matter most
 
@@ -63,6 +68,17 @@ happens next.
 doubles only. Production Purposes subclass `BasePurpose` and implement
 `_handle_event()`. Never override `take_turn()`.
 
+**Every HubEvent reaches the persistence sink before any domain Purpose receives it.**
+`_multicast()` calls `persistence_purpose.write_event()` in Phase 1 before
+broadcasting to domain Purposes in Phase 2. If `write_event()` raises, a
+`PersistenceFailureError` is raised and Phase 2 does not run. Never route
+around the persistence phase — a CTO or Delta that was not persisted does not
+exist as far as replay is concerned.
+
+**`TTT.start()` requires a persistence Purpose.** Passing nothing raises
+`TypeError`. Use `InMemoryPersistencePurpose()` in tests and development;
+subclass `PersistencePurpose` for production backends.
+
 ## How profiles work
 
 Profiles are registered with `ProfileRegistry` (process-scoped class-level
@@ -82,12 +98,16 @@ required. See CONTRIBUTING.md.
 
 HubEvent payloads carry a `CTOIndex` — not a full CTO snapshot. This keeps
 the event bus lean. Purposes that need full CTO state call
-`ttt.librarian.get_cto(turn_id)`. The `ctoPersistPurpose` pattern: receive
-`CTOIndex` in event, call `librarian.get_cto()`, persist full canonical state.
+`ttt.librarian.get_cto(turn_id)`.
 
 Each HubEvent envelope is **per-recipient** — `_multicast()` constructs a
 fresh envelope per Purpose stamped with that Purpose's `hub_token`. Tokens
 are never visible across Purpose boundaries.
+
+`_multicast()` runs in two phases. Phase 1: `persistence_purpose.write_event()`
+is called with the event before any domain Purpose is notified. Phase 2: the
+event is broadcast to all registered domain Purposes. If Phase 1 raises,
+`PersistenceFailureError` is raised and Phase 2 does not run.
 
 ## Before you commit
 
@@ -98,7 +118,7 @@ pre-commit run --all-files   # ruff, black, isort, mypy --strict, interrogate
 
 ## Before you change a public interface
 
-Read `docs/ttt_architecture_v0_18.md`. The principles in §2 are load-bearing.
+Read `docs/ttt_architecture_v0_19.md`. The principles in §2 are load-bearing.
 Changes that would require a Purpose to write canonical state directly, or that
 add domain semantics to the hub or CTO, are wrong by design, not by accident.
 
@@ -112,3 +132,6 @@ add domain semantics to the hub or CTO, are wrong by design, not by accident.
 - Implement the DAG layer speculatively — wait until Adjacency integration
   drives the requirements from real usage
 - Rename things without updating the naming history table above
+- Call `start_turn()` without a valid hub token — register a Purpose first
+- Route around `_multicast()` Phase 1 — every event must be written to the
+  persistence backend before domain delivery

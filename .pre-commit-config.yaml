@@ -29,8 +29,20 @@ repos:
         entry: .venv/bin/interrogate
         language: system
         pass_filenames: false
-        args: ["src/turnturnturn", "--fail-under=10", "--ignore-init-method",
+        args: ["src/turnturnturn", "--fail-under=80", "--ignore-init-method",
                "--ignore-init-module", "--ignore-magic"]
+      - id: remove-zone-identifiers
+        name: Remove WSL Zone.Identifier files
+        entry: bash -c 'find . -name "*Zone.Identifier" -not -path "./.git/*" -print -delete'
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: remove-markdown-backups
+        name: Remove Markdown backup files
+        entry: bash -c 'find . \( -name "*.md.bak" -o -name "*.md~" -o -name "*.md.orig" \) -not -path "./.git/*" -print -delete'
+        language: system
+        pass_filenames: false
+        always_run: true
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v0.9.5
     hooks:

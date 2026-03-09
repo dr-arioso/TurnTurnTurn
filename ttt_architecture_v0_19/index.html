@@ -2472,7 +2472,7 @@ the hub replaces the stored instance.</p>
 <ul>
 <li><code>turn_id</code></li>
 <li><code>session_id</code></li>
-<li><code>created_at_ms</code></li>
+<li><code>started_at_ms</code></li>
 <li><code>content_profile</code> — <code>{"id": str, "version": int}</code></li>
 <li><code>content</code></li>
 <li><code>observations</code> — purpose-owned namespaces: <code>{purpose_name: [obs, ...]}</code></li>
@@ -2925,7 +2925,7 @@ that profile regardless of the hub setting.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">EventProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">event_type</span><span class="p">:</span> <span class="n">HubEventType</span>
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">event_id</span><span class="p">:</span> <span class="n">UUID</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">created_at_ms</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">started_at_ms</span><span class="p">:</span> <span class="nb">int</span>
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">payload</span><span class="p">:</span> <span class="n">EventPayloadProtocol</span>
 </code></pre></div>
 <p>Payloads satisfy:</p>
@@ -2969,7 +2969,7 @@ This is the first event in every session's durable record.</p>
 <p>Payload includes:</p>
 <ul>
 <li><code>cto_index</code> — <code>CTOIndex</code> dict (turn_id, session_id, content_profile,
-  created_at_ms, last_event_id)</li>
+  started_at_ms, last_event_id)</li>
 <li>submitter attribution (<code>submitted_by_purpose_id</code>,
   <code>submitted_by_purpose_name</code>) — always present; every <code>start_turn()</code>
   caller must hold a valid hub token. <code>submitted_by_label</code> has been retired.</li>
@@ -3042,7 +3042,7 @@ with a hub-private secret as key and Purpose-specific material (at minimum
 <code>purpose_token</code> and <code>purpose_id</code>) as input.</p>
 <h3 id="ctoindex_1">CTOIndex<a class="headerlink" href="#ctoindex_1" title="Permanent link">&para;</a></h3>
 <p><code>CTOIndex</code> is the lightweight event-payload form of CTO identity. Carries
-<code>turn_id</code>, <code>session_id</code>, <code>content_profile</code>, <code>created_at_ms</code>, and
+<code>turn_id</code>, <code>session_id</code>, <code>content_profile</code>, <code>started_at_ms</code>, and
 <code>last_event_id</code>. Used by Purposes for routing decisions and for recording
 <code>based_on_event_id</code> in Delta proposals without a separate librarian call.</p>
 <h2 id="9-module-map">9. Module map<a class="headerlink" href="#9-module-map" title="Permanent link">&para;</a></h2>

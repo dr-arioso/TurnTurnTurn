@@ -1,0 +1,1308 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="TTT is a hub runtime built around the Canonical Turn Object (CTO). The hub is the sole authority for CTO creation and canonical state. Processors (Purposes) propose changes via Deltas; the hub validates and merges them. Nothing writes to canonical state directly.">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>TTT v0.20 — Archivist, Event Taxonomy, and Coverage - TurnTurnTurn</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ttt-v020-archivist-event-taxonomy-and-coverage" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="TurnTurnTurn" class="md-header__button md-logo" aria-label="TurnTurnTurn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TurnTurnTurn
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TTT v0.20 — Archivist, Event Taxonomy, and Coverage
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dr-arioso/TurnTurnTurn" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dr-arioso/TurnTurnTurn
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="TurnTurnTurn" class="md-nav__button md-logo" aria-label="TurnTurnTurn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TurnTurnTurn
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dr-arioso/TurnTurnTurn" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dr-arioso/TurnTurnTurn
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ttt_architecture_v0_19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hub (TTT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CTO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/delta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Delta
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-pr-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this PR does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settled-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settled design decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Settled design decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#event-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-shutdown-two-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session shutdown (two-phase)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archivist-internal-backend-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Archivist internal backend protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deltaproposalpayload-relocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeltaProposalPayload relocation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#as_dict-idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .as_dict() idempotency
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#commit-1-rename-and-extend-the-event-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 1 — Rename and extend the event taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-2-update-hub-to-use-new-event-types-add-tttclose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 2 — Update hub to use new event types; add ttt.close()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-3-delete-historianpy-add-archivistbackendprotocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 3 — Delete historian.py; add ArchivistBackendProtocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-4-jsonlarchivistbackend-stream-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 4 — JsonlArchivistBackend (stream shape)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-5-sessiondocumentarchivistbackend-document-shape-stub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 5 — SessionDocumentArchivistBackend (document shape, stub)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-6-archivist-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 6 — Archivist class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-7-fix-truncated-test-add-missing-hub-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 7 — Fix truncated test; add missing hub coverage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-8-_event_serialization-coverage-as_dict-idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 8 — _event_serialization coverage; .as_dict() idempotency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-9-update-arch-doc-and-agentsmd-to-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit 9 — Update arch doc and AGENTS.md to v0.20
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions-going-into-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open questions going into implementation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/dr-arioso/TurnTurnTurn/edit/main/docs/pr_plan_v0_20.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="ttt-v020-archivist-event-taxonomy-and-coverage">TTT v0.20 — Archivist, Event Taxonomy, and Coverage<a class="headerlink" href="#ttt-v020-archivist-event-taxonomy-and-coverage" title="Permanent link">&para;</a></h1>
+<p><strong>Branch:</strong> <code>feature/archivist-and-event-taxonomy</code></p>
+<h2 id="what-this-pr-does">What this PR does<a class="headerlink" href="#what-this-pr-does" title="Permanent link">&para;</a></h2>
+<p>Closes three open items from the v0.19 review:</p>
+<ol>
+<li>Completes and rationalises the event taxonomy — renames, additions,
+   and a two-phase session shutdown model.</li>
+<li>Delivers Archivist: a real durable <code>PersistencePurpose</code> subclass with
+   pluggable internal backends, replacing the dead <code>historian.py</code> seam.</li>
+<li>Fills the coverage gaps identified in the v0.19 review.</li>
+</ol>
+<hr />
+<h2 id="settled-design-decisions">Settled design decisions<a class="headerlink" href="#settled-design-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="event-taxonomy">Event taxonomy<a class="headerlink" href="#event-taxonomy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Type</th>
+<th>Delivered to</th>
+<th>Trigger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SESSION_STARTED</code></td>
+<td>hub</td>
+<td>persistence only</td>
+<td>first <code>start_purpose()</code></td>
+</tr>
+<tr>
+<td><code>SESSION_CLOSING</code></td>
+<td>hub</td>
+<td>all Purposes</td>
+<td><code>ttt.close()</code> / quiescence (future)</td>
+</tr>
+<tr>
+<td><code>SESSION_COMPLETED</code></td>
+<td>hub</td>
+<td>persistence only</td>
+<td>after domain Purposes clear</td>
+</tr>
+<tr>
+<td><code>CTO_STARTED</code></td>
+<td>hub</td>
+<td>all</td>
+<td><code>start_turn()</code></td>
+</tr>
+<tr>
+<td><code>CTO_COMPLETED</code></td>
+<td>hub</td>
+<td>all</td>
+<td>quiescence / <code>CTOCloseRequest</code> (stub)</td>
+</tr>
+<tr>
+<td><code>DELTA_MERGED</code></td>
+<td>hub</td>
+<td>all</td>
+<td>successful merge</td>
+</tr>
+<tr>
+<td><code>DELTA_REJECTED</code></td>
+<td>hub</td>
+<td>all</td>
+<td>malformed proposal</td>
+</tr>
+<tr>
+<td><code>PURPOSE_STARTED</code></td>
+<td>hub</td>
+<td>all</td>
+<td><code>start_purpose()</code></td>
+</tr>
+<tr>
+<td><code>PURPOSE_COMPLETED</code></td>
+<td>Purpose → hub</td>
+<td>hub</td>
+<td>Purpose signals done</td>
+</tr>
+<tr>
+<td><code>DELTA_PROPOSAL</code></td>
+<td>Purpose → hub</td>
+<td>hub</td>
+<td>Purpose proposes change</td>
+</tr>
+<tr>
+<td><code>CTOCloseRequest</code></td>
+<td>Purpose → hub</td>
+<td>hub</td>
+<td>originator signals satisfaction (stub)</td>
+</tr>
+</tbody>
+</table>
+<p><code>CTO_CREATED</code> is retired; <code>CTO_STARTED</code> is its replacement throughout.</p>
+<h3 id="session-shutdown-two-phase">Session shutdown (two-phase)<a class="headerlink" href="#session-shutdown-two-phase" title="Permanent link">&para;</a></h3>
+<p><code>SESSION_CLOSING</code> is broadcast to all Purposes. Domain Purposes use it
+as their evacuation signal — flush state, submit final Deltas, send
+<code>PURPOSE_COMPLETED</code>. The hub waits for quiescence or a timeout (DAG
+concern, future). After domain Purposes have cleared, <code>SESSION_COMPLETED</code>
+is delivered to persistence Purpose(s) only. It is the final record.</p>
+<p><code>ttt.close(reason=...)</code> is the explicit trigger. Quiescence-triggered
+closing is deferred to the DAG layer.</p>
+<p><code>SESSION_STARTED</code> and <code>SESSION_COMPLETED</code> are both persistence-only
+events — outside the normal <code>_multicast()</code> path. <code>SESSION_STARTED</code> is
+written before the first domain Purpose is registered; <code>SESSION_COMPLETED</code>
+is written after the last one disconnects.</p>
+<p><code>SessionCompletedPayload</code> carries <code>is_last_out: bool = True</code>.</p>
+<h3 id="archivist-internal-backend-protocol">Archivist internal backend protocol<a class="headerlink" href="#archivist-internal-backend-protocol" title="Permanent link">&para;</a></h3>
+<p>Archivist is a <code>PersistencePurpose</code> subclass. From the hub's perspective
+it is an opaque durable Purpose. Internally it routes events to pluggable
+backends.</p>
+<p>Each backend satisfies a single-method protocol:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ArchivistBackendProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">HubEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<p>Both stream backends (JSONL, one record per event) and document backends
+(accumulated per session, finalised on <code>SESSION_COMPLETED</code>) implement the
+same method. Document backends accumulate internally and flush on
+<code>SESSION_COMPLETED</code>.</p>
+<p>Backend configuration at construction time includes: event type filter,
+content profile filter, output path, and serialization shape. Different
+<code>content_profile</code> values produce different output files. Real-time backend
+tuning via specially-constructed events is noted as a future capability
+(out of scope for v0).</p>
+<p><code>write_event()</code> is retired as a public contract. Archivist implements
+<code>_handle_event()</code> directly and fans out to its configured backends.
+<code>InMemoryPersistencePurpose</code> retains <code>write_event()</code> as its internal
+implementation — it is the canonical test/dev backend and failover
+double.</p>
+<h3 id="deltaproposalpayload-relocation"><code>DeltaProposalPayload</code> relocation<a class="headerlink" href="#deltaproposalpayload-relocation" title="Permanent link">&para;</a></h3>
+<p>Currently in <code>purpose_events.py</code> by historical accident. Moves to
+<code>hub_events.py</code> alongside the other payload classes. The import path
+through <code>events/__init__.py</code> is preserved so no consuming code breaks.</p>
+<h3 id="as_dict-idempotency"><code>.as_dict()</code> idempotency<a class="headerlink" href="#as_dict-idempotency" title="Permanent link">&para;</a></h3>
+<p><code>EventPayloadProtocol.as_dict()</code> is documented as a pure function — same
+output every call, no side effects. Enforced by tests (calling <code>as_dict()</code>
+twice and asserting identical output) rather than the type system.</p>
+<hr />
+<h2 id="commits">Commits<a class="headerlink" href="#commits" title="Permanent link">&para;</a></h2>
+<h3 id="commit-1-rename-and-extend-the-event-taxonomy">Commit 1 — Rename and extend the event taxonomy<a class="headerlink" href="#commit-1-rename-and-extend-the-event-taxonomy" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>src/turnturnturn/events/hub_events.py</code></li>
+<li>Rename <code>CTO_CREATED</code> → <code>CTO_STARTED</code> in <code>HubEventType</code></li>
+<li>Add <code>CTO_COMPLETED</code>, <code>DELTA_REJECTED</code>, <code>SESSION_STARTED</code>,
+    <code>SESSION_CLOSING</code>, <code>SESSION_COMPLETED</code> to <code>HubEventType</code></li>
+<li>Move <code>DeltaProposalPayload</code> here from <code>purpose_events.py</code></li>
+<li>
+<p>Add payload classes:</p>
+<ul>
+<li><code>CTOStartedPayload</code> — wraps <code>CTOIndex</code> dict; replaces
+  <code>CTOCreatedPayload</code></li>
+<li><code>CTOCompletedPayload</code> — carries full CTO dict (self-contained;
+  Archivist needs no librarian reference)</li>
+<li><code>DeltaRejectedPayload</code> — rejected delta dict + <code>reason: str</code></li>
+<li><code>SessionStartedPayload</code> — hub_id, ttt_version, persister_name,
+  persister_id, persister_is_durable, strict_profiles</li>
+<li><code>SessionClosingPayload</code> — <code>reason: str</code>, <code>timeout_ms: int | None</code></li>
+<li><code>SessionCompletedPayload</code> — <code>is_last_out: bool = True</code></li>
+</ul>
+</li>
+<li>
+<p><code>src/turnturnturn/events/purpose_events.py</code></p>
+</li>
+<li>Remove <code>DeltaProposalPayload</code> (moved to hub_events.py)</li>
+<li>Add <code>CTOCloseRequest</code> to <code>PurposeEventType</code></li>
+<li>
+<p>Add <code>CTOCloseRequestEvent</code> and <code>CTOCloseRequestPayload</code> (turn_id only)</p>
+</li>
+<li>
+<p><code>src/turnturnturn/events/__init__.py</code></p>
+</li>
+<li>
+<p>Update all exports; add <code>DeltaProposalPayload</code> re-export from new
+    location; add all new payload and event classes; retire
+    <code>CTOCreatedPayload</code> export (keep as deprecated alias for one version)</p>
+</li>
+<li>
+<p><code>src/turnturnturn/__init__.py</code></p>
+</li>
+<li>Mirror export changes</li>
+</ul>
+<p><strong>No hub behaviour changes in this commit.</strong> <code>hub.py</code> still references
+<code>CTO_CREATED</code> internally — that moves in Commit 2. This commit is
+taxonomy only, so the diff is reviewable in isolation.</p>
+<p><strong>Tests:</strong> none added here — existing tests will break on the rename and
+are fixed in Commit 2.</p>
+<hr />
+<h3 id="commit-2-update-hub-to-use-new-event-types-add-tttclose">Commit 2 — Update hub to use new event types; add <code>ttt.close()</code><a class="headerlink" href="#commit-2-update-hub-to-use-new-event-types-add-tttclose" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>src/turnturnturn/hub.py</code></li>
+<li>Replace all <code>HubEventType.CTO_CREATED</code> with <code>HubEventType.CTO_STARTED</code></li>
+<li>Replace all <code>CTOCreatedPayload</code> with <code>CTOStartedPayload</code></li>
+<li><code>start_purpose()</code>: emit <code>SESSION_STARTED</code> (persistence-only) when the
+    first Purpose registered is a <code>CTOPersistencePurposeProtocol</code>; emit
+    <code>PURPOSE_STARTED</code> to all via <code>_multicast()</code> for subsequent registrations</li>
+<li><code>_merge_delta()</code>: emit <code>DELTA_REJECTED</code> (with reason string) instead of
+    raising bare <code>ValueError</code> / <code>KeyError</code> — exceptions still raised after
+    emission so callers are not silently swallowed</li>
+<li>Register <code>CTOCloseRequest</code> in <code>_EVENT_POLICY</code> as <code>handler=None</code> (no-op
+    stub; DAG layer will implement)</li>
+<li>Add <code>async def close(self, *, reason: str = "normal") -&gt; None</code>:<ol>
+<li>Emit <code>SESSION_CLOSING</code> via <code>_multicast()</code> to all Purposes</li>
+<li>Await quiescence (v0: immediate; no timeout logic yet)</li>
+<li>Emit <code>SESSION_COMPLETED</code> (persistence-only) to registered
+   persistence Purpose(s)</li>
+</ol>
+</li>
+<li>
+<p><code>_multicast()</code>: add <code>persistence_only: bool = False</code> parameter;
+    when True, deliver only to persistence Purposes</p>
+</li>
+<li>
+<p><code>src/turnturnturn/errors.py</code></p>
+</li>
+<li>No changes — <code>DELTA_REJECTED</code> is an event, not an exception; the
+    existing <code>ValueError</code>/<code>KeyError</code> raises are preserved</li>
+</ul>
+<p><strong>Tests updated:</strong></p>
+<ul>
+<li>All existing tests that reference <code>CTO_CREATED</code> or <code>CTOCreatedPayload</code>
+  updated to <code>CTO_STARTED</code> / <code>CTOStartedPayload</code></li>
+<li>All <code>hub</code> fixture calls verified against new <code>start_purpose()</code> emission
+  behaviour (PURPOSE_STARTED now emitted — event-type filtering in tests
+  already handles this from v0.19)</li>
+</ul>
+<p><strong>New tests:</strong></p>
+<ul>
+<li><code>test_close_emits_session_closing_to_all_purposes</code></li>
+<li><code>test_close_emits_session_completed_to_persistence_only</code></li>
+<li><code>test_close_session_completed_payload_is_last_out</code></li>
+<li><code>test_merge_delta_unknown_turn_id_emits_delta_rejected</code></li>
+<li><code>test_merge_delta_non_list_patch_emits_delta_rejected</code></li>
+<li><code>test_start_purpose_first_emits_session_started_to_persistence</code></li>
+<li><code>test_start_purpose_session_started_not_broadcast_to_domain_purposes</code></li>
+</ul>
+<hr />
+<h3 id="commit-3-delete-historianpy-add-archivistbackendprotocol">Commit 3 — Delete <code>historian.py</code>; add <code>ArchivistBackendProtocol</code><a class="headerlink" href="#commit-3-delete-historianpy-add-archivistbackendprotocol" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>src/turnturnturn/historian.py</code> — <strong>deleted</strong></li>
+<li><code>src/turnturnturn/archivist.py</code> — new file containing:</li>
+<li><code>ArchivistBackendProtocol</code> — single-method <code>async def accept(self, event: HubEvent) -&gt; None</code></li>
+<li><code>ArchivistBackendConfig</code> — dataclass: <code>event_types: set[HubEventType] | None</code> (None = all), <code>content_profile: str | None</code> (None = all), plus backend-specific fields in subclasses</li>
+<li>No concrete backends yet — those are Commits 4 and 5</li>
+<li>
+<p>No <code>Archivist</code> class yet — that is Commit 6</p>
+</li>
+<li>
+<p><code>src/turnturnturn/__init__.py</code></p>
+</li>
+<li>Remove <code>InMemoryHistorian</code>, <code>JsonlHistorian</code> exports</li>
+<li>Add <code>ArchivistBackendProtocol</code></li>
+</ul>
+<p><strong>Why split from Commit 4?</strong> The protocol definition is the stable
+contract. Concrete backends depend on it. Keeping the protocol in its
+own commit makes the dependency direction clear in the history.</p>
+<hr />
+<h3 id="commit-4-jsonlarchivistbackend-stream-shape">Commit 4 — <code>JsonlArchivistBackend</code> (stream shape)<a class="headerlink" href="#commit-4-jsonlarchivistbackend-stream-shape" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>src/turnturnturn/archivist.py</code> — add <code>JsonlArchivistBackend</code>:</li>
+<li>Satisfies <code>ArchivistBackendProtocol</code></li>
+<li>Constructor: <code>path: Path</code>, inherits <code>ArchivistBackendConfig</code> filters</li>
+<li><code>accept()</code>: serialises the event via <code>_event_serialization.hub_event_record()</code>,
+    appends one JSON line to <code>path</code>; creates parent directories if absent</li>
+<li><code>is_durable: bool = True</code></li>
+<li>Append is synchronous (blocking file I/O in async context is acceptable
+    for v0; noted as a future <code>asyncio</code> improvement)</li>
+<li>No deduplication — <code>JsonlArchivistBackend</code> appends unconditionally;
+    idempotency is <code>InMemoryPersistencePurpose</code>'s responsibility as failover
+    double</li>
+</ul>
+<p><strong>Tests — <code>test_jsonl_archivist_backend.py</code>:</strong></p>
+<ul>
+<li><code>test_jsonl_backend_writes_event_record</code></li>
+<li><code>test_jsonl_backend_appends_across_multiple_events</code></li>
+<li><code>test_jsonl_backend_creates_parent_dirs</code></li>
+<li><code>test_jsonl_backend_restart_appends_to_existing_file</code></li>
+<li><code>test_jsonl_backend_respects_event_type_filter</code></li>
+<li><code>test_jsonl_backend_respects_content_profile_filter</code></li>
+<li><code>test_jsonl_backend_event_record_keys</code> — assert exact key set</li>
+<li><code>test_jsonl_backend_sort_keys_stable</code> — <code>sort_keys=True</code> on all writes</li>
+</ul>
+<hr />
+<h3 id="commit-5-sessiondocumentarchivistbackend-document-shape-stub">Commit 5 — <code>SessionDocumentArchivistBackend</code> (document shape, stub)<a class="headerlink" href="#commit-5-sessiondocumentarchivistbackend-document-shape-stub" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>src/turnturnturn/archivist.py</code> — add <code>SessionDocumentArchivistBackend</code>:</li>
+<li>Satisfies <code>ArchivistBackendProtocol</code></li>
+<li>Constructor: <code>path: Path</code></li>
+<li>Accumulates events in memory as <code>accept()</code> is called</li>
+<li>On <code>SESSION_COMPLETED</code>: writes a single JSON document to <code>path</code>
+    containing metadata header + ordered events array</li>
+<li>Document shape mirrors the TraceProbe format: top-level keys are
+    <code>id</code>, <code>metadata</code>, <code>events</code></li>
+<li>Marked as a stub — the metadata header and full TraceProbe-compatible
+    shape are future work; the accumulate-and-flush pattern is what this
+    commit establishes</li>
+</ul>
+<p><strong>Tests — <code>test_session_document_backend.py</code>:</strong></p>
+<ul>
+<li><code>test_session_document_backend_writes_on_session_completed</code></li>
+<li><code>test_session_document_backend_accumulates_events_in_order</code></li>
+<li><code>test_session_document_backend_does_not_write_before_session_completed</code></li>
+<li><code>test_session_document_backend_output_is_valid_json</code></li>
+</ul>
+<hr />
+<h3 id="commit-6-archivist-class">Commit 6 — <code>Archivist</code> class<a class="headerlink" href="#commit-6-archivist-class" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>src/turnturnturn/archivist.py</code> — add <code>Archivist(PersistencePurpose)</code>:</li>
+<li>Constructor: <code>backends: list[tuple[ArchivistBackendConfig, ArchivistBackendProtocol]]</code></li>
+<li><code>is_durable: bool</code> — True if at least one configured backend is durable</li>
+<li><code>_handle_event()</code>: iterates backends; for each, checks event type and
+    content profile filters from config; calls <code>await backend.accept(event)</code>
+    for matching backends</li>
+<li><code>name = "archivist"</code></li>
+<li>
+<p><code>id = uuid4()</code> set at construction</p>
+</li>
+<li>
+<p><code>src/turnturnturn/__init__.py</code> — add <code>Archivist</code>, <code>JsonlArchivistBackend</code>,
+  <code>SessionDocumentArchivistBackend</code>, <code>ArchivistBackendProtocol</code> to exports</p>
+</li>
+</ul>
+<p><strong>Tests — <code>test_archivist.py</code>:</strong></p>
+<ul>
+<li><code>test_archivist_is_durable_true_when_any_backend_is_durable</code></li>
+<li><code>test_archivist_is_durable_false_when_no_durable_backend</code></li>
+<li><code>test_archivist_routes_event_to_matching_backends</code></li>
+<li><code>test_archivist_does_not_route_to_filtered_out_backends</code></li>
+<li><code>test_archivist_multiple_backends_all_receive_matching_event</code></li>
+<li><code>test_archivist_different_profiles_route_to_different_backends</code></li>
+<li><code>test_archivist_end_to_end_via_hub</code> — full hub integration: register
+  Archivist with a <code>JsonlArchivistBackend</code>, run a turn, assert JSONL file
+  contains expected records</li>
+</ul>
+<hr />
+<h3 id="commit-7-fix-truncated-test-add-missing-hub-coverage">Commit 7 — Fix truncated test; add missing hub coverage<a class="headerlink" href="#commit-7-fix-truncated-test-add-missing-hub-coverage" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>tests/test_hub_take_turn.py</code></li>
+<li>Fix <code>test_take_turn_unknown_event_type_raises</code> — give it a real
+    assertion body</li>
+<li>Add <code>test_take_turn_purpose_completed_is_noop</code> — <code>PURPOSE_COMPLETED</code>
+    accepted, returns <code>None</code></li>
+<li>Add <code>test_take_turn_rejects_mismatched_purpose_id</code></li>
+<li>
+<p>Add <code>test_take_turn_rejects_payload_as_dict_non_dict</code></p>
+</li>
+<li>
+<p><code>tests/test_hub.py</code></p>
+</li>
+<li>Add <code>test_start_turn_persistence_token_rejected</code> — persistence
+    Purpose's token must not be accepted as a <code>start_turn()</code> submitter</li>
+<li>Add <code>test_bootstrap_persister_uses_unknown_version_when_package_metadata_missing</code></li>
+</ul>
+<hr />
+<h3 id="commit-8-_event_serialization-coverage-as_dict-idempotency">Commit 8 — <code>_event_serialization</code> coverage; <code>.as_dict()</code> idempotency<a class="headerlink" href="#commit-8-_event_serialization-coverage-as_dict-idempotency" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>tests/test_serialization.py</code> — new file:</li>
+<li><code>test_hub_event_record_shape</code> — exact key set</li>
+<li><code>test_purpose_event_record_shape</code> — exact key set</li>
+<li><code>test_cto_snapshot_record_shape</code> — exact key set</li>
+<li><code>test_event_type_value_with_enum</code></li>
+<li><code>test_event_type_value_with_plain_string</code></li>
+<li><code>test_uuid_str_with_uuid</code></li>
+<li><code>test_uuid_str_with_none</code></li>
+<li><code>test_cto_created_payload_as_dict_is_idempotent</code></li>
+<li><code>test_delta_merged_payload_as_dict_is_idempotent</code></li>
+<li><code>test_delta_proposal_payload_as_dict_is_idempotent</code></li>
+<li><code>test_session_started_payload_as_dict_is_idempotent</code></li>
+</ul>
+<hr />
+<h3 id="commit-9-update-arch-doc-and-agentsmd-to-v020">Commit 9 — Update arch doc and AGENTS.md to v0.20<a class="headerlink" href="#commit-9-update-arch-doc-and-agentsmd-to-v020" title="Permanent link">&para;</a></h3>
+<p><strong>Files changed:</strong></p>
+<ul>
+<li><code>docs/ttt_architecture_v0_19.md</code> → <code>docs/ttt_architecture_v0_20.md</code></li>
+<li>§0.1 Invariants: add session shutdown invariants</li>
+<li>§1 Core nouns: add Archivist, ArchivistBackendProtocol, SESSION_CLOSING,
+    SESSION_COMPLETED; update start_turn noun to reference CTO_STARTED</li>
+<li>§3 Public API: add <code>ttt.close()</code></li>
+<li>§4 Lifecycle: add session closing phase (4.9, 4.10)</li>
+<li>§7 Event taxonomy: full updated table</li>
+<li>§9 Module map: add <code>archivist.py</code>; remove <code>historian.py</code></li>
+<li>§10 Non-goals: remove Archivist (landed); add document shape
+    completion, async file I/O, quiescence-triggered SESSION_CLOSING</li>
+<li>§11 Open questions: add backend real-time tuning via events (deferred)</li>
+<li>
+<p>§12 Migration notes: v0.20 section</p>
+</li>
+<li>
+<p><code>AGENTS.md</code></p>
+</li>
+<li>Current status: Archivist landed; historian.py deleted</li>
+<li>Naming history: <code>CTO_CREATED</code> → <code>CTO_STARTED</code>;
+    <code>CTOCreatedPayload</code> → <code>CTOStartedPayload</code>;
+    <code>historian.py</code> / <code>InMemoryHistorian</code> / <code>JsonlHistorian</code> → retired</li>
+<li>Do not: add entry for <code>write_event()</code> as public contract (retired)</li>
+</ul>
+<hr />
+<h2 id="working-pattern">Working pattern<a class="headerlink" href="#working-pattern" title="Permanent link">&para;</a></h2>
+<p>Same as v0.19: new files provided in full, edits to existing files as
+str_replace targets. Human runs pytest after each commit, pastes failures
+only if any. Code-as-docs-as code. Docstrings and comments form our API documentation. Appropriate unit tests with each commit.</p>
+<h2 id="open-questions-going-into-implementation">Open questions going into implementation<a class="headerlink" href="#open-questions-going-into-implementation" title="Permanent link">&para;</a></h2>
+<p>None blocking. The following are noted for the DAG layer:</p>
+<ul>
+<li>Quiescence-triggered <code>SESSION_CLOSING</code> (what counts as quiescent?)</li>
+<li><code>CTOCloseRequest</code> honoured by the hub (what does the DAG check?)</li>
+<li>Async file I/O for <code>JsonlArchivistBackend</code> (acceptable as sync for v0)</li>
+<li>Document shape completion for <code>SessionDocumentArchivistBackend</code>
+  (TraceProbe-compatible metadata header is future work)</li>
+<li>Real-time backend tuning via specially-constructed events (out of scope
+  for v0, noted in arch doc)</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

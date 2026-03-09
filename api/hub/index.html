@@ -1815,7 +1815,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-278" name="__codelineno-0-278"></a>        <span class="n">event</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
 <a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">SESSION_STARTED</span><span class="p">,</span>
 <a id="__codelineno-0-280" name="__codelineno-0-280"></a>            <span class="n">event_id</span><span class="o">=</span><span class="n">uuid4</span><span class="p">(),</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-282" name="__codelineno-0-282"></a>            <span class="n">payload</span><span class="o">=</span><span class="n">SessionStartPayload</span><span class="p">(</span>
 <a id="__codelineno-0-283" name="__codelineno-0-283"></a>                <span class="n">hub_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hub_id</span><span class="p">),</span>
 <a id="__codelineno-0-284" name="__codelineno-0-284"></a>                <span class="n">ttt_version</span><span class="o">=</span><span class="n">ttt_version</span><span class="p">,</span>
@@ -1823,7 +1823,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-286" name="__codelineno-0-286"></a>                <span class="n">persister_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
 <a id="__codelineno-0-287" name="__codelineno-0-287"></a>                <span class="n">persister_is_durable</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">is_durable</span><span class="p">,</span>
 <a id="__codelineno-0-288" name="__codelineno-0-288"></a>                <span class="n">strict_profiles</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">strict_profiles</span><span class="p">,</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="p">),</span>
 <a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="p">)</span>
 <a id="__codelineno-0-292" name="__codelineno-0-292"></a>
@@ -1973,12 +1973,12 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-436" name="__codelineno-0-436"></a>        <span class="n">purpose_started_event</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
 <a id="__codelineno-0-437" name="__codelineno-0-437"></a>            <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">PURPOSE_STARTED</span><span class="p">,</span>
 <a id="__codelineno-0-438" name="__codelineno-0-438"></a>            <span class="n">event_id</span><span class="o">=</span><span class="n">uuid4</span><span class="p">(),</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-440" name="__codelineno-0-440"></a>            <span class="n">payload</span><span class="o">=</span><span class="n">PurposeStartedPayload</span><span class="p">(</span>
 <a id="__codelineno-0-441" name="__codelineno-0-441"></a>                <span class="n">purpose_name</span><span class="o">=</span><span class="n">purpose</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
 <a id="__codelineno-0-442" name="__codelineno-0-442"></a>                <span class="n">purpose_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">purpose</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
 <a id="__codelineno-0-443" name="__codelineno-0-443"></a>                <span class="n">is_persistence_purpose</span><span class="o">=</span><span class="n">is_persistence</span><span class="p">,</span>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a>                <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>                <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-445" name="__codelineno-0-445"></a>            <span class="p">),</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a>        <span class="p">)</span>
 <a id="__codelineno-0-447" name="__codelineno-0-447"></a>        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multicast</span><span class="p">(</span><span class="n">purpose_started_event</span><span class="p">)</span>
@@ -1995,16 +1995,16 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-458" name="__codelineno-0-458"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UUID</span><span class="p">:</span>
 <a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        Look up the profile, validate content, apply defaults, create a CTO,</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        emit cto_created, then dispatch to registered Purposes.</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        emit cto_started, then dispatch to registered Purposes.</span>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a>
 <a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">        start_turn() is a bootstrap method: it stands outside the event model</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">        because no CTOIndex exists until a CTO is created, so no well-formed</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">        because no CTOIndex exists until a CTO is started, so no well-formed</span>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">        event can represent this act.</span>
 <a id="__codelineno-0-466" name="__codelineno-0-466"></a>
 <a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">        hub_token is required. The submitting caller must be a registered</span>
 <a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">        Purpose (domain or persistence). The hub validates the token and</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">        records the submitter&#39;s identity in the cto_created event payload.</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">        No CTO is created if authentication fails.</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">        records the submitter&#39;s identity in the cto_started event payload.</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">        No CTO is started if authentication fails.</span>
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a>
 <a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">        session_id is optional. If not provided, the hub mints a new UUID.</span>
 <a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">        Callers that manage sessions explicitly should supply it; Purposes</span>
@@ -2012,7 +2012,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-475" name="__codelineno-0-475"></a>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">        The hub is the sole authority for CTO creation. Callers may not</span>
 <a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">        construct CTOs directly. If the profile is unknown or content fails</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">        validation, an exception is raised and no CTO or event is created.</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">        validation, an exception is raised and no CTO or event is started.</span>
 <a id="__codelineno-0-479" name="__codelineno-0-479"></a>
 <a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">        The profile&#39;s apply_defaults() receives the session&#39;s mutable context</span>
 <a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">        dict. The hub passes it through without inspection — the profile owns</span>
@@ -2033,7 +2033,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">                v0; reserved for future use.</span>
 <a id="__codelineno-0-497" name="__codelineno-0-497"></a>
 <a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">            The turn_id UUID of the newly created CTO.</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">            The turn_id UUID of the newly started CTO.</span>
 <a id="__codelineno-0-500" name="__codelineno-0-500"></a>
 <a id="__codelineno-0-501" name="__codelineno-0-501"></a><span class="sd">        Raises:</span>
 <a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">            UnauthorizedDispatchError: If hub_token does not resolve to a</span>
@@ -2054,22 +2054,22 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a>        <span class="p">)</span>
 <a id="__codelineno-0-518" name="__codelineno-0-518"></a>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>        <span class="c1"># Mint the event_id before constructing the CTO so that last_event_id</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="c1"># can be set to the cto_created event_id at construction time.</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="c1"># can be set to the cto_started event_id at construction time.</span>
 <a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="c1"># This keeps the CTO&#39;s version handle and the emitted event in sync</span>
 <a id="__codelineno-0-522" name="__codelineno-0-522"></a>        <span class="c1"># without a second write to _ctos after the event is built.</span>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>        <span class="n">cto_created_event_id</span> <span class="o">=</span> <span class="n">uuid4</span><span class="p">()</span>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a>        <span class="n">cto_started_event_id</span> <span class="o">=</span> <span class="n">uuid4</span><span class="p">()</span>
 <a id="__codelineno-0-524" name="__codelineno-0-524"></a>
 <a id="__codelineno-0-525" name="__codelineno-0-525"></a>        <span class="n">cto</span> <span class="o">=</span> <span class="n">CTO</span><span class="p">(</span>
 <a id="__codelineno-0-526" name="__codelineno-0-526"></a>            <span class="n">turn_id</span><span class="o">=</span><span class="n">uuid4</span><span class="p">(),</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a>            <span class="n">session_id</span><span class="o">=</span><span class="n">resolved_session_id</span><span class="p">,</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a>            <span class="n">content_profile</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">content_profile</span><span class="p">,</span> <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">profile_version</span><span class="p">},</span>
 <a id="__codelineno-0-530" name="__codelineno-0-530"></a>            <span class="n">content</span><span class="o">=</span><span class="n">resolved_content</span><span class="p">,</span>
-<a id="__codelineno-0-531" name="__codelineno-0-531"></a>            <span class="n">last_event_id</span><span class="o">=</span><span class="n">cto_created_event_id</span><span class="p">,</span>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>            <span class="n">last_event_id</span><span class="o">=</span><span class="n">cto_started_event_id</span><span class="p">,</span>
 <a id="__codelineno-0-532" name="__codelineno-0-532"></a>        <span class="p">)</span>
 <a id="__codelineno-0-533" name="__codelineno-0-533"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_ctos</span><span class="p">[</span><span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">cto</span>
 <a id="__codelineno-0-534" name="__codelineno-0-534"></a>        <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a>            <span class="s2">&quot;CTO created: turn_id=</span><span class="si">%s</span><span class="s2"> session_id=</span><span class="si">%s</span><span class="s2"> profile=</span><span class="si">%s</span><span class="s2"> submitted_by=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-535" name="__codelineno-0-535"></a>            <span class="s2">&quot;CTO started: turn_id=</span><span class="si">%s</span><span class="s2"> session_id=</span><span class="si">%s</span><span class="s2"> profile=</span><span class="si">%s</span><span class="s2"> submitted_by=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-536" name="__codelineno-0-536"></a>            <span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
 <a id="__codelineno-0-537" name="__codelineno-0-537"></a>            <span class="n">cto</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
 <a id="__codelineno-0-538" name="__codelineno-0-538"></a>            <span class="n">content_profile</span><span class="p">,</span>
@@ -2077,12 +2077,12 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-540" name="__codelineno-0-540"></a>        <span class="p">)</span>
 <a id="__codelineno-0-541" name="__codelineno-0-541"></a>
 <a id="__codelineno-0-542" name="__codelineno-0-542"></a>        <span class="n">event</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a>            <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">CTO_CREATED</span><span class="p">,</span>
-<a id="__codelineno-0-544" name="__codelineno-0-544"></a>            <span class="n">event_id</span><span class="o">=</span><span class="n">cto_created_event_id</span><span class="p">,</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-543" name="__codelineno-0-543"></a>            <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">CTO_STARTED</span><span class="p">,</span>
+<a id="__codelineno-0-544" name="__codelineno-0-544"></a>            <span class="n">event_id</span><span class="o">=</span><span class="n">cto_started_event_id</span><span class="p">,</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-546" name="__codelineno-0-546"></a>            <span class="n">session_id</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
 <a id="__codelineno-0-547" name="__codelineno-0-547"></a>            <span class="n">turn_id</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>            <span class="n">payload</span><span class="o">=</span><span class="n">CTOCreatedPayload</span><span class="p">(</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>            <span class="n">payload</span><span class="o">=</span><span class="n">CTOStartedPayload</span><span class="p">(</span>
 <a id="__codelineno-0-549" name="__codelineno-0-549"></a>                <span class="n">cto_index</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">to_index</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
 <a id="__codelineno-0-550" name="__codelineno-0-550"></a>                <span class="n">submitted_by_purpose_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">reg</span><span class="o">.</span><span class="n">purpose</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
 <a id="__codelineno-0-551" name="__codelineno-0-551"></a>                <span class="n">submitted_by_purpose_name</span><span class="o">=</span><span class="n">reg</span><span class="o">.</span><span class="n">purpose</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
@@ -2232,7 +2232,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-695" name="__codelineno-0-695"></a>        <span class="n">updated_cto</span> <span class="o">=</span> <span class="n">CTO</span><span class="p">(</span>
 <a id="__codelineno-0-696" name="__codelineno-0-696"></a>            <span class="n">turn_id</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
 <a id="__codelineno-0-697" name="__codelineno-0-697"></a>            <span class="n">session_id</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">started_at_ms</span><span class="p">,</span>
 <a id="__codelineno-0-699" name="__codelineno-0-699"></a>            <span class="n">content_profile</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">content_profile</span><span class="p">,</span>
 <a id="__codelineno-0-700" name="__codelineno-0-700"></a>            <span class="n">content</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
 <a id="__codelineno-0-701" name="__codelineno-0-701"></a>            <span class="n">observations</span><span class="o">=</span><span class="n">existing_obs</span><span class="p">,</span>
@@ -2249,7 +2249,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-712" name="__codelineno-0-712"></a>        <span class="n">event</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
 <a id="__codelineno-0-713" name="__codelineno-0-713"></a>            <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">DELTA_MERGED</span><span class="p">,</span>
 <a id="__codelineno-0-714" name="__codelineno-0-714"></a>            <span class="n">event_id</span><span class="o">=</span><span class="n">delta_merged_event_id</span><span class="p">,</span>
-<a id="__codelineno-0-715" name="__codelineno-0-715"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-715" name="__codelineno-0-715"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-716" name="__codelineno-0-716"></a>            <span class="n">session_id</span><span class="o">=</span><span class="n">updated_cto</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
 <a id="__codelineno-0-717" name="__codelineno-0-717"></a>            <span class="n">turn_id</span><span class="o">=</span><span class="n">updated_cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
 <a id="__codelineno-0-718" name="__codelineno-0-718"></a>            <span class="n">payload</span><span class="o">=</span><span class="n">DeltaMergedPayload</span><span class="p">(</span>
@@ -2303,7 +2303,7 @@ content or observations beyond what CTOIndex carries.</p>
 <a id="__codelineno-0-766" name="__codelineno-0-766"></a>            <span class="n">addressed</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
 <a id="__codelineno-0-767" name="__codelineno-0-767"></a>                <span class="n">event_type</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">event_type</span><span class="p">,</span>
 <a id="__codelineno-0-768" name="__codelineno-0-768"></a>                <span class="n">event_id</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
-<a id="__codelineno-0-769" name="__codelineno-0-769"></a>                <span class="n">created_at_ms</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">created_at_ms</span><span class="p">,</span>
+<a id="__codelineno-0-769" name="__codelineno-0-769"></a>                <span class="n">started_at_ms</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">started_at_ms</span><span class="p">,</span>
 <a id="__codelineno-0-770" name="__codelineno-0-770"></a>                <span class="n">session_id</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
 <a id="__codelineno-0-771" name="__codelineno-0-771"></a>                <span class="n">turn_id</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
 <a id="__codelineno-0-772" name="__codelineno-0-772"></a>                <span class="n">payload</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">payload</span><span class="p">,</span>
@@ -2730,12 +2730,12 @@ they do not participate in BasePurpose route validation.</p>
 <a id="__codelineno-0-436" name="__codelineno-0-436"></a>    <span class="n">purpose_started_event</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
 <a id="__codelineno-0-437" name="__codelineno-0-437"></a>        <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">PURPOSE_STARTED</span><span class="p">,</span>
 <a id="__codelineno-0-438" name="__codelineno-0-438"></a>        <span class="n">event_id</span><span class="o">=</span><span class="n">uuid4</span><span class="p">(),</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>        <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>        <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-440" name="__codelineno-0-440"></a>        <span class="n">payload</span><span class="o">=</span><span class="n">PurposeStartedPayload</span><span class="p">(</span>
 <a id="__codelineno-0-441" name="__codelineno-0-441"></a>            <span class="n">purpose_name</span><span class="o">=</span><span class="n">purpose</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
 <a id="__codelineno-0-442" name="__codelineno-0-442"></a>            <span class="n">purpose_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">purpose</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
 <a id="__codelineno-0-443" name="__codelineno-0-443"></a>            <span class="n">is_persistence_purpose</span><span class="o">=</span><span class="n">is_persistence</span><span class="p">,</span>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a>            <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>            <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-445" name="__codelineno-0-445"></a>        <span class="p">),</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="p">)</span>
 <a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multicast</span><span class="p">(</span><span class="n">purpose_started_event</span><span class="p">)</span>
@@ -2761,20 +2761,20 @@ they do not participate in BasePurpose route validation.</p>
     <div class="doc doc-contents ">
 
         <p>Look up the profile, validate content, apply defaults, create a CTO,
-emit cto_created, then dispatch to registered Purposes.</p>
+emit cto_started, then dispatch to registered Purposes.</p>
 <p>start_turn() is a bootstrap method: it stands outside the event model
-because no CTOIndex exists until a CTO is created, so no well-formed
+because no CTOIndex exists until a CTO is started, so no well-formed
 event can represent this act.</p>
 <p>hub_token is required. The submitting caller must be a registered
 Purpose (domain or persistence). The hub validates the token and
-records the submitter's identity in the cto_created event payload.
-No CTO is created if authentication fails.</p>
+records the submitter's identity in the cto_started event payload.
+No CTO is started if authentication fails.</p>
 <p>session_id is optional. If not provided, the hub mints a new UUID.
 Callers that manage sessions explicitly should supply it; Purposes
 that generate new CTOs as part of processing may omit it.</p>
 <p>The hub is the sole authority for CTO creation. Callers may not
 construct CTOs directly. If the profile is unknown or content fails
-validation, an exception is raised and no CTO or event is created.</p>
+validation, an exception is raised and no CTO or event is started.</p>
 <p>The profile's apply_defaults() receives the session's mutable context
 dict. The hub passes it through without inspection — the profile owns
 its contents and may update them to maintain session-scoped state.</p>
@@ -2911,7 +2911,7 @@ v0; reserved for future use.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The turn_id UUID of the newly created CTO.</p>
+                <p>The turn_id UUID of the newly started CTO.</p>
               </div>
             </td>
           </tr>
@@ -3085,16 +3085,16 @@ registered Purpose.</p>
 <a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UUID</span><span class="p">:</span>
 <a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">    Look up the profile, validate content, apply defaults, create a CTO,</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">    emit cto_created, then dispatch to registered Purposes.</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">    emit cto_started, then dispatch to registered Purposes.</span>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a>
 <a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">    start_turn() is a bootstrap method: it stands outside the event model</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">    because no CTOIndex exists until a CTO is created, so no well-formed</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">    because no CTOIndex exists until a CTO is started, so no well-formed</span>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">    event can represent this act.</span>
 <a id="__codelineno-0-466" name="__codelineno-0-466"></a>
 <a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">    hub_token is required. The submitting caller must be a registered</span>
 <a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">    Purpose (domain or persistence). The hub validates the token and</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">    records the submitter&#39;s identity in the cto_created event payload.</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">    No CTO is created if authentication fails.</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">    records the submitter&#39;s identity in the cto_started event payload.</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">    No CTO is started if authentication fails.</span>
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a>
 <a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">    session_id is optional. If not provided, the hub mints a new UUID.</span>
 <a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">    Callers that manage sessions explicitly should supply it; Purposes</span>
@@ -3102,7 +3102,7 @@ registered Purpose.</p>
 <a id="__codelineno-0-475" name="__codelineno-0-475"></a>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">    The hub is the sole authority for CTO creation. Callers may not</span>
 <a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">    construct CTOs directly. If the profile is unknown or content fails</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">    validation, an exception is raised and no CTO or event is created.</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">    validation, an exception is raised and no CTO or event is started.</span>
 <a id="__codelineno-0-479" name="__codelineno-0-479"></a>
 <a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">    The profile&#39;s apply_defaults() receives the session&#39;s mutable context</span>
 <a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">    dict. The hub passes it through without inspection — the profile owns</span>
@@ -3123,7 +3123,7 @@ registered Purpose.</p>
 <a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">            v0; reserved for future use.</span>
 <a id="__codelineno-0-497" name="__codelineno-0-497"></a>
 <a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">        The turn_id UUID of the newly created CTO.</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">        The turn_id UUID of the newly started CTO.</span>
 <a id="__codelineno-0-500" name="__codelineno-0-500"></a>
 <a id="__codelineno-0-501" name="__codelineno-0-501"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">        UnauthorizedDispatchError: If hub_token does not resolve to a</span>
@@ -3144,22 +3144,22 @@ registered Purpose.</p>
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a>    <span class="p">)</span>
 <a id="__codelineno-0-518" name="__codelineno-0-518"></a>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>    <span class="c1"># Mint the event_id before constructing the CTO so that last_event_id</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>    <span class="c1"># can be set to the cto_created event_id at construction time.</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>    <span class="c1"># can be set to the cto_started event_id at construction time.</span>
 <a id="__codelineno-0-521" name="__codelineno-0-521"></a>    <span class="c1"># This keeps the CTO&#39;s version handle and the emitted event in sync</span>
 <a id="__codelineno-0-522" name="__codelineno-0-522"></a>    <span class="c1"># without a second write to _ctos after the event is built.</span>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>    <span class="n">cto_created_event_id</span> <span class="o">=</span> <span class="n">uuid4</span><span class="p">()</span>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a>    <span class="n">cto_started_event_id</span> <span class="o">=</span> <span class="n">uuid4</span><span class="p">()</span>
 <a id="__codelineno-0-524" name="__codelineno-0-524"></a>
 <a id="__codelineno-0-525" name="__codelineno-0-525"></a>    <span class="n">cto</span> <span class="o">=</span> <span class="n">CTO</span><span class="p">(</span>
 <a id="__codelineno-0-526" name="__codelineno-0-526"></a>        <span class="n">turn_id</span><span class="o">=</span><span class="n">uuid4</span><span class="p">(),</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a>        <span class="n">session_id</span><span class="o">=</span><span class="n">resolved_session_id</span><span class="p">,</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>        <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>        <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="n">content_profile</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">content_profile</span><span class="p">,</span> <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">profile_version</span><span class="p">},</span>
 <a id="__codelineno-0-530" name="__codelineno-0-530"></a>        <span class="n">content</span><span class="o">=</span><span class="n">resolved_content</span><span class="p">,</span>
-<a id="__codelineno-0-531" name="__codelineno-0-531"></a>        <span class="n">last_event_id</span><span class="o">=</span><span class="n">cto_created_event_id</span><span class="p">,</span>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>        <span class="n">last_event_id</span><span class="o">=</span><span class="n">cto_started_event_id</span><span class="p">,</span>
 <a id="__codelineno-0-532" name="__codelineno-0-532"></a>    <span class="p">)</span>
 <a id="__codelineno-0-533" name="__codelineno-0-533"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_ctos</span><span class="p">[</span><span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">cto</span>
 <a id="__codelineno-0-534" name="__codelineno-0-534"></a>    <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="s2">&quot;CTO created: turn_id=</span><span class="si">%s</span><span class="s2"> session_id=</span><span class="si">%s</span><span class="s2"> profile=</span><span class="si">%s</span><span class="s2"> submitted_by=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="s2">&quot;CTO started: turn_id=</span><span class="si">%s</span><span class="s2"> session_id=</span><span class="si">%s</span><span class="s2"> profile=</span><span class="si">%s</span><span class="s2"> submitted_by=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-536" name="__codelineno-0-536"></a>        <span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
 <a id="__codelineno-0-537" name="__codelineno-0-537"></a>        <span class="n">cto</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
 <a id="__codelineno-0-538" name="__codelineno-0-538"></a>        <span class="n">content_profile</span><span class="p">,</span>
@@ -3167,12 +3167,12 @@ registered Purpose.</p>
 <a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="p">)</span>
 <a id="__codelineno-0-541" name="__codelineno-0-541"></a>
 <a id="__codelineno-0-542" name="__codelineno-0-542"></a>    <span class="n">event</span> <span class="o">=</span> <span class="n">HubEvent</span><span class="p">(</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a>        <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">CTO_CREATED</span><span class="p">,</span>
-<a id="__codelineno-0-544" name="__codelineno-0-544"></a>        <span class="n">event_id</span><span class="o">=</span><span class="n">cto_created_event_id</span><span class="p">,</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a>        <span class="n">created_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
+<a id="__codelineno-0-543" name="__codelineno-0-543"></a>        <span class="n">event_type</span><span class="o">=</span><span class="n">HubEventType</span><span class="o">.</span><span class="n">CTO_STARTED</span><span class="p">,</span>
+<a id="__codelineno-0-544" name="__codelineno-0-544"></a>        <span class="n">event_id</span><span class="o">=</span><span class="n">cto_started_event_id</span><span class="p">,</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a>        <span class="n">started_at_ms</span><span class="o">=</span><span class="n">now_ms</span><span class="p">(),</span>
 <a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="n">session_id</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span>
 <a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="n">turn_id</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">turn_id</span><span class="p">,</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">payload</span><span class="o">=</span><span class="n">CTOCreatedPayload</span><span class="p">(</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">payload</span><span class="o">=</span><span class="n">CTOStartedPayload</span><span class="p">(</span>
 <a id="__codelineno-0-549" name="__codelineno-0-549"></a>            <span class="n">cto_index</span><span class="o">=</span><span class="n">cto</span><span class="o">.</span><span class="n">to_index</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
 <a id="__codelineno-0-550" name="__codelineno-0-550"></a>            <span class="n">submitted_by_purpose_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">reg</span><span class="o">.</span><span class="n">purpose</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
 <a id="__codelineno-0-551" name="__codelineno-0-551"></a>            <span class="n">submitted_by_purpose_name</span><span class="o">=</span><span class="n">reg</span><span class="o">.</span><span class="n">purpose</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>

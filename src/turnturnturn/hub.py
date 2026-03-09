@@ -352,6 +352,43 @@ class TTT:
             )
         return matches[0]
 
+    def _resolve_registration_for_token_all(self, token: str) -> PurposeRegistration:
+        """
+        Resolve a registration from a hub-issued token, searching both
+        domain registrations and the persistence Purpose.
+
+        Used by start_turn() to authenticate the submitting caller.
+
+        Raises:
+            UnauthorizedDispatchError: If the token does not resolve to
+                exactly one registration across both stores.
+        """
+        # Check domain registrations first.
+        matches = [reg for reg in self.registrations.values() if reg.token == token]
+
+        # Also check the persistence Purpose.
+        p = self.persistence_purpose
+        if p is not None and isinstance(p, BasePurpose) and p.token == token:
+            matches.append(
+                PurposeRegistration(
+                    purpose=p,
+                    token=p.token,
+                    downlink_signature=p.downlink_signature,
+                    subscriptions=[],
+                )
+            )
+
+        if len(matches) != 1:
+            _logger.warning(
+                "start_turn token not resolved: %d matching registrations (expected 1)",
+                len(matches),
+            )
+            raise UnauthorizedDispatchError(
+                "start_turn() rejected — hub_token does not resolve to a "
+                "registered Purpose."
+            )
+        return matches[0]
+
     async def start_purpose(
         self,
         purpose: PurposeProtocol,
@@ -411,13 +448,13 @@ class TTT:
 
     async def start_turn(
         self,
-        session_id: UUID,
         content_profile: str,
         content: dict[str, Any],
+        hub_token: str,
         *,
+        session_id: UUID | None = None,
         profile_version: int = 1,
         request_id: str | None = None,
-        submitted_by_label: str | None = None,
     ) -> UUID:
         """
         Look up the profile, validate content, apply defaults, create a CTO,
@@ -425,8 +462,16 @@ class TTT:
 
         start_turn() is a bootstrap method: it stands outside the event model
         because no CTOIndex exists until a CTO is created, so no well-formed
-        event can represent this act. Available to external callers, application
-        code, and Purposes alike.
+        event can represent this act.
+
+        hub_token is required. The submitting caller must be a registered
+        Purpose (domain or persistence). The hub validates the token and
+        records the submitter's identity in the cto_created event payload.
+        No CTO is created if authentication fails.
+
+        session_id is optional. If not provided, the hub mints a new UUID.
+        Callers that manage sessions explicitly should supply it; Purposes
+        that generate new CTOs as part of processing may omit it.
 
         The hub is the sole authority for CTO creation. Callers may not
         construct CTOs directly. If the profile is unknown or content fails
@@ -436,33 +481,39 @@ class TTT:
         dict. The hub passes it through without inspection — the profile owns
         its contents and may update them to maintain session-scoped state.
 
-        The CTO's content_profile field is set to {"id": content_profile,
-        "version": profile_version} — a plain serializable dict.
+        The CTO's content_profile field is set to {\"id\": content_profile,
+        \"version\": profile_version} — a plain serializable dict.
 
         Args:
-            session_id: The session this turn belongs to.
             content_profile: Profile identifier string. Must be registered
                 in ProfileRegistry.
             content: Profile-conformant content dict. Copied at construction.
+            hub_token: Hub-issued token of the submitting Purpose. Required.
+            session_id: The session this turn belongs to. Hub mints a UUID
+                if not provided.
             profile_version: Version of the profile to use. Defaults to 1.
             request_id: Optional caller correlation key. Not yet enforced in
                 v0; reserved for future use.
-            submitted_by_label: Optional provenance label for non-Purpose
-                callers. Recorded in the cto_created event payload.
 
         Returns:
             The turn_id UUID of the newly created CTO.
 
         Raises:
+            UnauthorizedDispatchError: If hub_token does not resolve to a
+                registered Purpose.
             KeyError: If content_profile / profile_version is not registered.
             ValueError: If content does not satisfy the profile contract.
         """
+        reg = self._resolve_registration_for_token_all(hub_token)
+
+        resolved_session_id = session_id if session_id is not None else uuid4()
+
         profile = ProfileRegistry.get(content_profile, profile_version)
         profile.validate(content, strict=self.strict_profiles)
 
         resolved_content = profile.apply_defaults(
             content,
-            self._session_context(session_id),
+            self._session_context(resolved_session_id),
         )
 
         # Mint the event_id before constructing the CTO so that last_event_id
@@ -473,7 +524,7 @@ class TTT:
 
         cto = CTO(
             turn_id=uuid4(),
-            session_id=session_id,
+            session_id=resolved_session_id,
             created_at_ms=now_ms(),
             content_profile={"id": content_profile, "version": profile_version},
             content=resolved_content,
@@ -481,10 +532,11 @@ class TTT:
         )
         self._ctos[cto.turn_id] = cto
         _logger.debug(
-            "CTO created: turn_id=%s session_id=%s profile=%s",
+            "CTO created: turn_id=%s session_id=%s profile=%s submitted_by=%r",
             cto.turn_id,
             cto.session_id,
             content_profile,
+            reg.purpose.name,
         )
 
         event = HubEvent(
@@ -495,7 +547,8 @@ class TTT:
             turn_id=cto.turn_id,
             payload=CTOCreatedPayload(
                 cto_index=cto.to_index().to_dict(),
-                submitted_by_label=submitted_by_label,
+                submitted_by_purpose_id=str(reg.purpose.id),
+                submitted_by_purpose_name=reg.purpose.name,
             ),
         )
 

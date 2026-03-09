@@ -90,7 +90,7 @@ Minimal shape:
 
 - `turn_id`
 - `session_id`
-- `created_at_ms`
+- `started_at_ms`
 - `content_profile` — `{"id": str, "version": int}`
 - `content`
 - `observations` — purpose-owned namespaces: `{purpose_name: [obs, ...]}`
@@ -681,7 +681,7 @@ All events satisfy this minimal contract:
 class EventProtocol(Protocol):
     event_type: HubEventType
     event_id: UUID
-    created_at_ms: int
+    started_at_ms: int
     payload: EventPayloadProtocol
 ```
 
@@ -740,7 +740,7 @@ A new CTO now exists and is canonical.
 Payload includes:
 
 - `cto_index` — `CTOIndex` dict (turn_id, session_id, content_profile,
-  created_at_ms, last_event_id)
+  started_at_ms, last_event_id)
 - submitter attribution (`submitted_by_purpose_id`,
   `submitted_by_purpose_name`) — always present; every `start_turn()`
   caller must hold a valid hub token. `submitted_by_label` has been retired.
@@ -844,7 +844,7 @@ with a hub-private secret as key and Purpose-specific material (at minimum
 ### CTOIndex
 
 `CTOIndex` is the lightweight event-payload form of CTO identity. Carries
-`turn_id`, `session_id`, `content_profile`, `created_at_ms`, and
+`turn_id`, `session_id`, `content_profile`, `started_at_ms`, and
 `last_event_id`. Used by Purposes for routing decisions and for recording
 `based_on_event_id` in Delta proposals without a separate librarian call.
 

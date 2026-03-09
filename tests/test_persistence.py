@@ -257,7 +257,7 @@ async def test_persistence_failure_raises_and_halts_delivery(
         )
 
     cto_events = [
-        e for e in domain.received if e.event_type == HubEventType.CTO_CREATED
+        e for e in domain.received if e.event_type == HubEventType.CTO_STARTED
     ]
     assert len(cto_events) == 0
 
@@ -308,9 +308,7 @@ async def test_start_turn_rejects_invalid_token(hub, session_id, minimal_content
 
 
 @pytest.mark.asyncio
-async def test_start_turn_no_cto_created_on_auth_failure(
-    hub, session_id, minimal_content
-):
+async def test_start_turn_no_started_on_auth_failure(hub, session_id, minimal_content):
     with pytest.raises(UnauthorizedDispatchError):
         await hub.start_turn(
             "conversation",
@@ -379,7 +377,7 @@ async def test_in_memory_events_are_hub_event_records(
         session_id=session_id,
     )
     cto_record = next(
-        e for e in persistence_purpose.events if e["event_type"] == "cto_created"
+        e for e in persistence_purpose.events if e["event_type"] == "CTO_STARTED"
     )
     assert "event_id" in cto_record
     assert "event_type" in cto_record
@@ -399,9 +397,9 @@ async def test_in_memory_write_event_idempotent_on_event_id(persistence_purpose)
     from turnturnturn.events import EmptyPayload
 
     event = HubEvent(
-        event_type=HubEventType.CTO_CREATED,
+        event_type=HubEventType.CTO_STARTED,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         payload=EmptyPayload(),
     )
     await persistence_purpose.write_event(event)

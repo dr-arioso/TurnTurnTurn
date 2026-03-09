@@ -3,8 +3,8 @@
 Coverage areas:
 
 CTO / CTOIndex — last_event_id field
-  - start_turn sets CTO.last_event_id to the cto_created event_id
-  - cto_created event_id matches CTO.last_event_id
+  - start_turn sets CTO.last_event_id to the CTO_STARTED event_id
+  - CTO_STARTED event_id matches CTO.last_event_id
   - CTOIndex.last_event_id mirrors CTO.last_event_id
   - cto_index in event payload carries last_event_id
   - merge_delta updates CTO.last_event_id to the delta_merged event_id
@@ -44,7 +44,7 @@ def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
     return DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
@@ -62,7 +62,7 @@ def _make_unversioned_cto() -> CTO:
     return CTO(
         turn_id=uuid4(),
         session_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         content_profile={"id": "conversation", "version": 1},
         content={"speaker": {"id": "x", "role": "user", "label": "X"}, "text": "hi"},
     )
@@ -92,7 +92,7 @@ async def test_start_turn_sets_last_event_id(
 async def test_start_turn_last_event_id_matches_emitted_event_id(
     hub, session_id, minimal_content, submitter
 ):
-    """CTO.last_event_id must equal the event_id of the cto_created event."""
+    """CTO.last_event_id must equal the event_id of the CTO_STARTED event."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
@@ -104,7 +104,7 @@ async def test_start_turn_last_event_id_matches_emitted_event_id(
     )
 
     emitted_event_id = next(
-        e for e in p.received if e.event_type == HubEventType.CTO_CREATED
+        e for e in p.received if e.event_type == HubEventType.CTO_STARTED
     ).event_id
     cto = hub.librarian.get_cto(turn_id)
     assert cto.last_event_id == emitted_event_id
@@ -150,7 +150,7 @@ async def test_cto_to_index_carries_last_event_id(
 async def test_cto_index_in_event_payload_carries_last_event_id(
     hub, session_id, minimal_content, submitter
 ):
-    """The cto_index dict in the cto_created payload must include last_event_id."""
+    """The cto_index dict in the CTO_STARTED payload must include last_event_id."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
@@ -163,7 +163,7 @@ async def test_cto_index_in_event_payload_carries_last_event_id(
 
     cto = hub.librarian.get_cto(turn_id)
     payload_index = next(
-        e for e in p.received if e.event_type == HubEventType.CTO_CREATED
+        e for e in p.received if e.event_type == HubEventType.CTO_STARTED
     ).payload.as_dict()["cto_index"]
     assert payload_index["last_event_id"] == str(cto.last_event_id)
 
@@ -173,7 +173,7 @@ def test_cto_index_last_event_id_none_serialises_as_none():
         turn_id=uuid4(),
         session_id=uuid4(),
         content_profile={"id": "conversation", "version": 1},
-        created_at_ms=0,
+        started_at_ms=0,
         last_event_id=None,
     )
     assert idx.to_dict()["last_event_id"] is None
@@ -185,7 +185,7 @@ def test_cto_index_last_event_id_uuid_serialises_as_string():
         turn_id=uuid4(),
         session_id=uuid4(),
         content_profile={"id": "conversation", "version": 1},
-        created_at_ms=0,
+        started_at_ms=0,
         last_event_id=eid,
     )
     d = idx.to_dict()
@@ -316,7 +316,7 @@ def test_cto_last_event_id_uuid_serialises_as_string():
     cto = CTO(
         turn_id=uuid4(),
         session_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         content_profile={"id": "conversation", "version": 1},
         content={"speaker": {"id": "x", "role": "user", "label": "X"}, "text": "hi"},
         last_event_id=eid,

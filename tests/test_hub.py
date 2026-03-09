@@ -30,7 +30,7 @@ def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
     return DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
@@ -322,7 +322,7 @@ async def test_start_turn_strict_rejects_unknown_keys(session_id, persistence_pu
 
 
 @pytest.mark.asyncio
-async def test_start_turn_dispatches_cto_created_event(
+async def test_start_turn_dispatches_cto_cstarted_event(
     hub, session_id, minimal_content, submitter
 ):
     p = RecordingPurpose()
@@ -333,9 +333,9 @@ async def test_start_turn_dispatches_cto_created_event(
         submitter.token,
         session_id=session_id,
     )
-    cto_events = [e for e in p.received if e.event_type == HubEventType.CTO_CREATED]
+    cto_events = [e for e in p.received if e.event_type == HubEventType.CTO_STARTED]
     assert len(cto_events) == 1
-    assert cto_events[0].event_type == HubEventType.CTO_CREATED
+    assert cto_events[0].event_type == HubEventType.CTO_STARTED
 
 
 @pytest.mark.asyncio
@@ -350,7 +350,7 @@ async def test_start_turn_event_carries_cto_index(
         submitter.token,
         session_id=session_id,
     )
-    event = next(e for e in p.received if e.event_type == HubEventType.CTO_CREATED)
+    event = next(e for e in p.received if e.event_type == HubEventType.CTO_STARTED)
     cto_index = event.payload.as_dict()["cto_index"]
     assert cto_index["turn_id"] == str(turn_id)
     assert cto_index["session_id"] == str(session_id)
@@ -369,7 +369,7 @@ async def test_start_turn_event_does_not_carry_full_cto(
         submitter.token,
         session_id=session_id,
     )
-    event = next(e for e in p.received if e.event_type == HubEventType.CTO_CREATED)
+    event = next(e for e in p.received if e.event_type == HubEventType.CTO_STARTED)
     payload = event.payload.as_dict()
     assert "content" not in payload
     assert "observations" not in payload
@@ -614,7 +614,7 @@ async def test_merge_delta_emits_delta_merged_event(
         submitter.token,
         session_id=session_id,
     )
-    p.received.clear()  # ignore the cto_created event
+    p.received.clear()  # ignore the CTO_STARTED event
     purpose = NamedPurpose("p")
     await hub.start_purpose(purpose)
     p.received.clear()  # ignore the purpose_started event
@@ -786,7 +786,7 @@ async def test_multicast_all_purposes_receive_event(
     )
 
     for p in purposes:
-        cto_events = [e for e in p.received if e.event_type == HubEventType.CTO_CREATED]
+        cto_events = [e for e in p.received if e.event_type == HubEventType.CTO_STARTED]
         assert len(cto_events) == 1
 
 

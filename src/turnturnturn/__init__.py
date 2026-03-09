@@ -12,15 +12,28 @@ from .errors import (
     UnknownEventTypeError,
 )
 from .events import (
-    CTOCreatedPayload,
+    CTOCreatedPayload,  # deprecated alias for CTOStartedPayload; remove in v0.21
+)
+from .events import (
+    SessionStartPayload,  # deprecated alias for SessionStartedPayload; remove in v0.21
+)
+from .events import (
+    CTOCloseRequestEvent,
+    CTOCloseRequestPayload,
+    CTOCompletedPayload,
+    CTOStartedPayload,
     DeltaMergedPayload,
     DeltaProposalEvent,
     DeltaProposalPayload,
+    DeltaRejectedPayload,
     EmptyPayload,
     HubEvent,
     HubEventType,
+    PurposeEventType,
     PurposeStartedPayload,
-    SessionStartPayload,
+    SessionClosingPayload,
+    SessionCompletedPayload,
+    SessionStartedPayload,
 )
 from .hub import TTT
 from .persistence import InMemoryPersistencePurpose, PersistencePurpose
@@ -34,27 +47,46 @@ from .protocols import (
 __all__ = [
     "BasePurpose",
     "CTO",
-    "CTOCreatedPayload",
     "Delta",
-    "DeltaMergedPayload",
-    "DeltaProposalEvent",
-    "DeltaProposalPayload",
-    "EmptyPayload",
-    "EventPayloadProtocol",
-    "EventProtocol",
-    "HubEvent",
-    "HubEventType",
-    "InvalidDownlinkSignatureError",
-    "PurposeEventProtocol",
     "TTT",
+    # Errors
     "TTTError",
+    "InvalidDownlinkSignatureError",
+    "PersistenceFailureError",
     "UnauthorizedDispatchError",
     "UnboundPurposeError",
     "UnknownEventTypeError",
+    # Protocols
     "CTOPersistencePurposeProtocol",
+    "EventPayloadProtocol",
+    "EventProtocol",
+    "PurposeEventProtocol",
+    # Persistence
     "InMemoryPersistencePurpose",
     "PersistencePurpose",
+    # Hub event envelope
+    "HubEvent",
+    "HubEventType",
+    # CTO lifecycle payloads
+    "CTOStartedPayload",
+    "CTOCreatedPayload",  # deprecated alias; remove in v0.21
+    "CTOCompletedPayload",
+    # Delta lifecycle payloads
+    "DeltaMergedPayload",
+    "DeltaRejectedPayload",
+    "DeltaProposalPayload",
+    # Purpose lifecycle payloads
     "PurposeStartedPayload",
-    "SessionStartPayload",
-    "PersistenceFailureError",
+    # Session lifecycle payloads
+    "SessionStartedPayload",
+    "SessionStartPayload",  # deprecated alias; remove in v0.21
+    "SessionClosingPayload",
+    "SessionCompletedPayload",
+    # Utility
+    "EmptyPayload",
+    # Purpose-originated events
+    "DeltaProposalEvent",
+    "CTOCloseRequestEvent",
+    "CTOCloseRequestPayload",
+    "PurposeEventType",
 ]

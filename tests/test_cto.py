@@ -29,7 +29,7 @@ def _make_cto(**kwargs) -> CTO:
     defaults = dict(
         turn_id=uuid4(),
         session_id=uuid4(),
-        created_at_ms=1_000_000,
+        started_at_ms=1_000_000,
         content_profile={"id": "conversation", "version": 1},
         content={
             "speaker": {"id": "usr_x", "role": "user", "label": "Alice"},
@@ -96,7 +96,7 @@ def test_cto_unknown_profile_accessor_raises_attribute_error():
     cto = CTO(
         turn_id=uuid4(),
         session_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         content_profile={"id": "unregistered_profile", "version": 1},
         content={"x": "y"},
     )
@@ -115,7 +115,7 @@ def test_cto_to_dict_contains_expected_keys():
     assert set(d.keys()) == {
         "turn_id",
         "session_id",
-        "created_at_ms",
+        "started_at_ms",
         "content_profile",
         "content",
         "observations",
@@ -162,7 +162,7 @@ def test_cto_to_index_carries_correct_fields():
     assert idx.turn_id == cto.turn_id
     assert idx.session_id == cto.session_id
     assert idx.content_profile == cto.content_profile
-    assert idx.created_at_ms == cto.created_at_ms
+    assert idx.started_at_ms == cto.started_at_ms
 
 
 def test_cto_to_index_does_not_carry_content_or_observations():
@@ -182,7 +182,7 @@ def test_cto_index_is_frozen():
         turn_id=uuid4(),
         session_id=uuid4(),
         content_profile={"id": "conversation", "version": 1},
-        created_at_ms=0,
+        started_at_ms=0,
     )
     with pytest.raises((AttributeError, TypeError)):
         idx.turn_id = uuid4()  # type: ignore[misc]
@@ -204,6 +204,6 @@ def test_cto_index_to_dict_keys():
         "turn_id",
         "session_id",
         "content_profile",
-        "created_at_ms",
+        "started_at_ms",
         "last_event_id",
     }

@@ -31,7 +31,7 @@ def _make_delta_proposal_event(*, purpose, delta):
     return DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
@@ -94,7 +94,7 @@ async def test_take_turn_wrong_token_raises(
     event = DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token="wrong_token",
@@ -130,7 +130,7 @@ async def test_take_turn_mismatched_purpose_name_raises(
     event = DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
         purpose_id=purpose.id,
         purpose_name="not_recording",
         hub_token=purpose.token,

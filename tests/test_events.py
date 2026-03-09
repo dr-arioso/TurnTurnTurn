@@ -8,7 +8,7 @@ import pytest
 
 from turnturnturn.delta import Delta
 from turnturnturn.events import (
-    CTOCreatedPayload,
+    CTOStartedPayload,
     DeltaMergedPayload,
     DeltaProposalEvent,
     DeltaProposalPayload,
@@ -24,12 +24,12 @@ def _minimal_cto_index_dict() -> dict:
         "turn_id": str(uuid4()),
         "session_id": str(uuid4()),
         "content_profile": {"id": "conversation", "version": 1},
-        "created_at_ms": 0,
+        "started_at_ms": 0,
     }
 
 
 def test_event_type_cto_created_value():
-    assert HubEventType.CTO_CREATED.value == "cto_created"
+    assert HubEventType.CTO_STARTED.value == "CTO_STARTED"
 
 
 def test_event_type_delta_merged_value():
@@ -45,9 +45,9 @@ def test_hub_event_fields():
     sid = uuid4()
     payload = EmptyPayload()
     event = HubEvent(
-        event_type=HubEventType.CTO_CREATED,
+        event_type=HubEventType.CTO_STARTED,
         event_id=eid,
-        created_at_ms=999,
+        started_at_ms=999,
         session_id=sid,
         payload=payload,
         hub_token="tok",
@@ -55,7 +55,7 @@ def test_hub_event_fields():
     )
     assert event.event_type == HubEventType.CTO_CREATED
     assert event.event_id == eid
-    assert event.created_at_ms == 999
+    assert event.started_at_ms == 999
     assert event.session_id == sid
     assert event.payload is payload
     assert event.hub_token == "tok"
@@ -64,9 +64,9 @@ def test_hub_event_fields():
 
 def test_hub_event_is_frozen():
     event = HubEvent(
-        event_type=HubEventType.CTO_CREATED,
+        event_type=HubEventType.CTO_STARTED,
         event_id=uuid4(),
-        created_at_ms=0,
+        started_at_ms=0,
     )
     with pytest.raises((AttributeError, TypeError)):
         event.hub_token = "mutated"  # type: ignore[misc]
@@ -77,12 +77,12 @@ def test_empty_payload_serializes_to_empty_dict():
 
 
 def test_cto_created_payload_as_dict():
-    payload = CTOCreatedPayload(
+    payload = CTOStartedPayload(
         cto_index={
             "turn_id": str(uuid4()),
             "session_id": str(uuid4()),
             "content_profile": {"id": "conversation", "version": 1},
-            "created_at_ms": 0,
+            "started_at_ms": 0,
         }
     )
     data = payload.as_dict()
@@ -98,7 +98,7 @@ def test_delta_merged_payload_as_dict():
             "turn_id": str(uuid4()),
             "session_id": str(uuid4()),
             "content_profile": {"id": "conversation", "version": 1},
-            "created_at_ms": 0,
+            "started_at_ms": 0,
         },
     )
     data = payload.as_dict()
@@ -122,7 +122,7 @@ def test_delta_proposal_event_fields():
     event = DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        created_at_ms=123,
+        started_at_ms=123,
         purpose_id=pid,
         purpose_name="tester",
         hub_token="tok",

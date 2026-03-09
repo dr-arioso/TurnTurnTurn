@@ -9,7 +9,7 @@ shape of these dicts being consistent across TTT versions.
 
 Schema versioning is the responsibility of the producing code (payload
 as_dict() methods carry _schema and _v fields). The envelope fields
-produced here (record_type, event_type, event_id, created_at_ms,
+produced here (record_type, event_type, event_id, started_at_ms,
 session_id, turn_id) are stable from v0.19.
 
 These functions are private to the turnturnturn package. They are used
@@ -60,7 +60,7 @@ def hub_event_record(event: HubEvent) -> dict[str, Any]:
         record_type  : "hub_event"
         event_type   : wire string (e.g. "cto_created", "delta_merged")
         event_id     : UUID string
-        created_at_ms: int (Unix ms)
+        started_at_ms: int (Unix ms)
         session_id   : UUID string or None
         turn_id      : UUID string or None
         payload      : dict from event.payload.as_dict()
@@ -75,7 +75,7 @@ def hub_event_record(event: HubEvent) -> dict[str, Any]:
         "record_type": "hub_event",
         "event_type": _event_type_value(event.event_type),
         "event_id": str(event.event_id),
-        "created_at_ms": event.created_at_ms,
+        "started_at_ms": event.started_at_ms,
         "session_id": _uuid_str(event.session_id),
         "turn_id": _uuid_str(event.turn_id),
         "payload": event.payload.as_dict(),
@@ -93,7 +93,7 @@ def purpose_event_record(event: PurposeEventProtocol) -> dict[str, Any]:
         record_type  : "purpose_event"
         event_type   : wire string (e.g. "delta_proposal")
         event_id     : UUID string
-        created_at_ms: int (Unix ms)
+        started_at_ms: int (Unix ms)
         purpose_id   : UUID string
         purpose_name : str
         payload      : dict from event.payload.as_dict()
@@ -108,7 +108,7 @@ def purpose_event_record(event: PurposeEventProtocol) -> dict[str, Any]:
         "record_type": "purpose_event",
         "event_type": _event_type_value(event.event_type),
         "event_id": str(event.event_id),
-        "created_at_ms": event.created_at_ms,
+        "started_at_ms": event.started_at_ms,
         "purpose_id": str(event.purpose_id),
         "purpose_name": event.purpose_name,
         "payload": event.payload.as_dict(),
@@ -128,7 +128,7 @@ def cto_snapshot_record(cto: CTO) -> dict[str, Any]:
         record_type    : "cto_snapshot"
         turn_id        : UUID string
         session_id     : UUID string
-        created_at_ms  : int (Unix ms)
+        started_at_ms  : int (Unix ms)
         content_profile: dict {"id": str, "version": int}
         content        : dict (profile-conformant content)
         observations   : dict {purpose_name: [obs, ...]}
@@ -147,7 +147,7 @@ def cto_snapshot_record(cto: CTO) -> dict[str, Any]:
         "record_type": "cto_snapshot",
         "turn_id": str(cto.turn_id),
         "session_id": str(cto.session_id),
-        "created_at_ms": cto.created_at_ms,
+        "started_at_ms": cto.started_at_ms,
         "content_profile": cto.content_profile,
         "content": cto.content,
         "observations": cto.observations,

@@ -1,25 +1,56 @@
 """Public event and payload surface for hub and Purpose routing."""
 
 from .hub_events import (
-    CTOCreatedPayload,
+    CTOCreatedPayload,  # deprecated alias for CTOStartedPayload; remove in v0.21
+)
+from .hub_events import (
+    SessionStartPayload,  # deprecated alias for SessionStartedPayload; remove in v0.21
+)
+from .hub_events import (
+    CTOCompletedPayload,
+    CTOStartedPayload,
     DeltaMergedPayload,
+    DeltaProposalPayload,
+    DeltaRejectedPayload,
     EmptyPayload,
     HubEvent,
     HubEventType,
     PurposeStartedPayload,
-    SessionStartPayload,
+    SessionClosingPayload,
+    SessionCompletedPayload,
+    SessionStartedPayload,
 )
-from .purpose_events import DeltaProposalEvent, DeltaProposalPayload, PurposeEventType
+from .purpose_events import (
+    CTOCloseRequestEvent,
+    CTOCloseRequestPayload,
+    DeltaProposalEvent,
+    PurposeEventType,
+)
 
 __all__ = [
-    "CTOCreatedPayload",
-    "DeltaMergedPayload",
-    "DeltaProposalEvent",
-    "DeltaProposalPayload",
-    "EmptyPayload",
+    # Hub event envelope
     "HubEvent",
     "HubEventType",
-    "PurposeEventType",
+    # CTO lifecycle payloads
+    "CTOStartedPayload",
+    "CTOCreatedPayload",  # deprecated alias; remove in v0.21
+    "CTOCompletedPayload",
+    # Delta lifecycle payloads
+    "DeltaMergedPayload",
+    "DeltaRejectedPayload",
+    "DeltaProposalPayload",
+    # Purpose lifecycle payloads
     "PurposeStartedPayload",
-    "SessionStartPayload",
+    # Session lifecycle payloads
+    "SessionStartedPayload",
+    "SessionStartPayload",  # deprecated alias; remove in v0.21
+    "SessionClosingPayload",
+    "SessionCompletedPayload",
+    # Utility
+    "EmptyPayload",
+    # Purpose-originated events
+    "DeltaProposalEvent",
+    "CTOCloseRequestEvent",
+    "CTOCloseRequestPayload",
+    "PurposeEventType",
 ]

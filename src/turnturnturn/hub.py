@@ -28,7 +28,7 @@ from .cto import CTO
 from .delta import Delta
 from .errors import PersistenceFailureError, UnknownEventTypeError
 from .events import (
-    CTOCreatedPayload,
+    CTOStartedPayload,
     DeltaMergedPayload,
     HubEvent,
     HubEventType,
@@ -71,7 +71,7 @@ start_turn(session_id, content_profile, content, ...)
     -> validate content against profile contract
     -> apply profile defaults (profile reads/writes opaque session context)
     -> create CTO with content_profile = {"id": ..., "version": ...}
-    -> emit cto_created
+    -> emit cto_started
     -> dispatch to registered Purposes
 """
 
@@ -278,7 +278,7 @@ class TTT:
         event = HubEvent(
             event_type=HubEventType.SESSION_STARTED,
             event_id=uuid4(),
-            created_at_ms=now_ms(),
+            started_at_ms=now_ms(),
             payload=SessionStartPayload(
                 hub_id=str(self.hub_id),
                 ttt_version=ttt_version,
@@ -286,7 +286,7 @@ class TTT:
                 persister_id=str(p.id),
                 persister_is_durable=p.is_durable,
                 strict_profiles=self.strict_profiles,
-                created_at_ms=now_ms(),
+                started_at_ms=now_ms(),
             ),
         )
 
@@ -436,12 +436,12 @@ class TTT:
         purpose_started_event = HubEvent(
             event_type=HubEventType.PURPOSE_STARTED,
             event_id=uuid4(),
-            created_at_ms=now_ms(),
+            started_at_ms=now_ms(),
             payload=PurposeStartedPayload(
                 purpose_name=purpose.name,
                 purpose_id=str(purpose.id),
                 is_persistence_purpose=is_persistence,
-                created_at_ms=now_ms(),
+                started_at_ms=now_ms(),
             ),
         )
         await self._multicast(purpose_started_event)
@@ -458,16 +458,16 @@ class TTT:
     ) -> UUID:
         """
         Look up the profile, validate content, apply defaults, create a CTO,
-        emit cto_created, then dispatch to registered Purposes.
+        emit cto_started, then dispatch to registered Purposes.
 
         start_turn() is a bootstrap method: it stands outside the event model
-        because no CTOIndex exists until a CTO is created, so no well-formed
+        because no CTOIndex exists until a CTO is started, so no well-formed
         event can represent this act.
 
         hub_token is required. The submitting caller must be a registered
         Purpose (domain or persistence). The hub validates the token and
-        records the submitter's identity in the cto_created event payload.
-        No CTO is created if authentication fails.
+        records the submitter's identity in the cto_started event payload.
+        No CTO is started if authentication fails.
 
         session_id is optional. If not provided, the hub mints a new UUID.
         Callers that manage sessions explicitly should supply it; Purposes
@@ -475,7 +475,7 @@ class TTT:
 
         The hub is the sole authority for CTO creation. Callers may not
         construct CTOs directly. If the profile is unknown or content fails
-        validation, an exception is raised and no CTO or event is created.
+        validation, an exception is raised and no CTO or event is started.
 
         The profile's apply_defaults() receives the session's mutable context
         dict. The hub passes it through without inspection — the profile owns
@@ -496,7 +496,7 @@ class TTT:
                 v0; reserved for future use.
 
         Returns:
-            The turn_id UUID of the newly created CTO.
+            The turn_id UUID of the newly started CTO.
 
         Raises:
             UnauthorizedDispatchError: If hub_token does not resolve to a
@@ -517,22 +517,22 @@ class TTT:
         )
 
         # Mint the event_id before constructing the CTO so that last_event_id
-        # can be set to the cto_created event_id at construction time.
+        # can be set to the cto_started event_id at construction time.
         # This keeps the CTO's version handle and the emitted event in sync
         # without a second write to _ctos after the event is built.
-        cto_created_event_id = uuid4()
+        cto_started_event_id = uuid4()
 
         cto = CTO(
             turn_id=uuid4(),
             session_id=resolved_session_id,
-            created_at_ms=now_ms(),
+            started_at_ms=now_ms(),
             content_profile={"id": content_profile, "version": profile_version},
             content=resolved_content,
-            last_event_id=cto_created_event_id,
+            last_event_id=cto_started_event_id,
         )
         self._ctos[cto.turn_id] = cto
         _logger.debug(
-            "CTO created: turn_id=%s session_id=%s profile=%s submitted_by=%r",
+            "CTO started: turn_id=%s session_id=%s profile=%s submitted_by=%r",
             cto.turn_id,
             cto.session_id,
             content_profile,
@@ -540,12 +540,12 @@ class TTT:
         )
 
         event = HubEvent(
-            event_type=HubEventType.CTO_CREATED,
-            event_id=cto_created_event_id,
-            created_at_ms=now_ms(),
+            event_type=HubEventType.CTO_STARTED,
+            event_id=cto_started_event_id,
+            started_at_ms=now_ms(),
             session_id=cto.session_id,
             turn_id=cto.turn_id,
-            payload=CTOCreatedPayload(
+            payload=CTOStartedPayload(
                 cto_index=cto.to_index().to_dict(),
                 submitted_by_purpose_id=str(reg.purpose.id),
                 submitted_by_purpose_name=reg.purpose.name,
@@ -695,7 +695,7 @@ class TTT:
         updated_cto = CTO(
             turn_id=cto.turn_id,
             session_id=cto.session_id,
-            created_at_ms=cto.created_at_ms,
+            started_at_ms=cto.started_at_ms,
             content_profile=cto.content_profile,
             content=cto.content,
             observations=existing_obs,
@@ -712,7 +712,7 @@ class TTT:
         event = HubEvent(
             event_type=HubEventType.DELTA_MERGED,
             event_id=delta_merged_event_id,
-            created_at_ms=now_ms(),
+            started_at_ms=now_ms(),
             session_id=updated_cto.session_id,
             turn_id=updated_cto.turn_id,
             payload=DeltaMergedPayload(
@@ -766,7 +766,7 @@ class TTT:
             addressed = HubEvent(
                 event_type=event.event_type,
                 event_id=event.event_id,
-                created_at_ms=event.created_at_ms,
+                started_at_ms=event.started_at_ms,
                 session_id=event.session_id,
                 turn_id=event.turn_id,
                 payload=event.payload,

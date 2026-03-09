@@ -29,7 +29,7 @@ def _minimal_cto_index_dict() -> dict:
 
 
 def test_event_type_cto_created_value():
-    assert HubEventType.CTO_STARTED.value == "CTO_STARTED"
+    assert HubEventType.CTO_STARTED.value == "cto_started"
 
 
 def test_event_type_delta_merged_value():
@@ -53,7 +53,7 @@ def test_hub_event_fields():
         hub_token="tok",
         downlink_signature="sig",
     )
-    assert event.event_type == HubEventType.CTO_CREATED
+    assert event.event_type == HubEventType.CTO_STARTED
     assert event.event_id == eid
     assert event.started_at_ms == 999
     assert event.session_id == sid
@@ -86,7 +86,7 @@ def test_cto_created_payload_as_dict():
         }
     )
     data = payload.as_dict()
-    assert data["_schema"] == "cto_created"
+    assert data["_schema"] == "cto_started"
     assert data["_v"] == 1
     assert "cto_index" in data
 

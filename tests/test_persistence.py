@@ -321,7 +321,7 @@ async def test_start_turn_no_started_on_auth_failure(hub, session_id, minimal_co
 
 
 @pytest.mark.asyncio
-async def test_start_turn_valid_token_creates_cto(
+async def test_start_turn_valid_token_starts_cto(
     hub, session_id, minimal_content, submitter
 ):
     turn_id = await hub.start_turn(
@@ -377,7 +377,7 @@ async def test_in_memory_events_are_hub_event_records(
         session_id=session_id,
     )
     cto_record = next(
-        e for e in persistence_purpose.events if e["event_type"] == "CTO_STARTED"
+        e for e in persistence_purpose.events if e["event_type"] == "cto_started"
     )
     assert "event_id" in cto_record
     assert "event_type" in cto_record

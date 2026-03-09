@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from turnturnturn import CTO, TTT
+from turnturnturn import CTO, TTT, InMemoryPersistencePurpose
 from turnturnturn.cto import CTOIndex
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ def _make_cto(**kwargs) -> CTO:
 
 
 # Ensure conversation profile is loaded for accessor tests
-TTT.start()
+TTT.start(InMemoryPersistencePurpose())
 
 
 # ---------------------------------------------------------------------------

@@ -35,6 +35,7 @@ from turnturnturn.cto import CTOIndex
 from turnturnturn.events import (
     DeltaProposalEvent,
     DeltaProposalPayload,
+    HubEventType,
     PurposeEventType,
 )
 
@@ -73,11 +74,14 @@ def _make_unversioned_cto() -> CTO:
 
 
 @pytest.mark.asyncio
-async def test_start_turn_sets_last_event_id(hub, session_id, minimal_content):
+async def test_start_turn_sets_last_event_id(
+    hub, session_id, minimal_content, submitter
+):
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     cto = hub.librarian.get_cto(turn_id)
     assert cto.last_event_id is not None
@@ -86,32 +90,35 @@ async def test_start_turn_sets_last_event_id(hub, session_id, minimal_content):
 
 @pytest.mark.asyncio
 async def test_start_turn_last_event_id_matches_emitted_event_id(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     """CTO.last_event_id must equal the event_id of the cto_created event."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
 
-    emitted_event_id = p.received[0].event_id
+    emitted_event_id = next(
+        e for e in p.received if e.event_type == HubEventType.CTO_CREATED
+    ).event_id
     cto = hub.librarian.get_cto(turn_id)
     assert cto.last_event_id == emitted_event_id
 
 
 @pytest.mark.asyncio
 async def test_start_turn_last_event_ids_are_unique_across_turns(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     t1 = await hub.start_turn(
-        session_id=session_id, content_profile="conversation", content=minimal_content
+        "conversation", minimal_content, submitter.token, session_id=session_id
     )
     t2 = await hub.start_turn(
-        session_id=session_id, content_profile="conversation", content=minimal_content
+        "conversation", minimal_content, submitter.token, session_id=session_id
     )
     assert (
         hub.librarian.get_cto(t1).last_event_id
@@ -125,11 +132,14 @@ async def test_start_turn_last_event_ids_are_unique_across_turns(
 
 
 @pytest.mark.asyncio
-async def test_cto_to_index_carries_last_event_id(hub, session_id, minimal_content):
+async def test_cto_to_index_carries_last_event_id(
+    hub, session_id, minimal_content, submitter
+):
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     cto = hub.librarian.get_cto(turn_id)
     idx = cto.to_index()
@@ -138,20 +148,23 @@ async def test_cto_to_index_carries_last_event_id(hub, session_id, minimal_conte
 
 @pytest.mark.asyncio
 async def test_cto_index_in_event_payload_carries_last_event_id(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     """The cto_index dict in the cto_created payload must include last_event_id."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
 
     cto = hub.librarian.get_cto(turn_id)
-    payload_index = p.received[0].payload.as_dict()["cto_index"]
+    payload_index = next(
+        e for e in p.received if e.event_type == HubEventType.CTO_CREATED
+    ).payload.as_dict()["cto_index"]
     assert payload_index["last_event_id"] == str(cto.last_event_id)
 
 
@@ -186,14 +199,17 @@ def test_cto_index_last_event_id_uuid_serialises_as_string():
 
 
 @pytest.mark.asyncio
-async def test_merge_delta_updates_last_event_id(hub, session_id, minimal_content):
+async def test_merge_delta_updates_last_event_id(
+    hub, session_id, minimal_content, submitter
+):
     purpose = RecordingPurpose()
     await hub.start_purpose(purpose)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     original_last_event_id = hub.librarian.get_cto(turn_id).last_event_id
 
@@ -215,16 +231,17 @@ async def test_merge_delta_updates_last_event_id(hub, session_id, minimal_conten
 
 @pytest.mark.asyncio
 async def test_merge_delta_last_event_id_matches_emitted_event_id(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     """CTO.last_event_id after merge must equal the emitted delta_merged event_id."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     p.received.clear()
 
@@ -239,22 +256,25 @@ async def test_merge_delta_last_event_id_matches_emitted_event_id(
 
     returned_event_id = await hub.take_turn(_proposal_event_for(delta, p))
 
-    emitted_event_id = p.received[0].event_id
+    emitted_event_id = next(
+        e for e in p.received if e.event_type == HubEventType.DELTA_MERGED
+    ).event_id
     assert returned_event_id == emitted_event_id
     assert hub.librarian.get_cto(turn_id).last_event_id == emitted_event_id
 
 
 @pytest.mark.asyncio
 async def test_consecutive_merges_each_advance_last_event_id(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     purpose = RecordingPurpose()
     await hub.start_purpose(purpose)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
 
     d1 = Delta(
@@ -363,16 +383,17 @@ def test_delta_based_on_event_id_uuid_serialises_as_string():
 
 @pytest.mark.asyncio
 async def test_based_on_event_id_carried_in_delta_merged_payload(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     """based_on_event_id must appear in the serialised Delta in the payload."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     current_last_event_id = hub.librarian.get_cto(turn_id).last_event_id
     p.received.clear()
@@ -389,13 +410,15 @@ async def test_based_on_event_id_carried_in_delta_merged_payload(
 
     await hub.take_turn(_proposal_event_for(delta, p))
 
-    delta_in_payload = p.received[0].payload.as_dict()["delta"]
+    delta_in_payload = next(
+        e for e in p.received if e.event_type == HubEventType.DELTA_MERGED
+    ).payload.as_dict()["delta"]
     assert delta_in_payload["based_on_event_id"] == str(current_last_event_id)
 
 
 @pytest.mark.asyncio
 async def test_merge_succeeds_regardless_of_based_on_event_id(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     """based_on_event_id is provenance only — any value (including stale) is merged."""
     first = RecordingPurpose()
@@ -407,9 +430,10 @@ async def test_merge_succeeds_regardless_of_based_on_event_id(
     await hub.start_purpose(second)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     original_event_id = hub.librarian.get_cto(turn_id).last_event_id
 
@@ -442,16 +466,17 @@ async def test_merge_succeeds_regardless_of_based_on_event_id(
 
 @pytest.mark.asyncio
 async def test_delta_merged_payload_has_no_stale_delta_field(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     """stale_delta was retired in v0.18 — must not appear in delta_merged payload."""
     p = RecordingPurpose()
     await hub.start_purpose(p)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
     p.received.clear()
 
@@ -465,5 +490,7 @@ async def test_delta_merged_payload_has_no_stale_delta_field(
     )
     await hub.take_turn(_proposal_event_for(delta, p))
 
-    payload = p.received[0].payload.as_dict()
+    payload = next(
+        e for e in p.received if e.event_type == HubEventType.DELTA_MERGED
+    ).payload.as_dict()
     assert "stale_delta" not in payload

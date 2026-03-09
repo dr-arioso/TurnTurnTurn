@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 from turnturnturn._event_serialization import (  # noqa: F401 — re-exported
     cto_snapshot_record,
@@ -60,3 +61,36 @@ class InMemoryEventLog:
     def event_types(self) -> list[str]:
         """Return event_type values in order — convenient for sequence assertions."""
         return [e["event_type"] for e in self.events]
+
+
+def make_start_turn_kwargs(
+    submitter_token: str,
+    session_id: UUID,
+    content_profile: str = "conversation",
+    content: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Build keyword arguments for hub.start_turn() with the current signature.
+
+    Convenience helper for tests that construct start_turn() calls directly
+    rather than using the submitter fixture. Centralises the positional/keyword
+    argument layout so tests don't need to track the exact signature.
+
+    Args:
+        submitter_token: hub_token of the registered Purpose submitting the turn.
+        session_id: Session UUID to associate with the turn.
+        content_profile: Profile identifier string. Defaults to "conversation".
+        content: Profile-conformant content dict. Defaults to minimal valid
+            conversation content if not provided.
+
+    Returns:
+        A dict suitable for unpacking into hub.start_turn(**kwargs).
+    """
+    if content is None:
+        content = {"speaker": {"id": "usr_test"}, "text": "hello"}
+    return {
+        "content_profile": content_profile,
+        "content": content,
+        "hub_token": submitter_token,
+        "session_id": session_id,
+    }

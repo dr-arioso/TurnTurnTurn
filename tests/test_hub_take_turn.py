@@ -41,15 +41,16 @@ def _make_delta_proposal_event(*, purpose, delta):
 
 @pytest.mark.asyncio
 async def test_take_turn_valid_delta_proposal_updates_observations(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     purpose = RecordingPurpose()
     await hub.start_purpose(purpose)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
 
     delta = _make_delta(
@@ -69,14 +70,17 @@ async def test_take_turn_valid_delta_proposal_updates_observations(
 
 
 @pytest.mark.asyncio
-async def test_take_turn_wrong_token_raises(hub, session_id, minimal_content):
+async def test_take_turn_wrong_token_raises(
+    hub, session_id, minimal_content, submitter
+):
     purpose = RecordingPurpose()
     await hub.start_purpose(purpose)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
 
     delta = _make_delta(
@@ -103,15 +107,16 @@ async def test_take_turn_wrong_token_raises(hub, session_id, minimal_content):
 
 @pytest.mark.asyncio
 async def test_take_turn_mismatched_purpose_name_raises(
-    hub, session_id, minimal_content
+    hub, session_id, minimal_content, submitter
 ):
     purpose = RecordingPurpose()
     await hub.start_purpose(purpose)
 
     turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )
 
     delta = _make_delta(
@@ -137,12 +142,15 @@ async def test_take_turn_mismatched_purpose_name_raises(
 
 
 @pytest.mark.asyncio
-async def test_take_turn_unknown_event_type_raises(hub, session_id, minimal_content):
+async def test_take_turn_unknown_event_type_raises(
+    hub, session_id, minimal_content, submitter
+):
     purpose = RecordingPurpose()
     await hub.start_purpose(purpose)
 
     await hub.start_turn(
+        "conversation",
+        minimal_content,
+        submitter.token,
         session_id=session_id,
-        content_profile="conversation",
-        content=minimal_content,
     )

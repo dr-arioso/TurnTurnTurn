@@ -5,8 +5,9 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 
-from turnturnturn import TTT, BasePurpose
+from turnturnturn import TTT, BasePurpose, InMemoryPersistencePurpose
 from turnturnturn.events import HubEvent
 
 pytest_plugins = ("pytest_asyncio",)
@@ -40,22 +41,47 @@ class NamedPurpose(BasePurpose):
 
 
 @pytest.fixture
-def hub() -> TTT:
-    return TTT.start()
+def persistence_purpose() -> InMemoryPersistencePurpose:
+    """A fresh InMemoryPersistencePurpose for each test."""
+    return InMemoryPersistencePurpose()
+
+
+@pytest.fixture
+def hub(persistence_purpose: InMemoryPersistencePurpose) -> TTT:
+    """A TTT hub backed by an InMemoryPersistencePurpose."""
+    return TTT.start(persistence_purpose)
+
+
+@pytest_asyncio.fixture
+async def submitter(hub: TTT) -> RecordingPurpose:
+    """
+    A registered RecordingPurpose whose token is used to call start_turn().
+
+    Tests that need to call hub.start_turn() should use this fixture to
+    supply hub_token. Tests that need to verify token rejection should
+    construct events directly.
+    """
+    p = RecordingPurpose()
+    p.name = "submitter"
+    await hub.start_purpose(p)
+    return p
 
 
 @pytest.fixture
 def session_id():
+    """A stable session UUID for the duration of a test."""
     return uuid4()
 
 
 @pytest.fixture
 def minimal_content() -> dict:
+    """Minimal valid conversation profile content."""
     return {"speaker": {"id": "usr_test"}, "text": "hello"}
 
 
 @pytest.fixture
 def full_content() -> dict:
+    """Fully populated conversation profile content with all optional fields."""
     return {
         "speaker": {"id": "usr_test", "role": "user", "label": "Tester"},
         "text": "hello",

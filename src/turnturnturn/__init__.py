@@ -1,5 +1,6 @@
 """Public package surface for TurnTurnTurn."""
 
+from .archivist import ArchivistBackendProtocol
 from .base_purpose import BasePurpose
 from .cto import CTO
 from .delta import Delta
@@ -52,6 +53,7 @@ __all__ = [
     "UnboundPurposeError",
     "UnknownEventTypeError",
     # Protocols
+    "ArchivistBackendProtocol",
     "CTOPersistencePurposeProtocol",
     "EventPayloadProtocol",
     "EventProtocol",

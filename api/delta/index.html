@@ -287,7 +287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ttt_architecture_v0_19/" class="md-nav__link">
+      <a href="../../ttt_architecture_v0_20/" class="md-nav__link">
         
   
   
@@ -817,8 +817,8 @@ The hub treats patch contents as opaque within the namespace.</p>
 purpose_id: instance UUID, distinguishes concurrent instances of the
     same Purpose name.
 based_on_event_id: the last_event_id of the CTO state this Delta was
-    derived from. Used by the hub to detect stale proposals. None if
-    the proposing Purpose did not record it.</p>
+    derived from. Used for causal reconstruction, replay, and audit.
+    None if the proposing Purpose did not record it.</p>
 </details>
 
 
@@ -916,8 +916,8 @@ based_on_event_id: the last_event_id of the CTO state this Delta was
 <a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">        purpose_id: instance UUID, distinguishes concurrent instances of the</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">            same Purpose name.</span>
 <a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">        based_on_event_id: the last_event_id of the CTO state this Delta was</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">            derived from. Used by the hub to detect stale proposals. None if</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">            the proposing Purpose did not record it.</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">            derived from. Used for causal reconstruction, replay, and audit.</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">            None if the proposing Purpose did not record it.</span>
 <a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-44" name="__codelineno-0-44"></a>
 <a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="n">delta_id</span><span class="p">:</span> <span class="n">UUID</span>
@@ -931,15 +931,15 @@ based_on_event_id: the last_event_id of the CTO state this Delta was
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="c1"># All values must be lists — enforced by hub at merge time.</span>
 <a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="n">patch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
 <a id="__codelineno-0-55" name="__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="c1"># The event_id of the cto_created or delta_merged event that produced</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="c1"># The event_id of the cto_started or delta_merged event that produced</span>
 <a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="c1"># the CTO state this Delta was derived from. Purposes read this from</span>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="c1"># CTOIndex.last_event_id in the triggering HubEvent payload — no extra</span>
 <a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1"># get_cto() call needed.</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="c1">#</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1"># Provenance only — not a conflict-detection mechanism. All observations</span>
 <a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="c1"># are append-only and namespace-scoped; there are no destructive writes</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1"># to conflict on. based_on_event_id answers &quot;what did this Purpose know</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="c1"># when it reasoned?&quot; for causal reconstruction and replay.</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1"># to conflict on. based_on_event_id answers &quot;what canonical state was</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="c1"># this Purpose reasoning from?&quot; for causal reconstruction and replay.</span>
 <a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="c1">#</span>
 <a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="c1"># None if the proposing Purpose did not record which CTO state it was</span>
 <a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="c1"># based on (e.g. Purposes written before delta versioning was introduced).</span>

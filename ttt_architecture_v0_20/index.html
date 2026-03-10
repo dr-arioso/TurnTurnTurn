@@ -1,0 +1,2308 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="TTT is a hub runtime built around the Canonical Turn Object (CTO). The hub is the sole authority for CTO creation and canonical state. Processors (Purposes) propose changes via Deltas; the hub validates and merges them. Nothing writes to canonical state directly.">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../api/hub/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Architecture - TurnTurnTurn</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#turnturnturn-ttt-architecture-v020" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="TurnTurnTurn" class="md-header__button md-logo" aria-label="TurnTurnTurn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TurnTurnTurn
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dr-arioso/TurnTurnTurn" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dr-arioso/TurnTurnTurn
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="TurnTurnTurn" class="md-nav__button md-logo" aria-label="TurnTurnTurn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TurnTurnTurn
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dr-arioso/TurnTurnTurn" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dr-arioso/TurnTurnTurn
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-positioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Positioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#01-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1 Invariants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-core-nouns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Core nouns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Core nouns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ttt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start_turn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start_turn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observations-and-namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observations and namespaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctoindex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTOIndex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purpose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delta
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hub-authored-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hub-authored events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#librarian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Librarian
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistence-and-archivist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistence and Archivist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-core-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Core principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Core principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-ttt-is-authoritative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 TTT is authoritative
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-append-only-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Append-only by default
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-provenance-lives-primarily-in-the-event-stream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Provenance lives primarily in the event stream
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-profiled-core-not-conversation-only-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Profiled core, not conversation-only core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-purpose-is-an-actor-not-a-packet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Purpose is an actor, not a packet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-routing-and-dependency-are-distinct" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Routing and dependency are distinct
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-take_turn-is-the-communication-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 take_turn() is the communication channel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-two-bootstrap-methods-stand-outside-the-event-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 Two bootstrap methods stand outside the event model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#29-events-carry-references-not-snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.9 Events carry references, not snapshots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#210-persistence-is-write-ahead-with-special-lifecycle-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.10 Persistence is write-ahead with special lifecycle records
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-public-api-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Public API surface
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-minimal-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Minimal lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Minimal lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-start-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Start hub
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-start-purposes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Start Purposes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-call-start_turn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Call start_turn()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-ttt-creates-cto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 TTT creates CTO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-dispatch-purposes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Dispatch Purposes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-purposes-propose-deltas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Purposes propose Deltas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-ttt-merges-deltas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 TTT merges Deltas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-close-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Close session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-event-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Event taxonomy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Event taxonomy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-hub-authored-event-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Hub-authored event types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-purpose-authored-event-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Purpose-authored event types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-taxonomy-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Taxonomy notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-persistence-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Persistence model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Persistence model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-ordering-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Ordering guarantees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-persistence-implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Persistence implementations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-why-persistence-is-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Why persistence is mandatory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-what-is-implemented-now-vs-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. What is implemented now vs. deferred
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. What is implemented now vs. deferred">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implemented-in-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implemented in v0.20
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#still-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still deferred
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-non-goals-for-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Non-goals for v0.20
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-design-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Design summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hub (TTT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CTO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/delta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Delta
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-positioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Positioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#01-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1 Invariants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-core-nouns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Core nouns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Core nouns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ttt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start_turn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start_turn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observations-and-namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observations and namespaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctoindex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTOIndex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purpose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delta
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hub-authored-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hub-authored events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#librarian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Librarian
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistence-and-archivist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistence and Archivist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-core-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Core principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Core principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-ttt-is-authoritative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 TTT is authoritative
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-append-only-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Append-only by default
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-provenance-lives-primarily-in-the-event-stream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Provenance lives primarily in the event stream
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-profiled-core-not-conversation-only-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Profiled core, not conversation-only core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-purpose-is-an-actor-not-a-packet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Purpose is an actor, not a packet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-routing-and-dependency-are-distinct" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Routing and dependency are distinct
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-take_turn-is-the-communication-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 take_turn() is the communication channel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-two-bootstrap-methods-stand-outside-the-event-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 Two bootstrap methods stand outside the event model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#29-events-carry-references-not-snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.9 Events carry references, not snapshots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#210-persistence-is-write-ahead-with-special-lifecycle-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.10 Persistence is write-ahead with special lifecycle records
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-public-api-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Public API surface
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-minimal-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Minimal lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Minimal lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-start-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Start hub
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-start-purposes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Start Purposes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-call-start_turn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Call start_turn()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-ttt-creates-cto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 TTT creates CTO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-dispatch-purposes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Dispatch Purposes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-purposes-propose-deltas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Purposes propose Deltas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-ttt-merges-deltas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 TTT merges Deltas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-close-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Close session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-event-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Event taxonomy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Event taxonomy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-hub-authored-event-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Hub-authored event types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-purpose-authored-event-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Purpose-authored event types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-taxonomy-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Taxonomy notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-persistence-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Persistence model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Persistence model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-ordering-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Ordering guarantees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-persistence-implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Persistence implementations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-why-persistence-is-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Why persistence is mandatory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-what-is-implemented-now-vs-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. What is implemented now vs. deferred
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. What is implemented now vs. deferred">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implemented-in-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implemented in v0.20
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#still-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still deferred
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-non-goals-for-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Non-goals for v0.20
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-design-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Design summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/dr-arioso/TurnTurnTurn/edit/main/docs/ttt_architecture_v0_20.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="turnturnturn-ttt-architecture-v020">TurnTurnTurn (TTT) — Architecture v0.20<a class="headerlink" href="#turnturnturn-ttt-architecture-v020" title="Permanent link">&para;</a></h1>
+<h2 id="0-positioning">0. Positioning<a class="headerlink" href="#0-positioning" title="Permanent link">&para;</a></h2>
+<p><strong>TurnTurnTurn (TTT)</strong> is a provenance-first hub for conversational turn
+processing. It coordinates registered Purposes, maintains canonical CTO state,
+and records authoritative hub transitions as a replayable event stream.</p>
+<p>TTT is built around a single canonical object:</p>
+<ul>
+<li><strong>CTO</strong> — Canonical Turn Object</li>
+</ul>
+<p>TTT does <strong>not</strong> define domain semantics. It provides:</p>
+<ul>
+<li>authoritative CTO creation</li>
+<li>hub-mediated Delta merge</li>
+<li>typed event envelopes</li>
+<li>Purpose registration and authenticated routing</li>
+<li>replayable provenance through the event stream</li>
+<li>mandatory persistence at hub startup</li>
+</ul>
+<p>The canonical example profile is <strong><code>conversation</code></strong>, but TTT is
+<strong>profile-based</strong>, not hard-coded to speaker/text semantics.</p>
+<h2 id="01-invariants">0.1 Invariants<a class="headerlink" href="#01-invariants" title="Permanent link">&para;</a></h2>
+<p>These are the hard commitments. Everything else in this document is mechanism
+around them.</p>
+<ul>
+<li>Only TTT may create CTOs.</li>
+<li>Only TTT may make canonical state changes.</li>
+<li>Purposes propose; they do not commit.</li>
+<li>Hub-authored events are authoritative records of hub-made transitions.</li>
+<li>CTO carries profile identity, not profile behavior.</li>
+<li>Canonical observation history is append-only.</li>
+<li>Event payloads carry references, not full state snapshots.</li>
+<li><code>based_on_event_id</code> is provenance only — not stale-write detection.</li>
+<li>Bootstrap methods (<code>start_turn</code>, <code>start_purpose</code>) stand outside the event model by necessity, not by exception.</li>
+<li>Every hub-authored event reaches persistence before any domain Purpose receives it.</li>
+<li><code>session_started</code> and <code>session_completed</code> are persistence-only lifecycle events.</li>
+<li>The hub will not start without a registered persistence backend.</li>
+</ul>
+<h2 id="1-core-nouns">1. Core nouns<a class="headerlink" href="#1-core-nouns" title="Permanent link">&para;</a></h2>
+<h3 id="ttt">TTT<a class="headerlink" href="#ttt" title="Permanent link">&para;</a></h3>
+<p>The public hub runtime. Start via <code>TTT.start(persistence_purpose)</code>.</p>
+<p>TTT is the authority for:</p>
+<ul>
+<li>creating CTOs</li>
+<li>merging Deltas</li>
+<li>emitting hub-authored events</li>
+<li>maintaining Purpose registration</li>
+<li>enforcing routing and dispatch rules</li>
+<li>coordinating persistence writes</li>
+</ul>
+<p>The <strong>librarian</strong> (<code>ttt.librarian</code>) is the query interface for CTO state.
+It is the read path, not the authority path.</p>
+<h3 id="start_turn">start_turn<a class="headerlink" href="#start_turn" title="Permanent link">&para;</a></h3>
+<p>One of two bootstrap methods on the hub. The other is <code>start_purpose()</code>.</p>
+<p><code>start_turn()</code> is the ingress point for CTO creation — by external callers,
+by application code, and by Purposes that generate new CTOs as part of their
+own processing. It is a named method rather than an event because it is the
+precondition for the event model: no <code>CTOIndex</code> exists until a CTO is
+created, so no well-formed event can represent this act.</p>
+<p>A caller invokes <code>ttt.start_turn(content_profile, content, hub_token)</code> with a
+content profile identifier, content dict, and a hub-issued token identifying
+the submitting Purpose. <code>session_id</code> is an optional keyword argument; the hub
+mints a UUID if absent. TTT looks up the profile in <code>ProfileRegistry</code>,
+validates the content, applies defaults, creates a CTO, emits <code>cto_started</code>,
+and dispatches interested Purposes.</p>
+<p>Every <code>start_turn()</code> caller must hold a valid hub-issued token — obtained by
+registering a Purpose via <code>start_purpose()</code>. There is no anonymous ingress.
+<code>submitted_by_label</code> is retired; attribution is always via Purpose identity.</p>
+<h3 id="cto">CTO<a class="headerlink" href="#cto" title="Permanent link">&para;</a></h3>
+<p>Canonical Turn Object.</p>
+<p>A CTO is the authoritative work item created by TTT via <code>start_turn()</code>. It is
+frozen — each accepted Delta merge produces a new CTO instance; the hub
+replaces the stored instance.</p>
+<p>Minimal shape:</p>
+<ul>
+<li><code>turn_id</code></li>
+<li><code>session_id</code></li>
+<li><code>created_at_ms</code></li>
+<li><code>content_profile</code> — <code>{"id": str, "version": int}</code></li>
+<li><code>content</code></li>
+<li><code>observations</code> — purpose-owned namespaces: <code>{purpose_name: [obs, ...]}</code></li>
+<li><code>last_event_id</code> — the <code>event_id</code> of the most recent <code>cto_started</code> or
+  <code>delta_merged</code> event that produced this CTO instance. Set at construction;
+  updated on every merge. Carried in <code>CTOIndex</code> so Purposes can record it as
+  <code>based_on_event_id</code> without a separate librarian call.</li>
+</ul>
+<p>The canonical example profile is:</p>
+<ul>
+<li><code>content_profile = {"id": "conversation", "version": 1}</code></li>
+<li><code>content = {"speaker": {"id": str, "role": str, "label": str}, "text": str}</code></li>
+</ul>
+<p>Profile-scoped accessors (<code>speaker_id</code>, <code>speaker_role</code>, <code>speaker_label</code>,
+<code>text</code>) are <strong>derived</strong> — resolved at access time by walking <code>FieldSpec.path</code>
+into the nested content dict. No flat-key assumptions.</p>
+<h3 id="observations-and-namespaces">Observations and namespaces<a class="headerlink" href="#observations-and-namespaces" title="Permanent link">&para;</a></h3>
+<p>Observations accumulate in per-Purpose namespaces inside the CTO.</p>
+<p>Each Purpose writes exclusively to its own namespace (keyed by
+<code>purpose_name</code>). The hub enforces this at merge time: a Delta proposing
+writes outside the submitting Purpose's namespace is rejected.</p>
+<p>TTT currently enforces purpose-owned contribution namespaces. Cross-purpose
+observations are deferred pending a concrete use case. The architecture does
+not preclude a future shared or reconciled workspace, but no such namespace is
+currently normative.</p>
+<h3 id="ctoindex">CTOIndex<a class="headerlink" href="#ctoindex" title="Permanent link">&para;</a></h3>
+<p>A lightweight routing reference to a CTO, carried in hub-authored event
+payloads.</p>
+<p>It contains enough information for a Purpose to make a dispatch decision —
+profile type, identity, session, and provenance handle — without serializing
+full content or observations. Purposes that need full CTO state call
+<code>ttt.librarian.get_cto(turn_id)</code>.</p>
+<p><code>CTOIndex</code> carries <code>last_event_id</code>, mirroring <code>CTO.last_event_id</code> at the
+moment the index was produced. Purposes use this as <code>based_on_event_id</code> when
+constructing Delta proposals — it records which canonical CTO state the
+Purpose was reading when it decided to propose the change.</p>
+<p><code>CTOIndex</code> is a pointer, not a snapshot.</p>
+<h3 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h3>
+<p>A registered agenda-bearing actor in the TTT mesh.</p>
+<p>A Purpose:</p>
+<ul>
+<li>has a semantic <code>name</code> (also its observation namespace key)</li>
+<li>has an instance <code>id</code></li>
+<li>receives a hub-assigned <code>token</code> at registration — non-nullable after <code>start_purpose()</code></li>
+<li>subscribes to hub-authored events by profile and event type</li>
+<li>proposes Deltas into its own namespace</li>
+<li>may read observations from any namespace</li>
+<li>may invoke <code>start_turn()</code> to submit new CTOs into the mesh</li>
+<li>communicates with the hub exclusively via <code>hub.take_turn(event)</code> after bootstrap</li>
+</ul>
+<p>A Purpose is <strong>not</strong> a per-turn work parcel.</p>
+<p><strong><code>BasePurpose</code></strong> is the recommended implementation base. It enforces that
+<code>take_turn()</code> rejects events whose <code>hub_token</code> does not match the assigned
+token, closing the point-to-point bypass. Subclasses implement
+<code>_handle_event()</code> and must not override <code>take_turn()</code>.</p>
+<h3 id="delta">Delta<a class="headerlink" href="#delta" title="Permanent link">&para;</a></h3>
+<p>A purpose-proposed change.</p>
+<p>A Delta does not mutate canonical state directly. TTT validates and merges
+Deltas into CTO observation state using deterministic, append-only rules. All
+patch values must be lists.</p>
+<p><code>based_on_event_id</code> is a provenance field — the <code>last_event_id</code> of the CTO
+state the proposing Purpose was reading when it constructed the Delta. Read
+from <code>CTOIndex.last_event_id</code> in the triggering event payload; no extra
+librarian call required. Recorded in the persisted Delta for causal
+reconstruction and replay. <code>None</code> if the proposing Purpose did not record it.</p>
+<p><code>based_on_event_id</code> is <strong>not</strong> a conflict-detection mechanism. Because all
+observations are append-only and namespace-scoped, there are no destructive
+writes to conflict. It answers: <em>what canonical state was this Purpose
+reasoning from?</em></p>
+<h3 id="event-policy">Event policy<a class="headerlink" href="#event-policy" title="Permanent link">&para;</a></h3>
+<p>The hub maintains an internal event policy registry mapping Purpose-authored
+event types to optional built-in handlers.</p>
+<p>Events without handlers are still accepted and routed through the hub substrate
+but do not trigger built-in hub behavior.</p>
+<h3 id="hub-authored-events">Hub-authored events<a class="headerlink" href="#hub-authored-events" title="Permanent link">&para;</a></h3>
+<p>Hub-authored events are authoritative records emitted by TTT.</p>
+<p>They record lifecycle transitions that the hub has made true. The event stream
+is the primary provenance surface and remains the replay and reconstruction
+substrate.</p>
+<p>Payloads carry a <strong><code>CTOIndex</code></strong> (not a full CTO snapshot) plus event-specific
+metadata. Purposes that need full CTO state call <code>ttt.librarian.get_cto()</code>.</p>
+<p>Each event envelope is <strong>per-recipient</strong> — the hub stamps <code>hub_token</code> with the
+receiving Purpose's assigned token before dispatch. This allows
+<code>BasePurpose.take_turn()</code> to validate the source and reject point-to-point
+calls from other Purposes.</p>
+<h3 id="librarian">Librarian<a class="headerlink" href="#librarian" title="Permanent link">&para;</a></h3>
+<p><code>ttt.librarian</code> is the query interface for CTO state.</p>
+<p>It is a named object on the hub rather than a bare method because its
+responsibilities will grow: point lookups today, session readback and replay
+queries later. The hub is an authority and router; the librarian is the read
+path.</p>
+<p>Current interface:</p>
+<ul>
+<li><code>ttt.librarian.get_cto(turn_id)</code> — returns the current canonical CTO, or
+  <code>None</code> if unknown</li>
+</ul>
+<p>Planned interface (deferred):</p>
+<ul>
+<li>session readback</li>
+<li>replay-oriented retrieval</li>
+<li>persistence-backed historical queries</li>
+</ul>
+<h3 id="persistence-and-archivist">Persistence and Archivist<a class="headerlink" href="#persistence-and-archivist" title="Permanent link">&para;</a></h3>
+<p>Persistence is mandatory at hub startup.</p>
+<p>The hub requires a persistence backend when <code>TTT.start(...)</code> is called. That
+backend is bootstrapped before any domain Purpose registration or turn
+processing.</p>
+<p>There are currently two related persistence stories:</p>
+<ul>
+<li><strong><code>InMemoryPersistencePurpose</code></strong> — the lightweight in-core persistence sink,
+  useful for tests and development; not durable</li>
+<li><strong><code>Archivist</code></strong> — the durable persistence layer, backed by one or more
+  backends such as JSONL or session-document storage</li>
+</ul>
+<p>The architectural commitments are:</p>
+<ul>
+<li>persistence starts before the domain mesh</li>
+<li><code>session_started</code> is written first</li>
+<li>every later hub-authored event reaches persistence before domain delivery</li>
+<li><code>session_completed</code> is written last</li>
+</ul>
+<p>Domain Purposes do not receive <code>session_started</code> or <code>session_completed</code>.
+Those are persistence-only lifecycle records.</p>
+<h2 id="2-core-principles">2. Core principles<a class="headerlink" href="#2-core-principles" title="Permanent link">&para;</a></h2>
+<h3 id="21-ttt-is-authoritative">2.1 TTT is authoritative<a class="headerlink" href="#21-ttt-is-authoritative" title="Permanent link">&para;</a></h3>
+<p>Only TTT may create CTOs or mutate canonical CTO state.</p>
+<p>Purposes propose changes. TTT decides what becomes canonical.</p>
+<h3 id="22-append-only-by-default">2.2 Append-only by default<a class="headerlink" href="#22-append-only-by-default" title="Permanent link">&para;</a></h3>
+<p>Canonical history is preserved.</p>
+<p>TTT does not silently overwrite prior contributions. Merge behavior is
+deterministic and history-preserving. All Delta patch values must be lists;
+the hub extends, never replaces.</p>
+<h3 id="23-provenance-lives-primarily-in-the-event-stream">2.3 Provenance lives primarily in the event stream<a class="headerlink" href="#23-provenance-lives-primarily-in-the-event-stream" title="Permanent link">&para;</a></h3>
+<p>The authoritative answer to “who contributed what, when” comes from the event
+stream and replayable event history, not from stuffing provenance into every
+in-memory field.</p>
+<h3 id="24-profiled-core-not-conversation-only-core">2.4 Profiled core, not conversation-only core<a class="headerlink" href="#24-profiled-core-not-conversation-only-core" title="Permanent link">&para;</a></h3>
+<p>TTT does not assume all CTOs are speaker/text turns.</p>
+<p>Instead:</p>
+<ul>
+<li>CTO has <code>content_profile</code></li>
+<li>CTO has authoritative <code>content</code></li>
+<li>profiles define required content shape</li>
+<li><code>conversation</code> is the canonical example profile</li>
+</ul>
+<h3 id="25-purpose-is-an-actor-not-a-packet">2.5 Purpose is an actor, not a packet<a class="headerlink" href="#25-purpose-is-an-actor-not-a-packet" title="Permanent link">&para;</a></h3>
+<p>A Purpose is a registered participant with an agenda.</p>
+<p>Per-turn dispatch, if modeled explicitly, is a runtime concern separate from
+the identity of the Purpose itself.</p>
+<h3 id="26-routing-and-dependency-are-distinct">2.6 Routing and dependency are distinct<a class="headerlink" href="#26-routing-and-dependency-are-distinct" title="Permanent link">&para;</a></h3>
+<p>Routing answers: <strong>who is interested?</strong></p>
+<p>Dependency answers: <strong>who is eligible now?</strong></p>
+<p>Subscriptions and DAG constraints are related but not identical concerns.
+Profile match is the first filter: a Purpose registered for <code>"conversation"</code>
+CTOs does not receive dispatch for a <code>"document_review"</code> CTO, regardless of
+subscriptions or future eligibility machinery.</p>
+<p>Current dispatch order is:</p>
+<ol>
+<li><strong>Profile match</strong> — does this Purpose handle this CTO profile?</li>
+<li><strong>Subscription match</strong> — has this Purpose subscribed to this event type?</li>
+<li><strong>Built-in routing rules</strong> — does the hub send this event to domain Purposes at all?</li>
+</ol>
+<p>Future DAG eligibility is still deferred.</p>
+<h3 id="27-take_turn-is-the-communication-channel">2.7 <code>take_turn()</code> is the communication channel<a class="headerlink" href="#27-take_turn-is-the-communication-channel" title="Permanent link">&para;</a></h3>
+<p>After bootstrap, all communication between the hub and its Purposes flows
+through <code>take_turn(event)</code>.</p>
+<ul>
+<li><strong>Hub → Purpose</strong>: <code>purpose.take_turn(event)</code> — the hub dispatches events to
+  registered Purposes. <code>BasePurpose.take_turn()</code> validates the hub token
+  before delegating to <code>_handle_event()</code>.</li>
+<li><strong>Purpose → Hub</strong>: <code>hub.take_turn(event)</code> — Purposes submit typed events to
+  the hub ingress. The hub validates the submitting Purpose's token, consults
+  event policy, and acts.</li>
+</ul>
+<p>This symmetry is deliberate. Events are the lingua franca of the mesh. Adding
+new capabilities means adding new event types and handlers, not proliferating
+hub methods.</p>
+<p>Purposes must not call <code>take_turn()</code> on each other directly. The only valid
+source of a hub-authored event is the hub.</p>
+<h3 id="28-two-bootstrap-methods-stand-outside-the-event-model">2.8 Two bootstrap methods stand outside the event model<a class="headerlink" href="#28-two-bootstrap-methods-stand-outside-the-event-model" title="Permanent link">&para;</a></h3>
+<p>Two operations cannot be expressed as authenticated events and are therefore
+named methods:</p>
+<p><strong><code>start_turn()</code></strong> — CTO creation is the precondition for the event model. No
+<code>CTOIndex</code> exists until a CTO is created, so no well-formed event can
+represent this act.</p>
+<p><strong><code>start_purpose()</code></strong> — Purpose registration is the precondition for
+participation in the event mesh. No token exists until a Purpose is
+registered, so no authenticated event can represent this act.</p>
+<p>Everything else flows through <code>take_turn()</code>.</p>
+<h3 id="29-events-carry-references-not-snapshots">2.9 Events carry references, not snapshots<a class="headerlink" href="#29-events-carry-references-not-snapshots" title="Permanent link">&para;</a></h3>
+<p>Hub-authored event payloads carry a <code>CTOIndex</code> — a lightweight routing
+reference — not a full CTO snapshot. This keeps the event bus lean regardless
+of observation accumulation. Purposes that need full state call
+<code>ttt.librarian.get_cto(turn_id)</code>.</p>
+<h3 id="210-persistence-is-write-ahead-with-special-lifecycle-records">2.10 Persistence is write-ahead with special lifecycle records<a class="headerlink" href="#210-persistence-is-write-ahead-with-special-lifecycle-records" title="Permanent link">&para;</a></h3>
+<p>For normal hub-authored events, persistence happens before domain delivery.</p>
+<p>Two lifecycle events are special:</p>
+<ul>
+<li><code>session_started</code> — written directly to persistence during hub bootstrap</li>
+<li><code>session_completed</code> — written directly to persistence during orderly close</li>
+</ul>
+<p>These events bookend the session log and do not go through normal domain
+broadcast.</p>
+<h2 id="3-public-api-surface">3. Public API surface<a class="headerlink" href="#3-public-api-surface" title="Permanent link">&para;</a></h2>
+<p>The complete public-facing API of a running TTT hub is intentionally small:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>TTT.start(persistence_purpose, *, strict_profiles=False)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>ttt.start_turn(...)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>ttt.start_purpose(purpose)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>ttt.take_turn(event)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>ttt.close(reason=&quot;normal&quot;)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>ttt.librarian.get_cto(turn_id)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>````
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>`ProfileRegistry` is configured directly at process setup — not through the hub. Profiles are process-scoped metadata, hub-independent.
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>### API clarifications
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>`ttt.take_turn(event)` is the canonical ingress path for Purpose-originated post-bootstrap events.
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>Responsibilities:
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>1. validate event structure
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>2. authenticate the submitting Purpose
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>3. verify the event&#39;s claimed origin
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>4. consult event policy
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>5. dispatch resulting hub-authored events if applicable
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>All canonical state mutation enters through `take_turn()`.
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>`TTT.start()` accepts `strict_profiles=True` to activate strict key validation on all profiles at `start_turn()` time.
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>### Recommended startup sequence
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>```python
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a># 1. Register any custom profiles directly on ProfileRegistry (process-scoped)
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>ProfileRegistry.register(my_profile)
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a># 2. Start the hub — persistence is required
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>#    Use InMemoryPersistencePurpose() for tests/dev or Archivist(...) for durable logging
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>ttt = TTT.start(InMemoryPersistencePurpose())
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a># 3. Register a submitter Purpose to obtain a hub token
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>submitter = MySubmitterPurpose()
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>await ttt.start_purpose(submitter)
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a># 4. Register any additional domain Purposes
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>await ttt.start_purpose(other_purpose)
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a># 5. Begin turn processing — hub_token is required
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>await ttt.start_turn(&quot;conversation&quot;, content, submitter.token)
+</code></pre></div>
+<h2 id="4-minimal-lifecycle">4. Minimal lifecycle<a class="headerlink" href="#4-minimal-lifecycle" title="Permanent link">&para;</a></h2>
+<h3 id="41-start-hub">4.1 Start hub<a class="headerlink" href="#41-start-hub" title="Permanent link">&para;</a></h3>
+<p>Calling code starts the hub by providing a persistence backend:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">ttt</span> <span class="o">=</span> <span class="n">TTT</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">InMemoryPersistencePurpose</span><span class="p">())</span>
+</code></pre></div>
+<p>The hub validates the persistence contract, assigns persistence credentials, and writes <code>session_started</code> directly to persistence.</p>
+<h3 id="42-start-purposes">4.2 Start Purposes<a class="headerlink" href="#42-start-purposes" title="Permanent link">&para;</a></h3>
+<p>Calling code starts one or more domain Purposes via <code>ttt.start_purpose()</code>.</p>
+<p>Registration:</p>
+<ul>
+<li>associates <code>Purpose.name</code>, <code>Purpose.id</code>, and <code>subscriptions</code></li>
+<li>generates a cryptographic token and assigns it to the Purpose</li>
+<li>derives and assigns a per-Purpose downlink signature used to validate hub-authored downlink events</li>
+<li>stores a <code>PurposeRegistration</code> record keyed by <code>purpose.id</code></li>
+<li>emits <code>purpose_started</code></li>
+</ul>
+<p>After registration the Purpose token is non-nullable and the Purpose is ready to receive events.</p>
+<h3 id="43-call-start_turn">4.3 Call <code>start_turn()</code><a class="headerlink" href="#43-call-start_turn" title="Permanent link">&para;</a></h3>
+<p>A caller invokes <code>start_turn()</code> on TTT directly.</p>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">await</span> <span class="n">ttt</span><span class="o">.</span><span class="n">start_turn</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="s2">&quot;conversation&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="p">{</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="s2">&quot;speaker&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;usr_a3f9&quot;</span><span class="p">},</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="p">},</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">submitter</span><span class="o">.</span><span class="n">token</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="44-ttt-creates-cto">4.4 TTT creates CTO<a class="headerlink" href="#44-ttt-creates-cto" title="Permanent link">&para;</a></h3>
+<p>TTT looks up the profile in <code>ProfileRegistry</code>, validates the content, applies defaults, creates the CTO (with <code>last_event_id</code> set to the <code>cto_started</code> event id), stores it in <code>_ctos</code>, and emits:</p>
+<ul>
+<li><code>cto_started</code></li>
+</ul>
+<h3 id="45-dispatch-purposes">4.5 Dispatch Purposes<a class="headerlink" href="#45-dispatch-purposes" title="Permanent link">&para;</a></h3>
+<p>TTT routes <code>cto_started</code> to registered Purposes, filtered by profile match, subscription match, and routing rules. Each Purpose receives a per-recipient envelope with its own <code>hub_token</code> stamped in.</p>
+<h3 id="46-purposes-propose-deltas">4.6 Purposes propose Deltas<a class="headerlink" href="#46-purposes-propose-deltas" title="Permanent link">&para;</a></h3>
+<p>Purposes call <code>ttt.librarian.get_cto(turn_id)</code> if they need full content or observations, then submit a <code>DeltaProposalEvent</code> to <code>hub.take_turn()</code>.</p>
+<p>The <code>CTOIndex.last_event_id</code> carried in the triggering event payload is available as <code>based_on_event_id</code> for the Delta without a separate librarian call.</p>
+<h3 id="47-ttt-merges-deltas">4.7 TTT merges Deltas<a class="headerlink" href="#47-ttt-merges-deltas" title="Permanent link">&para;</a></h3>
+<p>TTT validates and merges Deltas (append-only, namespace-scoped), constructs a new CTO instance with updated observations and updated <code>last_event_id</code>, and emits:</p>
+<ul>
+<li><code>delta_merged</code></li>
+</ul>
+<p>If a proposed Delta is malformed or invalid, the hub may emit:</p>
+<ul>
+<li><code>delta_rejected</code></li>
+</ul>
+<h3 id="48-close-session">4.8 Close session<a class="headerlink" href="#48-close-session" title="Permanent link">&para;</a></h3>
+<p>When orderly shutdown is requested, the hub:</p>
+<ol>
+<li>emits <code>session_closing</code> to registered domain Purposes</li>
+<li>does not yet wait for DAG-style quiescence in v0.20</li>
+<li>writes <code>session_completed</code> directly to persistence</li>
+</ol>
+<p><code>session_completed</code> is the final record in the session log.</p>
+<h2 id="5-event-taxonomy">5. Event taxonomy<a class="headerlink" href="#5-event-taxonomy" title="Permanent link">&para;</a></h2>
+<h3 id="51-hub-authored-event-types">5.1 Hub-authored event types<a class="headerlink" href="#51-hub-authored-event-types" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>session_started</code></li>
+<li><code>purpose_started</code></li>
+<li><code>cto_started</code></li>
+<li><code>delta_merged</code></li>
+<li><code>delta_rejected</code></li>
+<li><code>session_closing</code></li>
+<li><code>session_completed</code></li>
+<li><code>cto_completed</code> (reserved/deferred terminal lifecycle event)</li>
+</ul>
+<h3 id="52-purpose-authored-event-types">5.2 Purpose-authored event types<a class="headerlink" href="#52-purpose-authored-event-types" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>delta_proposal</code></li>
+<li><code>purpose_completed</code></li>
+<li><code>cto_close_request</code></li>
+</ul>
+<h3 id="53-taxonomy-notes">5.3 Taxonomy notes<a class="headerlink" href="#53-taxonomy-notes" title="Permanent link">&para;</a></h3>
+<p><code>cto_close_request</code> and <code>purpose_completed</code> are accepted as part of the event substrate, but the full DAG/quiescence semantics for them remain deferred.</p>
+<p>This means the taxonomy is ahead of the full orchestration layer in a few places by design.</p>
+<h2 id="6-persistence-model">6. Persistence model<a class="headerlink" href="#6-persistence-model" title="Permanent link">&para;</a></h2>
+<h3 id="61-ordering-guarantees">6.1 Ordering guarantees<a class="headerlink" href="#61-ordering-guarantees" title="Permanent link">&para;</a></h3>
+<p>The persistence ordering contract is:</p>
+<ol>
+<li><code>session_started</code> is written first</li>
+<li>every later hub-authored event is persisted before domain delivery</li>
+<li><code>session_completed</code> is written last</li>
+</ol>
+<p>This makes the persisted event stream the authoritative reconstruction log.</p>
+<h3 id="62-persistence-implementations">6.2 Persistence implementations<a class="headerlink" href="#62-persistence-implementations" title="Permanent link">&para;</a></h3>
+<p>For development and tests:</p>
+<ul>
+<li><code>InMemoryPersistencePurpose</code></li>
+</ul>
+<p>For durable logging:</p>
+<ul>
+<li><code>Archivist</code></li>
+<li>Archivist backends such as JSONL and session-document storage</li>
+</ul>
+<h3 id="63-why-persistence-is-mandatory">6.3 Why persistence is mandatory<a class="headerlink" href="#63-why-persistence-is-mandatory" title="Permanent link">&para;</a></h3>
+<p>The architecture treats persistence as a first-class substrate, not an optional add-on. Without it, the hub cannot satisfy its provenance, replay, and audit commitments.</p>
+<h2 id="7-what-is-implemented-now-vs-deferred">7. What is implemented now vs. deferred<a class="headerlink" href="#7-what-is-implemented-now-vs-deferred" title="Permanent link">&para;</a></h2>
+<h3 id="implemented-in-v020">Implemented in v0.20<a class="headerlink" href="#implemented-in-v020" title="Permanent link">&para;</a></h3>
+<ul>
+<li>mandatory persistence at startup</li>
+<li>session lifecycle records (<code>session_started</code>, <code>session_closing</code>, <code>session_completed</code>)</li>
+<li>authenticated Purpose registration and routing</li>
+<li><code>start_turn()</code> with required hub token</li>
+<li><code>cto_started</code> and <code>delta_merged</code></li>
+<li><code>delta_rejected</code></li>
+<li>append-only, namespace-scoped Delta merge</li>
+<li>librarian point lookup</li>
+<li>Archivist-backed durable persistence</li>
+</ul>
+<h3 id="still-deferred">Still deferred<a class="headerlink" href="#still-deferred" title="Permanent link">&para;</a></h3>
+<ul>
+<li>DAG-based dependency eligibility</li>
+<li>quiescence detection before final session completion</li>
+<li>richer librarian readback/replay APIs</li>
+<li>full semantics for <code>cto_completed</code>, <code>purpose_completed</code>, and <code>cto_close_request</code></li>
+<li>cross-purpose shared workspaces</li>
+</ul>
+<h2 id="8-non-goals-for-v020">8. Non-goals for v0.20<a class="headerlink" href="#8-non-goals-for-v020" title="Permanent link">&para;</a></h2>
+<p>TTT v0.20 does not attempt to fully specify:</p>
+<ul>
+<li>domain-specific semantics</li>
+<li>scheduling policy beyond current routing/subscription behavior</li>
+<li>a full workflow engine</li>
+<li>cross-Purpose arbitration semantics beyond append-only namespace enforcement</li>
+<li>final DAG orchestration rules</li>
+</ul>
+<h2 id="9-design-summary">9. Design summary<a class="headerlink" href="#9-design-summary" title="Permanent link">&para;</a></h2>
+<p>TTT v0.20 is a small, authority-centered event substrate with mandatory persistence.</p>
+<p>The hub creates CTOs, merges Deltas, emits authoritative events, and records those transitions in a write-ahead persistence log. Purposes remain bounded: they observe, reason, and propose. They do not mutate canonical state unilaterally.</p>
+<p>That is the point of the architecture: preserve a replayable, auditable record of what the hub canonized as true while keeping domain semantics outside the core.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

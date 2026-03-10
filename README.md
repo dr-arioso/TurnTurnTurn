@@ -8,7 +8,7 @@
 
 TTT started as an answer to a surprisingly open question in conversational AI research: **what actually *is* a turn?**
 
-When building research infrastructure for human-AI interaction studies, the honest answer from the field was: an assorted collection of dicts, flat transcript files, and ad-hoc JSON — each project reinventing the same structure with different field names and no provenance story. TTT is the canonical object that was missing: a structured, hub-authoritative unit of conversational or sequential work, with data integrity and replayability built in from the start.
+When building research infrastructure for human-AI interaction studies, the honest answer from the field was: an assorted collection of dicts, flat transcript files, and ad-hoc JSON — each project reinventing the same structure with different field names and no provenance story. CTO is the canonical object that was missing: a structured, authoritative unit of conversational or sequential work, with data integrity and replayability built in from the start.
 
 From there, the applications broadened. TTT is useful anywhere a single input needs to move through multiple processors — human-AI interaction pipelines, multi-LLM coordination, AI observability, annotation workflows, content enrichment. The abstraction generalizes cleanly because the core problem is always the same: **something arrives, multiple things need to happen to it, and you need to know exactly what happened and in what order.**
 
@@ -147,3 +147,4 @@ See the [Developer Guide](docs/dev-guide.md) for the full docs workflow includin
 ## License
 
 MIT
+

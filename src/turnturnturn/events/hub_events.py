@@ -215,7 +215,7 @@ class SessionStartedPayload(EventPayloadProtocol):
     persister_id: str  # UUID as string
     persister_is_durable: bool
     strict_profiles: bool
-    started_at_ms: int
+    created_at_ms: int
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-safe dict for the event log."""
@@ -228,7 +228,7 @@ class SessionStartedPayload(EventPayloadProtocol):
             "persister_id": self.persister_id,
             "persister_is_durable": self.persister_is_durable,
             "strict_profiles": self.strict_profiles,
-            "started_at_ms": self.started_at_ms,
+            "created_at_ms": self.created_at_ms,
         }
 
 
@@ -308,7 +308,7 @@ class PurposeStartedPayload(EventPayloadProtocol):
     purpose_name: str
     purpose_id: str  # UUID as string
     is_persistence_purpose: bool
-    started_at_ms: int
+    created_at_ms: int
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-safe dict for the event log."""
@@ -318,7 +318,7 @@ class PurposeStartedPayload(EventPayloadProtocol):
             "purpose_name": self.purpose_name,
             "purpose_id": self.purpose_id,
             "is_persistence_purpose": self.is_persistence_purpose,
-            "started_at_ms": self.started_at_ms,
+            "created_at_ms": self.created_at_ms,
         }
 
 
@@ -338,7 +338,7 @@ class HubEvent:
 
     event_type: HubEventType
     event_id: UUID
-    started_at_ms: int
+    created_at_ms: int
 
     session_id: UUID | None = None
     turn_id: UUID | None = None

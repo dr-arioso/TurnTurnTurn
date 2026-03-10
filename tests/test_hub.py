@@ -30,7 +30,7 @@ def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
     return DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,

@@ -291,7 +291,7 @@ class TTT:
         event = HubEvent(
             event_type=HubEventType.SESSION_STARTED,
             event_id=uuid4(),
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             payload=SessionStartedPayload(
                 hub_id=str(self.hub_id),
                 ttt_version=ttt_version,
@@ -299,7 +299,7 @@ class TTT:
                 persister_id=str(p.id),
                 persister_is_durable=p.is_durable,
                 strict_profiles=self.strict_profiles,
-                started_at_ms=now_ms(),
+                created_at_ms=now_ms(),
             ),
         )
 
@@ -452,12 +452,12 @@ class TTT:
         purpose_started_event = HubEvent(
             event_type=HubEventType.PURPOSE_STARTED,
             event_id=uuid4(),
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             payload=PurposeStartedPayload(
                 purpose_name=purpose.name,
                 purpose_id=str(purpose.id),
                 is_persistence_purpose=is_persistence,
-                started_at_ms=now_ms(),
+                created_at_ms=now_ms(),
             ),
         )
         await self._multicast(purpose_started_event)
@@ -542,7 +542,7 @@ class TTT:
         cto = CTO(
             turn_id=uuid4(),
             session_id=resolved_session_id,
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             content_profile={"id": content_profile, "version": profile_version},
             content=resolved_content,
             last_event_id=cto_started_event_id,
@@ -559,7 +559,7 @@ class TTT:
         event = HubEvent(
             event_type=HubEventType.CTO_STARTED,
             event_id=cto_started_event_id,
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             session_id=cto.session_id,
             turn_id=cto.turn_id,
             payload=CTOStartedPayload(
@@ -600,7 +600,7 @@ class TTT:
         closing_event = HubEvent(
             event_type=HubEventType.SESSION_CLOSING,
             event_id=uuid4(),
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             payload=SessionClosingPayload(
                 reason=reason,
                 # timeout_ms is None in v0 — quiescence enforcement is a DAG concern.
@@ -615,7 +615,7 @@ class TTT:
         completed_event = HubEvent(
             event_type=HubEventType.SESSION_COMPLETED,
             event_id=uuid4(),
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             payload=SessionCompletedPayload(is_last_out=True),
         )
         await self._multicast(completed_event, persistence_only=True)
@@ -765,7 +765,7 @@ class TTT:
         updated_cto = CTO(
             turn_id=cto.turn_id,
             session_id=cto.session_id,
-            started_at_ms=cto.started_at_ms,
+            created_at_ms=cto.created_at_ms,
             content_profile=cto.content_profile,
             content=cto.content,
             observations=existing_obs,
@@ -782,7 +782,7 @@ class TTT:
         event = HubEvent(
             event_type=HubEventType.DELTA_MERGED,
             event_id=delta_merged_event_id,
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             session_id=updated_cto.session_id,
             turn_id=updated_cto.turn_id,
             payload=DeltaMergedPayload(
@@ -804,7 +804,7 @@ class TTT:
         event = HubEvent(
             event_type=HubEventType.DELTA_REJECTED,
             event_id=uuid4(),
-            started_at_ms=now_ms(),
+            created_at_ms=now_ms(),
             session_id=None,
             turn_id=delta.turn_id,
             payload=DeltaRejectedPayload(
@@ -866,7 +866,7 @@ class TTT:
             addressed = HubEvent(
                 event_type=event.event_type,
                 event_id=event.event_id,
-                started_at_ms=event.started_at_ms,
+                created_at_ms=event.created_at_ms,
                 session_id=event.session_id,
                 turn_id=event.turn_id,
                 payload=event.payload,

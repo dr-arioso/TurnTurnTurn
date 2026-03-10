@@ -23,7 +23,7 @@ def _make_event(
     return HubEvent(
         event_type=HubEventType.CTO_STARTED,
         event_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
         payload=EmptyPayload(),
         hub_token=hub_token,
         downlink_signature=downlink_signature,

@@ -68,7 +68,7 @@ class CTOCloseRequestEvent:
 
     event_type: PurposeEventType
     event_id: UUID
-    started_at_ms: int
+    created_at_ms: int
     purpose_id: UUID
     purpose_name: str
     hub_token: str
@@ -86,7 +86,7 @@ class DeltaProposalEvent:
 
     event_type: PurposeEventType
     event_id: UUID
-    started_at_ms: int
+    created_at_ms: int
     purpose_id: UUID
     purpose_name: str
     hub_token: str

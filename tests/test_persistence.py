@@ -399,7 +399,7 @@ async def test_in_memory_write_event_idempotent_on_event_id(persistence_purpose)
     event = HubEvent(
         event_type=HubEventType.CTO_STARTED,
         event_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
         payload=EmptyPayload(),
     )
     await persistence_purpose.write_event(event)

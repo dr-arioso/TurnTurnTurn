@@ -24,9 +24,12 @@ Architecture note:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from ._event_serialization import hub_event_record
 from .events.hub_events import HubEvent, HubEventType
 
 if TYPE_CHECKING:
@@ -120,3 +123,72 @@ class ArchivistBackendConfig:
                         return False
 
         return True
+
+
+# ---------------------------------------------------------------------------
+# Concrete backends
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class JsonlArchivistBackendConfig(ArchivistBackendConfig):
+    """
+    Configuration for JsonlArchivistBackend.
+
+    Extends ArchivistBackendConfig with the output path. Each accepted event
+    is serialized as one JSON line and appended to this file.
+
+    Attributes:
+        path: Destination file path. Parent directories are created on first
+            write if absent. If the file already exists, records are appended.
+    """
+
+    path: Path = field(default_factory=lambda: Path("archivist.jsonl"))
+
+
+class JsonlArchivistBackend:
+    """
+    Stream-shape Archivist backend that appends one JSON line per event.
+
+    Each accepted event is serialized via hub_event_record() and written as
+    a single JSON line (sort_keys=True for stable output) to the configured
+    path. Parent directories are created on first write.
+
+    is_durable = True — records are written to disk and survive process
+    termination, subject to OS-level write guarantees.
+
+    File I/O is synchronous (blocking) in v0. This is acceptable for the
+    expected write volume; async file I/O is noted as a future improvement.
+
+    No deduplication — records are appended unconditionally. The hub
+    guarantees each event is delivered once; InMemoryPersistencePurpose
+    is the canonical idempotent failover double if deduplication is needed.
+    """
+
+    is_durable: bool = True
+
+    def __init__(self, config: JsonlArchivistBackendConfig) -> None:
+        """
+        Initialise the backend with its configuration.
+
+        Args:
+            config: JsonlArchivistBackendConfig carrying the output path and
+                any event_type / content_profile filters.
+        """
+        self._config = config
+
+    async def accept(self, event: HubEvent) -> None:
+        """
+        Serialize event and append one JSON line to the configured path.
+
+        Creates parent directories if absent. Appends to an existing file
+        so that a process restart picks up where the previous run left off.
+
+        Args:
+            event: The HubEvent to persist.
+        """
+        self._config.path.parent.mkdir(parents=True, exist_ok=True)
+        record = hub_event_record(event)
+        line = json.dumps(record, sort_keys=True)
+        with self._config.path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")

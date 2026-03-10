@@ -31,7 +31,7 @@ class EventProtocol(Protocol):
 
     event_type: str
     event_id: UUID
-    started_at_ms: int
+    created_at_ms: int
     payload: EventPayloadProtocol
 
 

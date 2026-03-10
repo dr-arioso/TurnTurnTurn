@@ -52,7 +52,7 @@ class CTO:
 
     turn_id: UUID
     session_id: UUID
-    started_at_ms: int
+    created_at_ms: int
 
     # Plain dict: {"id": str, "version": int}
     # Serializable and loggable as-is. No object references.
@@ -115,7 +115,7 @@ class CTO:
         return {
             "turn_id": str(self.turn_id),
             "session_id": str(self.session_id),
-            "started_at_ms": self.started_at_ms,
+            "created_at_ms": self.created_at_ms,
             "content_profile": self.content_profile,
             "content": self.content,
             "observations": self.observations,
@@ -134,7 +134,7 @@ class CTO:
             turn_id=self.turn_id,
             session_id=self.session_id,
             content_profile=self.content_profile,
-            started_at_ms=self.started_at_ms,
+            created_at_ms=self.created_at_ms,
             last_event_id=self.last_event_id,
         )
 
@@ -170,7 +170,7 @@ class CTOIndex:
     # {"id": str, "version": int} — sufficient for profile-based routing
     # decisions without loading full content.
     content_profile: dict[str, Any]
-    started_at_ms: int
+    created_at_ms: int
 
     # Version handle mirroring CTO.last_event_id. Carried here so Purposes
     # can read the current CTO version handle directly from the event payload
@@ -188,6 +188,6 @@ class CTOIndex:
             "turn_id": str(self.turn_id),
             "session_id": str(self.session_id),
             "content_profile": self.content_profile,
-            "started_at_ms": self.started_at_ms,
+            "created_at_ms": self.created_at_ms,
             "last_event_id": str(self.last_event_id) if self.last_event_id else None,
         }

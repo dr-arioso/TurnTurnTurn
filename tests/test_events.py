@@ -24,7 +24,7 @@ def _minimal_cto_index_dict() -> dict:
         "turn_id": str(uuid4()),
         "session_id": str(uuid4()),
         "content_profile": {"id": "conversation", "version": 1},
-        "started_at_ms": 0,
+        "created_at_ms": 0,
     }
 
 
@@ -47,7 +47,7 @@ def test_hub_event_fields():
     event = HubEvent(
         event_type=HubEventType.CTO_STARTED,
         event_id=eid,
-        started_at_ms=999,
+        created_at_ms=999,
         session_id=sid,
         payload=payload,
         hub_token="tok",
@@ -55,7 +55,7 @@ def test_hub_event_fields():
     )
     assert event.event_type == HubEventType.CTO_STARTED
     assert event.event_id == eid
-    assert event.started_at_ms == 999
+    assert event.created_at_ms == 999
     assert event.session_id == sid
     assert event.payload is payload
     assert event.hub_token == "tok"
@@ -66,7 +66,7 @@ def test_hub_event_is_frozen():
     event = HubEvent(
         event_type=HubEventType.CTO_STARTED,
         event_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
     )
     with pytest.raises((AttributeError, TypeError)):
         event.hub_token = "mutated"  # type: ignore[misc]
@@ -82,7 +82,7 @@ def test_cto_created_payload_as_dict():
             "turn_id": str(uuid4()),
             "session_id": str(uuid4()),
             "content_profile": {"id": "conversation", "version": 1},
-            "started_at_ms": 0,
+            "created_at_ms": 0,
         }
     )
     data = payload.as_dict()
@@ -98,7 +98,7 @@ def test_delta_merged_payload_as_dict():
             "turn_id": str(uuid4()),
             "session_id": str(uuid4()),
             "content_profile": {"id": "conversation", "version": 1},
-            "started_at_ms": 0,
+            "created_at_ms": 0,
         },
     )
     data = payload.as_dict()
@@ -122,7 +122,7 @@ def test_delta_proposal_event_fields():
     event = DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        started_at_ms=123,
+        created_at_ms=123,
         purpose_id=pid,
         purpose_name="tester",
         hub_token="tok",

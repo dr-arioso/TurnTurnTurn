@@ -44,7 +44,7 @@ def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
     return DeltaProposalEvent(
         event_type=PurposeEventType.DELTA_PROPOSAL,
         event_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
@@ -62,7 +62,7 @@ def _make_unversioned_cto() -> CTO:
     return CTO(
         turn_id=uuid4(),
         session_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
         content_profile={"id": "conversation", "version": 1},
         content={"speaker": {"id": "x", "role": "user", "label": "X"}, "text": "hi"},
     )
@@ -173,7 +173,7 @@ def test_cto_index_last_event_id_none_serialises_as_none():
         turn_id=uuid4(),
         session_id=uuid4(),
         content_profile={"id": "conversation", "version": 1},
-        started_at_ms=0,
+        created_at_ms=0,
         last_event_id=None,
     )
     assert idx.to_dict()["last_event_id"] is None
@@ -185,7 +185,7 @@ def test_cto_index_last_event_id_uuid_serialises_as_string():
         turn_id=uuid4(),
         session_id=uuid4(),
         content_profile={"id": "conversation", "version": 1},
-        started_at_ms=0,
+        created_at_ms=0,
         last_event_id=eid,
     )
     d = idx.to_dict()
@@ -316,7 +316,7 @@ def test_cto_last_event_id_uuid_serialises_as_string():
     cto = CTO(
         turn_id=uuid4(),
         session_id=uuid4(),
-        started_at_ms=0,
+        created_at_ms=0,
         content_profile={"id": "conversation", "version": 1},
         content={"speaker": {"id": "x", "role": "user", "label": "X"}, "text": "hi"},
         last_event_id=eid,

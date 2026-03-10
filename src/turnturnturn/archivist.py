@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from ._event_serialization import hub_event_record
 from .events.hub_events import HubEvent, HubEventType
@@ -192,3 +192,110 @@ class JsonlArchivistBackend:
         line = json.dumps(record, sort_keys=True)
         with self._config.path.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
+
+
+# ---------------------------------------------------------------------------
+# Document-shape backend
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SessionDocumentArchivistBackendConfig(ArchivistBackendConfig):
+    """
+    Configuration for SessionDocumentArchivistBackend.
+
+    Extends ArchivistBackendConfig with the output path. The backend
+    accumulates all accepted events in memory and flushes them as a single
+    JSON document when SESSION_COMPLETED is received.
+
+    Attributes:
+        path: Destination file path for the session document. Parent
+            directories are created on flush if absent. If the file already
+            exists it is overwritten — the document represents one complete
+            session record.
+    """
+
+    path: Path = field(default_factory=lambda: Path("session.json"))
+
+
+class SessionDocumentArchivistBackend:
+    """
+    Document-shape Archivist backend that flushes one JSON file per session.
+
+    Accumulates accepted events in memory as accept() is called. On
+    SESSION_COMPLETED, writes a single JSON document to the configured path
+    containing a metadata header and an ordered array of all accumulated
+    events.
+
+    Document shape:
+        {
+            "id":       <session_id of SESSION_COMPLETED or null>,
+            "metadata": {},       # stub — TraceProbe-compatible header is
+                                  # future work (v0.21+)
+            "events":   [...]     # ordered list of hub_event_record() dicts
+        }
+
+    is_durable = True — the document is written to disk and survives process
+    termination, subject to OS-level write guarantees. However, events
+    accumulated in memory before a crash are lost; the JSONL backend is the
+    safer choice when crash-durability of individual events is required.
+
+    This backend is a stub in v0.20. The metadata header shape and full
+    TraceProbe compatibility are deferred to a future release; the
+    accumulate-and-flush pattern is what this version establishes.
+    """
+
+    is_durable: bool = True
+
+    def __init__(self, config: SessionDocumentArchivistBackendConfig) -> None:
+        """
+        Initialise the backend with its configuration.
+
+        Args:
+            config: SessionDocumentArchivistBackendConfig carrying the output
+                path and any event_type / content_profile filters.
+        """
+        self._config = config
+        self._events: list[dict[str, Any]] = []
+
+    async def accept(self, event: HubEvent) -> None:
+        """
+        Accumulate the event; flush to disk on SESSION_COMPLETED.
+
+        For all events other than SESSION_COMPLETED, the serialized record is
+        appended to the in-memory list. When SESSION_COMPLETED arrives, the
+        full accumulated list is written to the configured path as a single
+        JSON document.
+
+        SESSION_COMPLETED itself is included in the events array before
+        flushing so the document contains a complete record of the session,
+        including its closing event.
+
+        Args:
+            event: The HubEvent to accumulate or trigger a flush.
+        """
+        record = hub_event_record(event)
+        self._events.append(record)
+
+        if event.event_type == HubEventType.SESSION_COMPLETED:
+            self._flush(session_id=str(event.session_id) if event.session_id else None)
+
+    def _flush(self, session_id: str | None) -> None:
+        """
+        Write the accumulated event list to disk as a single JSON document.
+
+        Creates parent directories if absent. Overwrites any existing file at
+        the configured path — this document represents one complete session.
+
+        Args:
+            session_id: The session identifier to embed in the document header.
+                Sourced from the SESSION_COMPLETED event's session_id field.
+        """
+        document: dict[str, Any] = {
+            "id": session_id,
+            "metadata": {},  # stub — TraceProbe-compatible shape is future work
+            "events": self._events,
+        }
+        self._config.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._config.path.open("w", encoding="utf-8") as f:
+            json.dump(document, f, sort_keys=True)

@@ -56,12 +56,12 @@ take_turn(event)
     -> optionally perform built-in hub action
     -> emit resulting hub-authored events if applicable
 ```
-Not every accepted Purpose-authored event is **hub-advisory**; that is, not all Purpose-authored events must trigger built-in hub action.
+Not every accepted Purpose-authored event is **hub-advisory**; that must trigger built-in hub action.
 TTT is a provenance-first event substrate: all accepted events go through the
 hub, while only a subset currently trigger built-in hub behavior such as
 Delta merge.
 
-**`close(...)`**
+`close(...)`
 ```text
 close(reason=...)
     -> emit session_closing to all registered Purposes

@@ -30,7 +30,7 @@ they are stragglers and should be updated:
 |---------|-------------|
 | `TurnSnargle` | — (concept removed; use `start_turn()` directly) |
 | `submit_snargle()` | `ttt.start_turn()` |
-| `turn_received` | `cto_created` |
+| `turn_received` | `cto_started` |
 | `content["speaker_id"]` (flat) | `content["speaker"]["id"]` (nested) |
 | `CTO.speaker` | `CTO.speaker_id`, `CTO.speaker_role`, `CTO.speaker_label` |
 | `validate_content_profile()` | `Profile.validate()` via `ProfileRegistry` |
@@ -43,10 +43,10 @@ they are stragglers and should be updated:
 | `TTT.get_cto()` | `ttt.librarian.get_cto()` |
 | `stale_delta` (in `delta_merged` payload) | — (concept removed; `based_on_event_id` is provenance only) |
 | `PURPOSE_REGISTERED` | `PURPOSE_STARTED` |
-| `submitted_by_label` (in `cto_created` payload) | — (retired; submitter attribution is always via `submitted_by_purpose_id` / `submitted_by_purpose_name`) |
+| `submitted_by_label` (in `cto_started` payload) | — (retired; submitter attribution is always via `submitted_by_purpose_id` / `submitted_by_purpose_name`) |
 | `session_id` as required positional arg to `start_turn()` | — (now optional keyword-only; hub mints UUID if absent) |
 | `TTT.start()` with no args | `TTT.start(persistence_purpose)` — persistence Purpose is required |
-| `InMemoryHistorian` / `JsonlHistorian` | `InMemoryPersistencePurpose` / subclass `PersistencePurpose` |
+| `InMemoryHistorian` / `JsonlHistorian` | `Archivist` / Archivist backends (or `InMemoryPersistencePurpose` for tests/dev) |
 
 ## The invariants that matter most
 
@@ -104,10 +104,13 @@ Each HubEvent envelope is **per-recipient** — `_multicast()` constructs a
 fresh envelope per Purpose stamped with that Purpose's `hub_token`. Tokens
 are never visible across Purpose boundaries.
 
-`_multicast()` runs in two phases. Phase 1: `persistence_purpose.write_event()`
-is called with the event before any domain Purpose is notified. Phase 2: the
-event is broadcast to all registered domain Purposes. If Phase 1 raises,
-`PersistenceFailureError` is raised and Phase 2 does not run.
+`_multicast()` runs in two phases. Phase 1: the persistence Purpose is invoked
+before any domain Purpose is notified. Phase 2: the event is broadcast to all
+registered domain Purposes. If Phase 1 raises, `PersistenceFailureError` is
+raised and Phase 2 does not run.
+
+`session_started` and `session_completed` are special cases: they are
+persistence-only lifecycle events and do not go through normal domain broadcast.
 
 ## Before you commit
 
@@ -118,7 +121,10 @@ pre-commit run --all-files   # ruff, black, isort, mypy --strict, interrogate
 
 ## Before you change a public interface
 
-Read `docs/ttt_architecture_v0_19.md`. The principles in §2 are load-bearing.
+Read `docs/index.md` first, then the architecture doc. The principles in §2 of
+the architecture doc are load-bearing, but that document still needs a dedicated
+v0.20 refresh.
+
 Changes that would require a Purpose to write canonical state directly, or that
 add domain semantics to the hub or CTO, are wrong by design, not by accident.
 

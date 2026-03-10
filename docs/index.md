@@ -70,4 +70,4 @@ This project is in active architectural development. The core object model,
 hub semantics, profile system, and Purpose dispatch are stable. The DAG
 eligibility layer and persistence are not yet implemented.
 
-See the [Architecture](ttt_architecture_v0_19.md) doc for current design direction.
+See the [Architecture](ttt_architecture_v0_19.md) doc for the current architecture writeup. It still needs a dedicated v0.20 refresh.

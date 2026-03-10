@@ -28,7 +28,7 @@ def _minimal_cto_index_dict() -> dict:
     }
 
 
-def test_event_type_cto_created_value():
+def test_event_type_cto_started_value():
     assert HubEventType.CTO_STARTED.value == "cto_started"
 
 
@@ -76,7 +76,7 @@ def test_empty_payload_serializes_to_empty_dict():
     assert EmptyPayload().as_dict() == {}
 
 
-def test_cto_created_payload_as_dict():
+def test_cto_started_payload_as_dict():
     payload = CTOStartedPayload(
         cto_index={
             "turn_id": str(uuid4()),

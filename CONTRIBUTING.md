@@ -49,7 +49,7 @@ in `docs/api/` is generated from these docstrings at build time via
 `mkdocstrings` — you do not edit the API reference pages directly.
 
 **Layer 2 — Architecture doc (when the design changes)**
-`docs/ttt_architecture_v0_18.md` documents intent, principles, and settled
+`docs/ttt_architecture_v0_20.md` documents intent, principles, and settled
 decisions. Update it when you change *why* something works the way it does,
 not just *how*. See [When to update the arch doc](#when-to-update-the-arch-doc)
 below.
@@ -166,7 +166,7 @@ what the situation is.
 
 ## When to update the arch doc
 
-`docs/ttt_architecture_v0_18.md` is the design record. It documents *intent*
+`docs/ttt_architecture_v0_20.md` is the design record. It documents *intent*
 and *principles*, not implementation detail. Use this table:
 
 | Change | Update arch doc? |

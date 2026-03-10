@@ -1,19 +1,20 @@
 """
 Canonical wire-format serialization for TTT events and CTO snapshots.
 
-These functions define the on-disk and on-wire record schema for all
-persistence backends. Their output is what HistorianPurpose will write
-and what replay tooling will read. Schema stability matters: downstream
-consumers — log analysis, replay, regression testing — depend on the
-shape of these dicts being consistent across TTT versions.
+These functions define the on-disk and on-wire record schema for
+persistence backends. Their output is what Archivist backends and other
+persistence sinks write, and what replay tooling reads. Schema stability
+matters: downstream consumers — log analysis, replay, regression
+testing — depend on the shape of these dicts being consistent across TTT
+versions.
 
-Schema versioning is the responsibility of the producing code (payload
-as_dict() methods carry _schema and _v fields). The envelope fields
-produced here (record_type, event_type, event_id, created_at_ms,
-session_id, turn_id) are stable from v0.19.
+Schema versioning is the responsibility of the producing code
+(payload.as_dict() methods carry _schema and _v fields). The envelope
+fields produced here (record_type, event_type, event_id,
+created_at_ms, session_id, turn_id) are stable from v0.19.
 
 These functions are private to the turnturnturn package. They are used
-by persistence.py (core) and may be imported by tests/helpers.py for
+by core persistence code and may be imported by tests/helpers.py for
 assertion utilities. They are not part of the public API surface.
 """
 
@@ -58,7 +59,7 @@ def hub_event_record(event: HubEvent) -> dict[str, Any]:
 
     Record shape (stable from v0.19):
         record_type  : "hub_event"
-        event_type   : wire string (e.g. "cto_created", "delta_merged")
+        event_type   : wire string (e.g. "cto_started", "delta_merged")
         event_id     : UUID string
         created_at_ms: int (Unix ms)
         session_id   : UUID string or None
@@ -120,7 +121,7 @@ def cto_snapshot_record(cto: CTO) -> dict[str, Any]:
     Serialize canonical CTO state into a persistence snapshot record.
 
     CTO snapshots capture the full canonical state at a point in time.
-    They are written after every cto_created and delta_merged event so
+    They are written after every cto_started and delta_merged event so
     that the log contains both the event (what happened) and the
     resulting state (what it produced).
 

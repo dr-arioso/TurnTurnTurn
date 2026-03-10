@@ -38,8 +38,8 @@ class Delta:
         purpose_id: instance UUID, distinguishes concurrent instances of the
             same Purpose name.
         based_on_event_id: the last_event_id of the CTO state this Delta was
-            derived from. Used by the hub to detect stale proposals. None if
-            the proposing Purpose did not record it.
+            derived from. Used for causal reconstruction, replay, and audit.
+            None if the proposing Purpose did not record it.
     """
 
     delta_id: UUID
@@ -53,15 +53,15 @@ class Delta:
     # All values must be lists — enforced by hub at merge time.
     patch: dict[str, Any]
 
-    # The event_id of the cto_created or delta_merged event that produced
+    # The event_id of the cto_started or delta_merged event that produced
     # the CTO state this Delta was derived from. Purposes read this from
     # CTOIndex.last_event_id in the triggering HubEvent payload — no extra
     # get_cto() call needed.
     #
     # Provenance only — not a conflict-detection mechanism. All observations
     # are append-only and namespace-scoped; there are no destructive writes
-    # to conflict on. based_on_event_id answers "what did this Purpose know
-    # when it reasoned?" for causal reconstruction and replay.
+    # to conflict on. based_on_event_id answers "what canonical state was
+    # this Purpose reasoning from?" for causal reconstruction and replay.
     #
     # None if the proposing Purpose did not record which CTO state it was
     # based on (e.g. Purposes written before delta versioning was introduced).

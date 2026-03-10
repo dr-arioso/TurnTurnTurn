@@ -70,8 +70,9 @@ class CTOStartedPayload(EventPayloadProtocol):
     attribution. Purposes that need full CTO state call
     ttt.librarian.get_cto(turn_id).
 
-    Replaces startedCTOStartedPayload (retired in v0.20). submitted_by_label has
-    been removed — submitter attribution is always via Purpose identity.
+    Replaces the retired CTOCreatedPayload naming from earlier versions.
+    submitted_by_label has been removed — submitter attribution is always
+    via Purpose identity.
     """
 
     cto_index: dict[str, Any]

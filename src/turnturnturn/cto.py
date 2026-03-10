@@ -43,11 +43,11 @@ class CTO:
     Purposes may read any namespace but may only propose Deltas into
     their own.
 
-    last_event_id is the version handle for this CTO instance — the
-    event_id of the hub event (cto_created or delta_merged) that produced
-    it. The hub updates it on every state transition. Purposes record it
-    as based_on_event_id when proposing Deltas so the hub can detect
-    stale proposals at merge time.
+    last_event_id is the provenance/version handle for this CTO instance —
+    the event_id of the hub event (cto_started or delta_merged) that
+    produced it. The hub updates it on every state transition. Purposes
+    record it as based_on_event_id when proposing Deltas so downstream
+    tooling can reconstruct what canonical state they were reasoning from.
     """
 
     turn_id: UUID
@@ -63,16 +63,17 @@ class CTO:
     # written via Delta merge; never mutated directly.
     observations: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
-    # Version handle — the event_id of the most recent hub event that produced
-    # or updated this CTO instance. Set to the cto_created event_id at
-    # construction; replaced with the delta_merged event_id on each merge.
-    # None only for CTOs constructed outside the hub (e.g. in tests that
-    # do not go through start_turn). Never None in canonical hub operation.
+    # Provenance/version handle — the event_id of the most recent hub event
+    # that produced or updated this CTO instance. Set to the cto_started
+    # event_id at construction; replaced with the delta_merged event_id on
+    # each merge. None only for CTOs constructed outside the hub (e.g. in
+    # tests that do not go through start_turn). Never None in canonical hub
+    # operation.
     #
     # Carried in CTOIndex so Purposes can record it as based_on_event_id in
-    # their Delta proposals directly from the triggering event payload, without
-    # a separate get_cto() call. The hub compares based_on_event_id against
-    # last_event_id at merge time to detect stale proposals.
+    # their Delta proposals directly from the triggering event payload,
+    # without a separate get_cto() call. This is provenance for causal
+    # reconstruction, replay, and audit — not stale-write detection.
     last_event_id: UUID | None = None
 
     def __getattr__(self, name: str) -> Any:
@@ -160,8 +161,8 @@ class CTOIndex:
 
     last_event_id mirrors CTO.last_event_id at the moment the index was
     produced. Purposes use it as based_on_event_id when constructing Delta
-    proposals — it records which CTO state the Purpose was reading when it
-    decided to propose the change.
+    proposals — it records which canonical CTO state the Purpose was
+    reading when it decided to propose the change.
     """
 
     turn_id: UUID
@@ -172,10 +173,10 @@ class CTOIndex:
     content_profile: dict[str, Any]
     created_at_ms: int
 
-    # Version handle mirroring CTO.last_event_id. Carried here so Purposes
-    # can read the current CTO version handle directly from the event payload
-    # and record it as based_on_event_id in their Delta proposals — without
-    # a separate get_cto() call just to get the version handle.
+    # Provenance/version handle mirroring CTO.last_event_id. Carried here so
+    # Purposes can read the current CTO state handle directly from the event
+    # payload and record it as based_on_event_id in their Delta proposals —
+    # without a separate get_cto() call just to recover that provenance.
     last_event_id: UUID | None = None
 
     def to_dict(self) -> dict[str, Any]:

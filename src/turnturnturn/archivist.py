@@ -1,10 +1,8 @@
 """
 Archivist — pluggable durable persistence for TTT event streams.
 
-This module defines the backend protocol and configuration that Archivist
-backends must satisfy. Concrete backends (JsonlArchivistBackend,
-SessionDocumentArchivistBackend) and the Archivist PersistencePurpose
-subclass are added in subsequent commits.
+This module defines the backend protocol, configuration, concrete backends,
+and the Archivist PersistencePurpose subclass that wires them to the hub.
 
 Architecture note:
   Archivist is a PersistencePurpose subclass. From the hub's perspective it
@@ -28,9 +26,11 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from uuid import uuid4
 
 from ._event_serialization import hub_event_record
 from .events.hub_events import HubEvent, HubEventType
+from .persistence import PersistencePurpose
 
 if TYPE_CHECKING:
     pass  # reserved for future type-only imports
@@ -299,3 +299,104 @@ class SessionDocumentArchivistBackend:
         self._config.path.parent.mkdir(parents=True, exist_ok=True)
         with self._config.path.open("w", encoding="utf-8") as f:
             json.dump(document, f, sort_keys=True)
+
+
+# ---------------------------------------------------------------------------
+# Archivist — PersistencePurpose subclass
+# ---------------------------------------------------------------------------
+
+
+class Archivist(PersistencePurpose):
+    """
+    Durable PersistencePurpose that fans events out to pluggable backends.
+
+    From the hub's perspective, Archivist is an opaque persistence sink —
+    it satisfies CTOPersistencePurposeProtocol and receives every event
+    before any domain Purpose does. Internally it routes each event to the
+    configured backends whose ArchivistBackendConfig filters match.
+
+    is_durable is True if at least one configured backend declares
+    is_durable = True. If no durable backend is configured, TTT.start()
+    will emit a UserWarning, as with any non-durable persister.
+
+    Usage::
+
+        archivist = Archivist(
+            backends=[
+                (JsonlArchivistBackendConfig(path=Path("events.jsonl")),
+                 JsonlArchivistBackend(...)),
+                (SessionDocumentArchivistBackendConfig(path=Path("session.json")),
+                 SessionDocumentArchivistBackend(...)),
+            ]
+        )
+        ttt = TTT.start(archivist)
+    """
+
+    name = "archivist"
+
+    def __init__(
+        self,
+        backends: list[tuple[ArchivistBackendConfig, ArchivistBackendProtocol]],
+    ) -> None:
+        """
+        Initialise Archivist with a list of (config, backend) pairs.
+
+        Each pair couples a filter configuration with the backend that should
+        receive matching events. Backends are called in list order for each
+        event; all matching backends receive the event regardless of whether
+        earlier ones succeed.
+
+        Args:
+            backends: Ordered list of (ArchivistBackendConfig, backend) pairs.
+                ArchivistBackendConfig.matches() is evaluated per event before
+                calling backend.accept(). An empty list is valid — Archivist
+                will accept all events from the hub and discard them silently.
+        """
+        super().__init__()
+        self.id = uuid4()
+        self._backends = backends
+
+    @property
+    def is_durable(self) -> bool:
+        """
+        True if at least one configured backend is durable.
+
+        Durability is declared by each backend via its is_durable class or
+        instance attribute. Archivist is considered durable if any backend
+        survives process termination — partial durability is better than none,
+        and the JSONL backend is typically the durable anchor in a mixed
+        configuration.
+        """
+        return any(
+            getattr(backend, "is_durable", False) for _, backend in self._backends
+        )
+
+    async def _handle_event(self, event: HubEvent) -> None:
+        """
+        Fan the event out to all backends whose config filter matches.
+
+        Iterates backends in order. For each pair, evaluates
+        ArchivistBackendConfig.matches(event); if True, calls
+        backend.accept(event) and awaits completion. Backends that do not
+        match are skipped. All matching backends are called — a backend
+        earlier in the list does not gate later ones.
+
+        Args:
+            event: The validated HubEvent received from the hub.
+        """
+        for config, backend in self._backends:
+            if config.matches(event):
+                await backend.accept(event)
+
+    async def write_event(self, event: HubEvent) -> None:
+        """
+        Satisfy the PersistencePurpose ABC by delegating to _handle_event().
+
+        PersistencePurpose routes hub events through _handle_event(); Archivist
+        overrides that directly so write_event() is not the active dispatch
+        path. It is implemented here to fulfil the abstract method contract.
+
+        Args:
+            event: The HubEvent to persist.
+        """
+        await self._handle_event(event)

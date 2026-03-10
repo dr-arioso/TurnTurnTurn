@@ -1,10 +1,13 @@
 """Public package surface for TurnTurnTurn."""
 
 from .archivist import (
+    Archivist,
     ArchivistBackendConfig,
     ArchivistBackendProtocol,
     JsonlArchivistBackend,
     JsonlArchivistBackendConfig,
+    SessionDocumentArchivistBackend,
+    SessionDocumentArchivistBackendConfig,
 )
 from .base_purpose import BasePurpose
 from .cto import CTO
@@ -69,6 +72,9 @@ __all__ = [
     "ArchivistBackendConfig",
     "JsonlArchivistBackend",
     "JsonlArchivistBackendConfig",
+    "Archivist",
+    "SessionDocumentArchivistBackend",
+    "SessionDocumentArchivistBackendConfig",
     # Hub event envelope
     "HubEvent",
     "HubEventType",

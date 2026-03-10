@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+from conftest import RecordingPurpose
 
 from turnturnturn import TTT
 from turnturnturn.archivist import (
@@ -19,8 +20,6 @@ from turnturnturn.events.hub_events import (
     HubEvent,
     HubEventType,
 )
-
-from .conftest import RecordingPurpose
 
 # ---------------------------------------------------------------------------
 # Test doubles
@@ -233,5 +232,6 @@ async def test_archivist_end_to_end_via_hub(tmp_path):
     records = [json.loads(line) for line in lines]
     event_types = [r["event_type"] for r in records]
 
-    assert "session_started" in event_types
+    assert event_types[0] == "session_started"
+    assert "purpose_started" in event_types
     assert "cto_started" in event_types

@@ -15,6 +15,7 @@ delta merge (DEBUG), auth failures (WARNING), merge errors (WARNING).
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import importlib.metadata
@@ -183,6 +184,9 @@ class TTT:
     # because CTO is frozen — a new instance is constructed with updated observations.
     _ctos: dict[UUID, CTO] = field(default_factory=dict, init=False, repr=False)
     _hub_secret: str = field(default_factory=lambda: secrets.token_hex(32), repr=False)
+    _bootstrap_persist_task: asyncio.Task[None] | None = field(
+        default=None, init=False, repr=False
+    )
     librarian: Librarian = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -268,12 +272,10 @@ class TTT:
         never multicast and predates the event mesh.
 
         This method is synchronous because TTT.start() is a classmethod with
-        no event loop. The persister's write_event() is called via
-        asyncio.get_event_loop().run_until_complete() only for this bootstrap
-        event; all subsequent writes go through the normal async path.
+        no event loop. If a loop is already running, the bootstrap write is
+        scheduled and later awaited by the first async hub operation so log
+        ordering remains deterministic.
         """
-        import asyncio
-
         p = self.persistence_purpose
         assert p is not None  # invariant: called only from start()
 
@@ -306,16 +308,38 @@ class TTT:
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # Inside an async context (e.g. pytest-asyncio) — schedule
-                # as a task. This path is only hit in tests; production
-                # callers use TTT.start() before any event loop is running.
-                # The write will complete before the first start_purpose/start_turn
-                # because those are async and will yield to the event loop first.
-                asyncio.ensure_future(p.write_event(event))
+                self._bootstrap_persist_task = loop.create_task(p.write_event(event))
             else:
                 loop.run_until_complete(p.write_event(event))
         except RuntimeError:
             asyncio.run(p.write_event(event))
+
+    async def _await_bootstrap_persist(self) -> None:
+        """
+        Ensure the bootstrap session_started write has completed.
+
+        This matters when TTT.start() is called inside an already-running event
+        loop and _bootstrap_persister() had to schedule the write as a task.
+        All later async hub operations await that task first so session_started
+        remains the first persisted record.
+        """
+        task = self._bootstrap_persist_task
+        if task is None:
+            return
+
+        self._bootstrap_persist_task = None
+
+        try:
+            await task
+        except Exception as exc:
+            p = self.persistence_purpose
+            name = p.name if p is not None else "unknown"
+            raise PersistenceFailureError(
+                "Persistence write failed for bootstrap session_started event "
+                f"(persister={name!r}): {exc}",
+                persister_name=name,
+                event_id=None,
+            ) from exc
 
     def _session_context(self, session_id: UUID) -> dict[str, Any]:
         """
@@ -425,6 +449,8 @@ class TTT:
         previously registered Purposes (and the persistence backend) learn
         about each new participant.
         """
+        await self._await_bootstrap_persist()
+
         token: str | None = None
         downlink_signature: str | None = None
 
@@ -521,6 +547,8 @@ class TTT:
             KeyError: If content_profile / profile_version is not registered.
             ValueError: If content does not satisfy the profile contract.
         """
+        await self._await_bootstrap_persist()
+
         reg = self._resolve_registration_for_token_all(hub_token)
 
         resolved_session_id = session_id if session_id is not None else uuid4()
@@ -597,6 +625,8 @@ class TTT:
             reason: Human-readable shutdown reason (e.g. "normal", "timeout").
                 Recorded in the SESSION_CLOSING payload for audit consumers.
         """
+        await self._await_bootstrap_persist()
+
         closing_event = HubEvent(
             event_type=HubEventType.SESSION_CLOSING,
             event_id=uuid4(),

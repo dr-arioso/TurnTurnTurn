@@ -289,6 +289,12 @@ class TTT:
                 f"event_type must be a non-empty alphanumeric/underscore/dotted-namespace string "
                 f"(e.g. 'adjacency.stimulus'); got {event_type!r}"
             )
+        existing = _CUSTOM_EVENT_POLICY.get(event_type)
+        if existing is not None and existing != multicast:
+            raise ValueError(
+                f"event_type {event_type!r} is already registered with multicast={existing!r}; "
+                f"cannot re-register with multicast={multicast!r}"
+            )
         _CUSTOM_EVENT_POLICY[event_type] = multicast
 
     def _bootstrap_persister(self) -> None:

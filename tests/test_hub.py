@@ -885,5 +885,5 @@ async def test_unregistered_custom_event_type_raises():
         purpose_name=dummy.name,
         hub_token=dummy.token,
     )
-    with pytest.raises((UnknownEventTypeError, ValueError)):
+    with pytest.raises(UnknownEventTypeError):
         await ttt.take_turn(event)

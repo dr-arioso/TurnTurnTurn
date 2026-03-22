@@ -337,7 +337,7 @@ class HubEvent:
     _handle_event().
     """
 
-    event_type: HubEventType
+    event_type: HubEventType | str
     event_id: UUID
     created_at_ms: int
 

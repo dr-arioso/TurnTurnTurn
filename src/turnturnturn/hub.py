@@ -77,6 +77,10 @@ _EVENT_POLICY: dict[PurposeEventType, _EventPolicy] = {
     PurposeEventType.CTO_CLOSE_REQUEST: _EventPolicy(handler=None),
 }
 
+# Custom event type registry (populated by TTT.register_event_type()).
+# Maps event_type string → multicast flag.
+_CUSTOM_EVENT_POLICY: dict[str, bool] = {}
+
 
 """
 CTO creation boundary:
@@ -262,6 +266,30 @@ class TTT:
         # called via a synchronous shim for this one bootstrap event only.
         hub._bootstrap_persister()
         return hub
+
+    @classmethod
+    def register_event_type(cls, event_type: str, *, multicast: bool = True) -> None:
+        """Register a custom Purpose-originated event type with the hub.
+
+        Registered types are accepted by take_turn(). If multicast=True (default),
+        the event is relayed as a HubEvent to all registered Purposes and the
+        persistence backend. If multicast=False, the event is accepted and validated
+        but silently dropped.
+
+        Call before TTT.start() or before the first hub.start_turn() call.
+        """
+        normalized = event_type.replace("_", "").replace(".", "")
+        if (
+            not event_type
+            or not normalized.isalnum()
+            or event_type.startswith(".")
+            or event_type.endswith(".")
+        ):
+            raise ValueError(
+                f"event_type must be a non-empty alphanumeric/underscore/dotted-namespace string "
+                f"(e.g. 'adjacency.stimulus'); got {event_type!r}"
+            )
+        _CUSTOM_EVENT_POLICY[event_type] = multicast
 
     def _bootstrap_persister(self) -> None:
         """
@@ -715,7 +743,20 @@ class TTT:
         """
         reg, payload = self._validate_purpose_event(event)
 
-        event_type = PurposeEventType(event.event_type)
+        # Try to resolve the event_type as a known PurposeEventType first.
+        try:
+            event_type = PurposeEventType(event.event_type)
+        except ValueError:
+            # Not a built-in event type — check the custom registry.
+            event_type_str = event.event_type
+            if event_type_str in _CUSTOM_EVENT_POLICY:
+                if _CUSTOM_EVENT_POLICY[event_type_str]:
+                    await self._relay_custom_event(event)
+                return None
+            raise UnknownEventTypeError(
+                f"hub.take_turn: unrecognised event_type {event.event_type!r}"
+            )
+
         policy = _EVENT_POLICY.get(event_type)
 
         if event_type is PurposeEventType.DELTA_PROPOSAL:
@@ -729,6 +770,16 @@ class TTT:
 
         # Known event type with no built-in handler — accepted, no action taken.
         return None
+
+    async def _relay_custom_event(self, event: PurposeEventProtocol) -> None:
+        """Wrap a custom Purpose event as a HubEvent and multicast it."""
+        hub_event = HubEvent(
+            event_type=event.event_type,  # str; accepted via HubEvent.event_type: HubEventType | str
+            event_id=event.event_id,
+            created_at_ms=event.created_at_ms,
+            payload=event.payload,
+        )
+        await self._multicast(hub_event)
 
     async def _handle_delta_proposal(
         self,

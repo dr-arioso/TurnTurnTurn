@@ -11,19 +11,35 @@ Coverage areas:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from uuid import UUID, uuid4
 
 import pytest
 from conftest import NamedPurpose, RecordingPurpose
 
-from turnturnturn import CTO, TTT, Delta
-from turnturnturn.errors import UnauthorizedDispatchError
+from turnturnturn import CTO, TTT, BasePurpose, Delta, InMemoryPersistencePurpose
+from turnturnturn.errors import UnauthorizedDispatchError, UnknownEventTypeError
 from turnturnturn.events import (
     DeltaProposalEvent,
     DeltaProposalPayload,
+    EmptyPayload,
     HubEventType,
     PurposeEventType,
 )
+
+
+@dataclass(frozen=True)
+class _CustomEvent:
+    """Minimal Purpose-authored event with an arbitrary string event_type."""
+
+    event_type: str
+    event_id: UUID
+    created_at_ms: int
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    payload: EmptyPayload = dataclass_field(default_factory=EmptyPayload)
 
 
 def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
@@ -811,3 +827,63 @@ async def test_multicast_token_from_one_purpose_rejected_by_another(
     event_for_p1 = p1.received[0]
     with pytest.raises(UnauthorizedDispatchError):
         await p2.take_turn(event_for_p1)
+
+
+# ---------------------------------------------------------------------------
+# Custom event relay via TTT.register_event_type()
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_register_and_relay_custom_event_type():
+    """Registered custom event types are accepted and multicast by take_turn()."""
+    persister = InMemoryPersistencePurpose()
+    ttt = TTT.start(persister)
+
+    received: list = []
+
+    class Watcher(BasePurpose):
+        name = "watcher"
+        id = uuid4()
+
+        async def _handle_event(self, event):
+            received.append(event.event_type)
+
+    watcher = Watcher()
+    await ttt.start_purpose(watcher)
+
+    TTT.register_event_type("custom_ping")
+
+    event = _CustomEvent(
+        event_type="custom_ping",
+        event_id=uuid4(),
+        created_at_ms=0,
+        purpose_id=watcher.id,
+        purpose_name=watcher.name,
+        hub_token=watcher.token,
+    )
+    await ttt.take_turn(event)
+
+    assert "custom_ping" in received
+
+
+@pytest.mark.asyncio
+async def test_unregistered_custom_event_type_raises():
+    persister = InMemoryPersistencePurpose()
+    ttt = TTT.start(persister)
+
+    # Register a throwaway purpose so we have a valid token.
+    dummy = RecordingPurpose()
+    dummy.name = "dummy"
+    await ttt.start_purpose(dummy)
+
+    event = _CustomEvent(
+        event_type="unregistered_type",
+        event_id=uuid4(),
+        created_at_ms=0,
+        purpose_id=dummy.id,
+        purpose_name=dummy.name,
+        hub_token=dummy.token,
+    )
+    with pytest.raises((UnknownEventTypeError, ValueError)):
+        await ttt.take_turn(event)

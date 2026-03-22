@@ -31,6 +31,41 @@ All event payloads implement `EventPayloadProtocol` and serialize through
 | `purpose_completed` | A Purpose reports that it has completed its work. |
 | `cto_close_request` | A Purpose signals that a CTO is complete from that Purpose's perspective. Currently accepted as a stub for future DAG/quiescence logic. |
 
+## Custom event types
+
+Domain packages can define their own event namespaces without modifying
+`HubEventType` or `PurposeEventType`. Register a dotted-namespace string with
+`TTT.register_event_type()` before the first `session.start()`:
+
+```python
+from turnturnturn.hub import TTT
+
+TTT.register_event_type("adjacency.stimulus", multicast=True)
+TTT.register_event_type("adjacency.stimulus_response", multicast=True)
+```
+
+Custom events submitted via `take_turn()` are:
+
+- Validated against the registered policy.
+- Wrapped as a `HubEvent` with `event_type: str` and multicast to all
+  registered Purposes (when `multicast=True`).
+- Persisted alongside built-in hub events.
+
+`HubEvent.event_type` is typed `HubEventType | str` to accommodate both
+built-in and custom events. Purposes handling custom events should compare
+against the string constant directly:
+
+```python
+from adjacency.events import STIMULUS_EVENT  # "adjacency.stimulus"
+
+async def _handle_event(self, event: HubEvent) -> None:
+    if event.event_type == STIMULUS_EVENT:
+        ...
+```
+
+See `TTT.register_event_type()` for format constraints and re-registration
+semantics.
+
 ## Payload classes
 
 Hub-authored payloads include:

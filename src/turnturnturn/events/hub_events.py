@@ -335,6 +335,12 @@ class HubEvent:
     `hub_token` and `downlink_signature` are stamped per-recipient at dispatch
     time. BasePurpose.take_turn() validates both before delegating to
     _handle_event().
+
+    `event_type` accepts either a `HubEventType` enum value (hub-authored
+    events) or a plain `str` (custom domain events registered via
+    `TTT.register_event_type()`). Purposes should compare against string
+    constants when handling custom events, e.g.
+    `event.event_type == "adjacency.stimulus"`.
     """
 
     event_type: HubEventType | str

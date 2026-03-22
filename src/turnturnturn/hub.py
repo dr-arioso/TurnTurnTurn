@@ -269,14 +269,27 @@ class TTT:
 
     @classmethod
     def register_event_type(cls, event_type: str, *, multicast: bool = True) -> None:
-        """Register a custom Purpose-originated event type with the hub.
+        """Register a custom Purpose-originated event type with the hub relay.
 
-        Registered types are accepted by take_turn(). If multicast=True (default),
-        the event is relayed as a HubEvent to all registered Purposes and the
-        persistence backend. If multicast=False, the event is accepted and validated
-        but silently dropped.
+        Registered types are accepted by `take_turn()`. When `multicast=True`
+        (default), the event is wrapped as a `HubEvent` with `event_type: str`
+        and delivered to all registered Purposes and the persistence backend via
+        `_relay_custom_event()`. When `multicast=False`, the event is accepted
+        and persisted but not delivered to other Purposes.
 
-        Call before TTT.start() or before the first hub.start_turn() call.
+        `event_type` must be a dotted-namespace string, e.g. `"adjacency.stimulus"`.
+        Constraints:
+
+        - Non-empty.
+        - Alphanumeric after stripping `.` and `_` (no other special characters).
+        - Cannot start or end with `.`.
+
+        Re-registering the same `event_type` with the same `multicast` value is a
+        no-op. Re-registering with a different `multicast` value raises `ValueError`.
+
+        This is a class-level call that writes to the module-level
+        `_CUSTOM_EVENT_POLICY` dict. It is safe to call multiple times (idempotent
+        for identical arguments). Call before the first `session.start()`.
         """
         normalized = event_type.replace("_", "").replace(".", "")
         if (

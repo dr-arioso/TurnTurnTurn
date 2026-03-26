@@ -51,24 +51,15 @@ HubEvent payloads carry a **`CTOIndex`** — a lightweight routing reference, no
 
 TTT does **not** define domain semantics. It provides the structure; you bring the content. The `content_profile` field is the extension point — `"conversation"` is the canonical example, but any profile can be registered with its own required shape.
 
-### Core vocabulary
-
-| Concept | What it is |
-|---------|------------|
-| **TTT** | The hub runtime. Sole authority for CTO creation, Delta merge, and event emission. |
-| **CTO** | Canonical Turn Object. The hub-authoritative work item. Frozen; replaced on each merge. |
-| **CTOIndex** | Lightweight routing reference carried in event payloads. Points to the CTO; does not copy it. |
-| **BasePurpose** | Abstract base class for Purposes. Validates hub token in `take_turn()`; subclasses implement `_handle_event()`. |
-| **Purpose** | A registered actor that receives HubEvents and may propose Deltas into its own namespace. |
-| **Delta** | A purpose-proposed change. Validated and merged by the hub; never applied directly. |
-| **HubEvent** | An authoritative event emitted by the hub on each state transition. Per-recipient envelope. |
-
----
-
 ## Quick start
+
+This example shows the current minimal runtime flow. For the intended
+Persist-first bootstrap and explicit session-owner lifecycle model, see
+[`docs/architecture/bootstrap_lifecycle.md`](docs/architecture/bootstrap_lifecycle.md).
 
 ```python
 import asyncio
+from uuid import uuid4
 from turnturnturn import TTT, BasePurpose, InMemoryPersistencePurpose
 from turnturnturn.events import HubEvent
 
@@ -89,9 +80,10 @@ async def main():
     await ttt.start_purpose(purpose)
 
     turn_id = await ttt.start_turn(
-        "conversation",
-        {"speaker": {"id": "usr_a3f9"}, "text": "hello"},
-        purpose.token,
+        content_profile="conversation",
+        content={"speaker": {"id": "usr_a3f9"}, "text": "hello"},
+        hub_token=purpose.token,
+        session_id=uuid4(),
     )
     print(f"Created turn: {turn_id}")
 
@@ -118,9 +110,18 @@ pip install -e .[dev]
 
 TTT is in active architectural development. The core object model, hub semantics,
 profile system, Purpose dispatch, and persistence substrate are now implemented.
-The DAG eligibility/quiescence layer is still deferred.
+The DAG eligibility/quiescence layer and parts of the bootstrap/lifecycle model
+are still evolving.
 
-See [`docs/index.md`](docs/index.md) for the current docs entry point.
+For docs, start here:
+
+- [`docs/index.md`](docs/index.md) — docs entry point
+- [`docs/architecture/bootstrap_lifecycle.md`](docs/architecture/bootstrap_lifecycle.md) — authoritative lifecycle architecture
+- [`docs/architecture/core_architecture.md`](docs/architecture/core_architecture.md) — substrate architecture overview
+- [`docs/api/hub.md`](docs/api/hub.md) — current hub API surface
+
+The README is intentionally brief. Lifecycle architecture should live in the
+docs, not be duplicated here.
 
 ---
 

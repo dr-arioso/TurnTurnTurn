@@ -43,7 +43,10 @@ plugins:
 
 nav:
   - Overview: index.md
-  - Architecture: ttt_architecture_v0_20.md
+  - Architecture:
+    - Overview: architecture/index.md
+    - Core Architecture: architecture/core_architecture.md
+    - Bootstrap and Lifecycle: architecture/bootstrap_lifecycle.md
   - API Reference:
     - Hub (TTT): api/hub.md
     - CTO: api/cto.md

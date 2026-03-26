@@ -44,6 +44,9 @@ class HubEventType(str, Enum):
     # Session lifecycle
     SESSION_STARTED = "session_started"  # persistence-only; first event in log
     SESSION_CLOSING = "session_closing"  # broadcast; evacuation signal to all Purposes
+    SESSION_CLOSE_PENDING = (
+        "session_close_pending"  # persistence-only; domain Purposes cleared
+    )
     SESSION_COMPLETED = "session_completed"  # persistence-only; final record
 
 
@@ -255,10 +258,16 @@ class SessionClosingPayload(EventPayloadProtocol):
     wait for domain Purposes to clear before emitting SESSION_COMPLETED
     regardless. None means no timeout is enforced (v0 behaviour).
     Quiescence-triggered timeout logic is deferred to the DAG layer.
+
+    session_code is an optional caller-defined stable identifier for the
+    session. It is carried on session lifecycle payloads so operators and
+    downstream tooling can correlate human-assigned session codes without
+    changing the hub's internal UUID-based session identity.
     """
 
     reason: str
     timeout_ms: int | None = None
+    session_code: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-safe dict for the event log."""
@@ -267,6 +276,7 @@ class SessionClosingPayload(EventPayloadProtocol):
             "_v": 1,
             "reason": self.reason,
             "timeout_ms": self.timeout_ms,
+            "session_code": self.session_code,
         }
 
 
@@ -282,9 +292,13 @@ class SessionCompletedPayload(EventPayloadProtocol):
     is_last_out is always True in v0 — it marks that this is the definitive
     closing record for the session. Reserved for future multi-hub scenarios
     where multiple closers might race.
+
+    session_code mirrors the optional caller-defined stable session identifier
+    when one was supplied at session creation time.
     """
 
     is_last_out: bool = True
+    session_code: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-safe dict for the event log."""
@@ -292,6 +306,28 @@ class SessionCompletedPayload(EventPayloadProtocol):
             "_schema": "session_completed",
             "_v": 1,
             "is_last_out": self.is_last_out,
+            "session_code": self.session_code,
+        }
+
+
+@dataclass(frozen=True)
+class SessionClosePendingPayload(EventPayloadProtocol):
+    """
+    Payload for a session_close_pending HubEvent.
+
+    This records the boundary where domain Purposes have cleared and only the
+    persistence layer remains active for final session shutdown bookkeeping.
+    """
+
+    remaining_domain_purposes: int = 0
+    session_code: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "_schema": "session_close_pending",
+            "_v": 1,
+            "remaining_domain_purposes": self.remaining_domain_purposes,
+            "session_code": self.session_code,
         }
 
 

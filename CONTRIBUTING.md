@@ -49,9 +49,10 @@ in `docs/api/` is generated from these docstrings at build time via
 `mkdocstrings` — you do not edit the API reference pages directly.
 
 **Layer 2 — Architecture doc (when the design changes)**
-`docs/ttt_architecture_v0_20.md` documents intent, principles, and settled
-decisions. Update it when you change *why* something works the way it does,
-not just *how*. See [When to update the arch doc](#when-to-update-the-arch-doc)
+`docs/architecture/core_architecture.md` documents the substrate model and
+layer boundaries. `docs/architecture/bootstrap_lifecycle.md` documents mesh and
+session lifecycle. Update these when you change *why* something works the way
+it does, not just *how*. See [When to update the arch doc](#when-to-update-the-arch-doc)
 below.
 
 ---
@@ -166,8 +167,10 @@ what the situation is.
 
 ## When to update the arch doc
 
-`docs/ttt_architecture_v0_20.md` is the design record. It documents *intent*
-and *principles*, not implementation detail. Use this table:
+The architecture docs are the design record. `docs/architecture/core_architecture.md`
+owns the substrate model; `docs/architecture/bootstrap_lifecycle.md` owns mesh/session
+lifecycle. They document *intent* and *principles*, not implementation detail.
+Use this table:
 
 | Change | Update arch doc? |
 |--------|-----------------|

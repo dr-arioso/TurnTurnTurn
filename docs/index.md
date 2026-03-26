@@ -18,40 +18,6 @@ TTT does **not** define domain semantics. It provides:
 The canonical example profile is **`conversation`**, but TTT is **profile-based**,
 not hard-coded to speaker/text semantics.
 
-## Quick start
-
-```python
-import asyncio
-from uuid import uuid4
-from turnturnturn import TTT, BasePurpose
-from turnturnturn.events import HubEvent
-
-class EchoPurpose(BasePurpose):
-    name = "echo"
-
-    def __init__(self):
-        super().__init__()
-        self.id = uuid4()
-
-    async def _handle_event(self, event: HubEvent) -> None:
-        print(f"Received: {event.event_type.value}")
-
-async def main():
-    ttt = TTT.start()
-
-    purpose = EchoPurpose()
-    await ttt.start_purpose(purpose)
-
-    turn_id = await ttt.start_turn(
-        session_id=uuid4(),
-        content_profile="conversation",
-        content={"speaker": {"id": "usr_a3f9"}, "text": "hello"},
-    )
-    print(f"Created turn: {turn_id}")
-
-asyncio.run(main())
-```
-
 ## Core concepts
 
 | Concept | Description |
@@ -64,10 +30,23 @@ asyncio.run(main())
 | **Delta** | A purpose-proposed change, merged authoritatively by TTT into the Purpose's observation namespace. |
 | **HubEvent** | An authoritative event emitted by TTT. Per-recipient envelope with hub token. The primary provenance surface. |
 
+## Start here
+
+- [Architecture Overview](architecture/index.md)
+  Entry point for TTT architecture docs.
+- [Bootstrap and Lifecycle](architecture/bootstrap_lifecycle.md)
+  The authoritative mesh/session lifecycle architecture.
+- [Core Architecture](architecture/core_architecture.md)
+  The substrate model: CTOs, Purposes, Deltas, routing, and scope.
+- [Hub API](api/hub.md)
+  Current public hub API surface.
+- [Events API](api/events.md)
+  Event taxonomy and payload reference.
+- [Developer Guide](dev-guide.md)
+  Local development, docs, and verification workflow.
+
 ## Status
 
 This project is in active architectural development. The core object model,
 hub semantics, profile system, and Purpose dispatch are stable. The DAG
-eligibility layer and persistence are not yet implemented.
-
-See the [Architecture](ttt_architecture_v0_20.md) doc for the current architecture writeup.
+eligibility layer and parts of the bootstrap/lifecycle model are still evolving.

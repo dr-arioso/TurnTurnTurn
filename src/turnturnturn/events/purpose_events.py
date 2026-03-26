@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from enum import Enum
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from ..protocols import EventPayloadProtocol
 
@@ -13,6 +14,13 @@ from ..protocols import EventPayloadProtocol
 from .hub_events import (  # noqa: F401 re-export
     DeltaProposalPayload as DeltaProposalPayload,
 )
+from .hub_events import PurposeStartedPayload as PurposeStartedPayload
+from .hub_events import SessionCompletedPayload as SessionCompletedPayload
+from .hub_events import SessionStartedPayload as SessionStartedPayload
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
 
 
 class PurposeEventType(str, Enum):
@@ -28,8 +36,120 @@ class PurposeEventType(str, Enum):
     """
 
     DELTA_PROPOSAL = "delta_proposal"
+    PURPOSE_STARTED = "purpose_started"
+    SESSION_STARTED = "session_started"
+    END_SESSION = "end_session"
     PURPOSE_COMPLETED = "purpose_completed"
+    SESSION_COMPLETED = "session_completed"
     CTO_CLOSE_REQUEST = "cto_close_request"
+
+
+@dataclass(frozen=True)
+class EndSessionPayload(EventPayloadProtocol):
+    """Payload for a Purpose-originated request to end a session."""
+
+    session_id: str
+    reason: str = "normal"
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "_schema": "end_session",
+            "_v": 1,
+            "session_id": self.session_id,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
+class PurposeCompletedPayload(EventPayloadProtocol):
+    """Payload for a Purpose-originated acknowledgement of session closing."""
+
+    session_id: str
+    reason: str = "normal"
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "_schema": "purpose_completed",
+            "_v": 1,
+            "session_id": self.session_id,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
+class EndSessionEvent:
+    """Purpose-authored event requesting that the hub begin session shutdown."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    payload: EndSessionPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.END_SESSION, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
+
+
+@dataclass(frozen=True)
+class PurposeStartedEvent:
+    """Purpose-authored provenance event announcing successful mesh admission."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    payload: PurposeStartedPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.PURPOSE_STARTED, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
+
+
+@dataclass(frozen=True)
+class SessionStartedEvent:
+    """Durable persistence-authored provenance event announcing session bootstrap."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    payload: SessionStartedPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.SESSION_STARTED, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
+
+
+@dataclass(frozen=True)
+class PurposeCompletedEvent:
+    """Purpose-authored event acknowledging that local shutdown work is complete."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    payload: PurposeCompletedPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.PURPOSE_COMPLETED, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
+
+
+@dataclass(frozen=True)
+class SessionCompletedEvent:
+    """Durable persistence-authored final session completion event."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    session_id: UUID
+    payload: SessionCompletedPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.SESSION_COMPLETED, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
 
 
 @dataclass(frozen=True)

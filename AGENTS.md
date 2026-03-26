@@ -121,7 +121,7 @@ pre-commit run --all-files   # ruff, black, isort, mypy --strict, interrogate
 
 ## Before you change a public interface
 
-Read `docs/index.md` first, then `docs/ttt_architecture_v0_20.md`. The
+Read `docs/index.md` first, then `docs/architecture/core_architecture.md`. The
 principles in §2 of the architecture doc are load-bearing.
 
 Changes that would require a Purpose to write canonical state directly, or that

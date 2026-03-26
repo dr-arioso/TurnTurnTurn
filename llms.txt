@@ -4,7 +4,8 @@ Lightweight hub runtime for routing, enriching, and preserving provenance over s
 
 ## Key files
 - README.md — overview and quick start
-- docs/ttt_architecture_v0_15.md — full architecture
+- docs/architecture/bootstrap_lifecycle.md — authoritative lifecycle architecture
+- docs/architecture/core_architecture.md — core substrate architecture
 - src/turnturnturn/hub.py — TTT hub runtime (start_turn, register_purpose)
 - src/turnturnturn/cto.py — CTO and content profile validation
 - src/turnturnturn/protocols.py — PurposeProtocol, TurnTakerProtocol

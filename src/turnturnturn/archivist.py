@@ -28,9 +28,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from uuid import uuid4
 
-from ._event_serialization import hub_event_record
+from ._event_serialization import (
+    _event_type_value,
+    hub_event_record,
+    purpose_event_record,
+)
 from .events.hub_events import HubEvent, HubEventType
 from .persistence import PersistencePurpose
+from .protocols import EventProtocol
 
 if TYPE_CHECKING:
     pass  # reserved for future type-only imports
@@ -50,7 +55,7 @@ class ArchivistBackendProtocol(Protocol):
     flight, though in v0 the hub dispatches events sequentially.
     """
 
-    async def accept(self, event: HubEvent) -> None:
+    async def accept(self, event: EventProtocol) -> None:
         """
         Persist or process a single HubEvent.
 
@@ -93,7 +98,7 @@ class ArchivistBackendConfig:
     event_types: set[HubEventType] | None = field(default=None)
     content_profile: str | None = field(default=None)
 
-    def matches(self, event: HubEvent) -> bool:
+    def matches(self, event: EventProtocol) -> bool:
         """
         Return True if this event should be forwarded to the paired backend.
 
@@ -107,13 +112,19 @@ class ArchivistBackendConfig:
         Returns:
             True if the event passes all configured filters.
         """
-        if self.event_types is not None and event.event_type not in self.event_types:
-            return False
+        if self.event_types is not None:
+            allowed = {_event_type_value(event_type) for event_type in self.event_types}
+            if _event_type_value(event.event_type) not in allowed:
+                return False
 
         # Content profile filter only applies to CTO-scoped events.
         # Non-CTO events (session lifecycle, purpose lifecycle) are not
         # associated with a profile and always pass this filter.
-        if self.content_profile is not None and event.turn_id is not None:
+        if (
+            self.content_profile is not None
+            and isinstance(event, HubEvent)
+            and event.turn_id is not None
+        ):
             payload_dict = event.payload.as_dict()
             cto_index = payload_dict.get("cto_index")
             if isinstance(cto_index, dict):
@@ -177,7 +188,7 @@ class JsonlArchivistBackend:
         """
         self._config = config
 
-    async def accept(self, event: HubEvent) -> None:
+    async def accept(self, event: EventProtocol) -> None:
         """
         Serialize event and append one JSON line to the configured path.
 
@@ -188,7 +199,11 @@ class JsonlArchivistBackend:
             event: The HubEvent to persist.
         """
         self._config.path.parent.mkdir(parents=True, exist_ok=True)
-        record = hub_event_record(event)
+        record = (
+            hub_event_record(event)
+            if isinstance(event, HubEvent)
+            else purpose_event_record(event)
+        )
         line = json.dumps(record, sort_keys=True)
         with self._config.path.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
@@ -258,7 +273,7 @@ class SessionDocumentArchivistBackend:
         self._config = config
         self._events: list[dict[str, Any]] = []
 
-    async def accept(self, event: HubEvent) -> None:
+    async def accept(self, event: EventProtocol) -> None:
         """
         Accumulate the event; flush to disk on SESSION_COMPLETED.
 
@@ -274,10 +289,14 @@ class SessionDocumentArchivistBackend:
         Args:
             event: The HubEvent to accumulate or trigger a flush.
         """
-        record = hub_event_record(event)
+        record = (
+            hub_event_record(event)
+            if isinstance(event, HubEvent)
+            else purpose_event_record(event)
+        )
         self._events.append(record)
 
-        if event.event_type == HubEventType.SESSION_COMPLETED:
+        if _event_type_value(event.event_type) == "session_completed":
             self._flush(session_id=str(event.session_id) if event.session_id else None)
 
     def _flush(self, session_id: str | None) -> None:
@@ -388,7 +407,7 @@ class Archivist(PersistencePurpose):
             if config.matches(event):
                 await backend.accept(event)
 
-    async def write_event(self, event: HubEvent) -> None:
+    async def write_event(self, event: EventProtocol) -> None:
         """
         Satisfy the PersistencePurpose ABC by delegating to _handle_event().
 

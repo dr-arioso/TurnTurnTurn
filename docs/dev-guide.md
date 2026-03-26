@@ -49,8 +49,16 @@ interrogate src/turnturnturn --generate-badge docs/assets/
 
 The documentation site is built from two sources:
 
-1. **Narrative docs** — Markdown files in `docs/` (architecture, guides, this page).
+1. **Narrative docs** — Markdown files in `docs/` (architecture, lifecycle, guides, this page).
 2. **API reference** — Extracted live from docstrings at build time via `mkdocstrings`.
+
+For architecture work, prefer one authoritative home per concern:
+
+- `docs/architecture/bootstrap_lifecycle.md` — mesh/session lifecycle invariants
+- `docs/architecture/core_architecture.md` — broader substrate architecture
+- docstrings — code-local contract and API behavior
+
+Keep `README.md` brief and link-oriented. Do not duplicate lifecycle narrative there.
 
 Serve locally:
 

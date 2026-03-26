@@ -16,7 +16,7 @@ from dataclasses import field as dataclass_field
 from uuid import UUID, uuid4
 
 import pytest
-from conftest import NamedPurpose, RecordingPurpose
+from conftest import NamedPurpose, RecordingPurpose, RecordingSessionOwnerPurpose
 
 from turnturnturn import CTO, TTT, BasePurpose, Delta, InMemoryPersistencePurpose
 from turnturnturn.errors import UnauthorizedDispatchError, UnknownEventTypeError
@@ -60,23 +60,27 @@ def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
 
 
 def test_start_returns_ttt_instance(persistence_purpose):
-    hub = TTT.start(persistence_purpose)
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     assert isinstance(hub, TTT)
 
 
 def test_start_loads_conversation_profile(persistence_purpose):
     """TTT.start() must register the conversation profile so start_turn works."""
-    hub = TTT.start(persistence_purpose)
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     assert hub is not None
 
 
 def test_start_strict_profiles_flag(persistence_purpose):
-    hub = TTT.start(persistence_purpose, strict_profiles=True)
+    hub = TTT.start(
+        persistence_purpose,
+        RecordingSessionOwnerPurpose(),
+        strict_profiles=True,
+    )
     assert hub.strict_profiles is True
 
 
 def test_start_strict_profiles_default_false(persistence_purpose):
-    hub = TTT.start(persistence_purpose)
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     assert hub.strict_profiles is False
 
 
@@ -84,9 +88,23 @@ def test_start_exposes_librarian(persistence_purpose):
     """TTT.start() must wire ttt.librarian for CTO read access."""
     from turnturnturn.hub import Librarian
 
-    hub = TTT.start(persistence_purpose)
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     assert hasattr(hub, "librarian")
     assert isinstance(hub.librarian, Librarian)
+
+
+def test_start_requires_session_owner(persistence_purpose):
+    with pytest.raises(TypeError):
+        TTT.start(persistence_purpose)  # type: ignore[call-arg]
+
+
+def test_start_registers_session_owner(persistence_purpose):
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    assert hub.session_owner_purpose is owner
+    assert owner.id in hub.registrations
+    assert owner.token is not None
+    assert owner.downlink_signature is not None
 
 
 # ---------------------------------------------------------------------------
@@ -324,7 +342,11 @@ async def test_start_turn_unknown_profile_raises(hub, session_id, submitter):
 
 @pytest.mark.asyncio
 async def test_start_turn_strict_rejects_unknown_keys(session_id, persistence_purpose):
-    hub = TTT.start(persistence_purpose, strict_profiles=True)
+    hub = TTT.start(
+        persistence_purpose,
+        RecordingSessionOwnerPurpose(),
+        strict_profiles=True,
+    )
     submitter = RecordingPurpose()
     submitter.name = "submitter"
     await hub.start_purpose(submitter)
@@ -838,7 +860,7 @@ async def test_multicast_token_from_one_purpose_rejected_by_another(
 async def test_register_and_relay_custom_event_type():
     """Registered custom event types are accepted and multicast by take_turn()."""
     persister = InMemoryPersistencePurpose()
-    ttt = TTT.start(persister)
+    ttt = TTT.start(persister, RecordingSessionOwnerPurpose())
 
     received: list = []
 
@@ -870,7 +892,7 @@ async def test_register_and_relay_custom_event_type():
 @pytest.mark.asyncio
 async def test_unregistered_custom_event_type_raises():
     persister = InMemoryPersistencePurpose()
-    ttt = TTT.start(persister)
+    ttt = TTT.start(persister, RecordingSessionOwnerPurpose())
 
     # Register a throwaway purpose so we have a valid token.
     dummy = RecordingPurpose()

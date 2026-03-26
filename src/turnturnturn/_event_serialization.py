@@ -110,6 +110,8 @@ def purpose_event_record(event: PurposeEventProtocol) -> dict[str, Any]:
         "event_type": _event_type_value(event.event_type),
         "event_id": str(event.event_id),
         "created_at_ms": event.created_at_ms,
+        "session_id": _uuid_str(getattr(event, "session_id", None)),
+        "turn_id": _uuid_str(getattr(event, "turn_id", None)),
         "purpose_id": str(event.purpose_id),
         "purpose_name": event.purpose_name,
         "payload": event.payload.as_dict(),

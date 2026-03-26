@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
-import importlib.metadata
 import logging
 import secrets
 import time
@@ -29,10 +28,10 @@ from uuid import UUID, uuid4
 
 from turnturnturn.errors import UnauthorizedDispatchError
 
-from .base_purpose import BasePurpose
+from .base_purpose import BasePurpose, SessionOwnerPurpose
 from .cto import CTO
 from .delta import Delta
-from .errors import PersistenceFailureError, UnknownEventTypeError
+from .errors import HubClosedError, PersistenceFailureError, UnknownEventTypeError
 from .events import (
     CTOStartedPayload,
     DeltaMergedPayload,
@@ -40,12 +39,11 @@ from .events import (
     HubEvent,
     HubEventType,
     PurposeEventType,
-    PurposeStartedPayload,
+    SessionClosePendingPayload,
     SessionClosingPayload,
-    SessionCompletedPayload,
-    SessionStartedPayload,
 )
 from .events.hub_events import DeltaProposalPayload
+from .events.purpose_events import EndSessionPayload, PurposeCompletedPayload
 from .profile import ProfileRegistry
 from .protocols import (
     CTOPersistencePurposeProtocol,
@@ -71,7 +69,15 @@ class _EventPolicy:
 
 _EVENT_POLICY: dict[PurposeEventType, _EventPolicy] = {
     PurposeEventType.DELTA_PROPOSAL: _EventPolicy(handler="_handle_delta_proposal"),
-    PurposeEventType.PURPOSE_COMPLETED: _EventPolicy(handler=None),
+    PurposeEventType.PURPOSE_STARTED: _EventPolicy(handler="_handle_purpose_started"),
+    PurposeEventType.SESSION_STARTED: _EventPolicy(handler="_handle_session_started"),
+    PurposeEventType.END_SESSION: _EventPolicy(handler="_handle_end_session"),
+    PurposeEventType.PURPOSE_COMPLETED: _EventPolicy(
+        handler="_handle_purpose_completed"
+    ),
+    PurposeEventType.SESSION_COMPLETED: _EventPolicy(
+        handler="_handle_session_completed"
+    ),
     # CTOCloseRequest is accepted but not yet acted upon. The DAG layer will
     # implement quiescence detection and CTO_COMPLETED emission.
     PurposeEventType.CTO_CLOSE_REQUEST: _EventPolicy(handler=None),
@@ -180,6 +186,7 @@ class TTT:
     persistence_purpose: CTOPersistencePurposeProtocol | None = field(
         default=None, repr=False
     )
+    session_owner_purpose: SessionOwnerPurpose | None = field(default=None, repr=False)
     _session_contexts: dict[UUID, dict[str, Any]] = field(
         default_factory=dict, init=False, repr=False
     )
@@ -191,6 +198,22 @@ class TTT:
     _bootstrap_persist_task: asyncio.Task[None] | None = field(
         default=None, init=False, repr=False
     )
+    _bootstrap_owner_task: asyncio.Task[None] | None = field(
+        default=None, init=False, repr=False
+    )
+    _session_owners: dict[UUID, UUID] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _session_codes: dict[UUID, str] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _closing_sessions: dict[UUID, set[UUID]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _is_closing: bool = field(default=False, init=False, repr=False)
+    _closing_session_id: UUID | None = field(default=None, init=False, repr=False)
+    _is_closed: bool = field(default=False, init=False, repr=False)
+    _closed_session_id: UUID | None = field(default=None, init=False, repr=False)
     librarian: Librarian = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -201,21 +224,30 @@ class TTT:
     def start(
         cls,
         persistence_purpose: CTOPersistencePurposeProtocol,
+        session_owner_purpose: SessionOwnerPurpose,
         *,
         strict_profiles: bool = False,
     ) -> "TTT":
         """
         Start a new TTT hub and ensure built-in profiles are loaded.
 
-        persistence_purpose is a required positional argument. The hub will
-        not start without a registered persistence backend. This enforces the
-        architectural invariant that every event reaches a durable sink before
-        any other routing.
+        persistence_purpose and session_owner_purpose are required startup
+        participants. The hub will not start without both a registered
+        persistence backend and an explicit session-owner Purpose.
 
         Emits session_started directly to the persistence Purpose as its
         first act — before any other registration or dispatch. This event
         is the first record in the event log and carries hub provenance
         (hub_id, ttt_version, persister identity, is_durable).
+
+        Registers the startup session owner before returning. That owner is
+        the only Purpose permitted to create the first turn for a new session.
+
+        Current implementation note:
+            `session_started` is written through a special bootstrap path here.
+            The architecture docs describe a stricter long-term direction in
+            which bootstrap roles and lifecycle provenance become more fully
+            mesh-native. See ``docs/architecture/bootstrap_lifecycle.md``.
 
         A UserWarning is issued if persistence_purpose.is_durable is False.
         Non-durable backends (e.g. InMemoryPersistencePurpose) are valid
@@ -227,6 +259,8 @@ class TTT:
         Args:
             persistence_purpose: A CTOPersistencePurposeProtocol implementor.
                 Must be provided; there is no default.
+            session_owner_purpose: Explicit startup owner for any new session
+                created on this hub. Must be a SessionOwnerPurpose instance.
             strict_profiles: If True, enforce strict key validation on all
                 profiles at start_turn() time.
 
@@ -242,6 +276,16 @@ class TTT:
                 "TTT.start() requires a CTOPersistencePurposeProtocol instance; "
                 f"got {type(persistence_purpose)!r}. "
                 "Pass an InMemoryPersistencePurpose for development."
+            )
+        if not isinstance(session_owner_purpose, SessionOwnerPurpose):
+            raise TypeError(
+                "TTT.start() requires a SessionOwnerPurpose instance as "
+                "session_owner_purpose; "
+                f"got {type(session_owner_purpose)!r}."
+            )
+        if isinstance(session_owner_purpose, CTOPersistencePurposeProtocol):
+            raise TypeError(
+                "session_owner_purpose must be distinct from the persistence Purpose."
             )
 
         if not persistence_purpose.is_durable:
@@ -259,12 +303,14 @@ class TTT:
             registrations={},
             strict_profiles=strict_profiles,
             persistence_purpose=persistence_purpose,
+            session_owner_purpose=session_owner_purpose,
         )
         # Bootstrap the persister: assign credentials, emit session_started.
         # This is synchronous because start() is a classmethod and no event
         # loop is available at this point. The persister's write_event() is
         # called via a synchronous shim for this one bootstrap event only.
         hub._bootstrap_persister()
+        hub._bootstrap_session_owner()
         return hub
 
     @classmethod
@@ -312,14 +358,15 @@ class TTT:
 
     def _bootstrap_persister(self) -> None:
         """
-        Assign route credentials to the persistence Purpose and emit session_started.
+        Assign route credentials to the persistence Purpose and bootstrap its
+        lifecycle provenance.
 
         Called once by TTT.start() before any other registration or dispatch.
-        The session_started event is written directly to the persister — it is
-        never multicast and predates the event mesh.
+        Durable persistence Purposes may emit `session_started`; all
+        persistence Purposes emit `purpose_started`.
 
         This method is synchronous because TTT.start() is a classmethod with
-        no event loop. If a loop is already running, the bootstrap write is
+        no event loop. If a loop is already running, the bootstrap emission is
         scheduled and later awaited by the first async hub operation so log
         ordering remains deterministic.
         """
@@ -331,62 +378,114 @@ class TTT:
             downlink_signature = self._build_downlink_signature(token, p.id)
             p._assign_token(token)
             p._assign_downlink_signature(downlink_signature)
+            p._assign_hub(self)
 
-        try:
-            ttt_version = importlib.metadata.version("turnturnturn")
-        except importlib.metadata.PackageNotFoundError:
-            ttt_version = "unknown"
-
-        event = HubEvent(
-            event_type=HubEventType.SESSION_STARTED,
-            event_id=uuid4(),
-            created_at_ms=now_ms(),
-            payload=SessionStartedPayload(
-                hub_id=str(self.hub_id),
-                ttt_version=ttt_version,
-                persister_name=p.name,
-                persister_id=str(p.id),
-                persister_is_durable=p.is_durable,
-                strict_profiles=self.strict_profiles,
-                created_at_ms=now_ms(),
-            ),
+        self._run_bootstrap_coroutine(
+            self._emit_bootstrap_persistence_started(),
+            task_attr="_bootstrap_persist_task",
         )
 
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                self._bootstrap_persist_task = loop.create_task(p.write_event(event))
-            else:
-                loop.run_until_complete(p.write_event(event))
-        except RuntimeError:
-            asyncio.run(p.write_event(event))
+    async def _emit_bootstrap_persistence_started(self) -> None:
+        """Let the registered persistence purpose author its own startup facts."""
+        p = self.persistence_purpose
+        assert p is not None
+        if isinstance(p, BasePurpose):
+            await p.emit_session_started(strict_profiles=self.strict_profiles)  # type: ignore[attr-defined]
+            await p.announce_started(is_persistence_purpose=True)
 
-    async def _await_bootstrap_persist(self) -> None:
+    def _bootstrap_session_owner(self) -> None:
+        """Bind the startup session owner before normal registration begins."""
+        owner = self.session_owner_purpose
+        assert owner is not None  # invariant: enforced by start()
+        self._register_purpose(owner)
+        self._run_bootstrap_coroutine(
+            self._emit_bootstrap_owner_started(owner),
+            task_attr="_bootstrap_owner_task",
+        )
+
+    async def _emit_bootstrap_owner_started(
+        self,
+        owner: SessionOwnerPurpose,
+    ) -> None:
+        """Emit the owner's registration provenance after session_started is durable."""
+        persist_task = self._bootstrap_persist_task
+        if persist_task is not None:
+            await persist_task
+        await owner.announce_started()
+
+    def _run_bootstrap_coroutine(
+        self,
+        coro: Any,
+        *,
+        task_attr: str,
+    ) -> None:
+        """Run a bootstrap coroutine synchronously or schedule it on a running loop."""
+        try:
+            loop = asyncio.get_running_loop()
+            setattr(self, task_attr, loop.create_task(coro))
+        except RuntimeError:
+            asyncio.run(coro)
+
+    async def _await_bootstrap_ready(self) -> None:
         """
-        Ensure the bootstrap session_started write has completed.
+        Ensure bootstrap persistence and owner admission side effects have completed.
 
         This matters when TTT.start() is called inside an already-running event
-        loop and _bootstrap_persister() had to schedule the write as a task.
-        All later async hub operations await that task first so session_started
-        remains the first persisted record.
+        loop and bootstrap coroutines had to be scheduled as tasks. All later
+        async hub operations await those tasks first so startup ordering remains
+        deterministic for persistence and registration.
         """
-        task = self._bootstrap_persist_task
-        if task is None:
-            return
+        persist_task = self._bootstrap_persist_task
+        if persist_task is not None:
+            self._bootstrap_persist_task = None
+            try:
+                await persist_task
+            except Exception as exc:
+                p = self.persistence_purpose
+                name = p.name if p is not None else "unknown"
+                raise PersistenceFailureError(
+                    "Persistence-purpose bootstrap failed for startup lifecycle events "
+                    f"(persister={name!r}): {exc}",
+                    persister_name=name,
+                    event_id=None,
+                ) from exc
 
-        self._bootstrap_persist_task = None
+        owner_task = self._bootstrap_owner_task
+        if owner_task is not None:
+            self._bootstrap_owner_task = None
+            await owner_task
 
-        try:
-            await task
-        except Exception as exc:
-            p = self.persistence_purpose
-            name = p.name if p is not None else "unknown"
-            raise PersistenceFailureError(
-                "Persistence write failed for bootstrap session_started event "
-                f"(persister={name!r}): {exc}",
-                persister_name=name,
-                event_id=None,
-            ) from exc
+    def _register_purpose(
+        self,
+        purpose: PurposeProtocol,
+        *,
+        subscriptions: list[dict[str, Any]] | None = None,
+    ) -> PurposeRegistration:
+        """Bind a Purpose to this hub, assign credentials, and store its registration."""
+        token: str | None = None
+        downlink_signature: str | None = None
+
+        if isinstance(purpose, BasePurpose):
+            token = secrets.token_hex(16)
+            downlink_signature = self._build_downlink_signature(token, purpose.id)
+            purpose._assign_token(token)
+            purpose._assign_downlink_signature(downlink_signature)
+            purpose._assign_hub(self)
+
+        reg = PurposeRegistration(
+            purpose=purpose,
+            token=token,
+            downlink_signature=downlink_signature,
+            subscriptions=subscriptions or [],
+        )
+        self.registrations[purpose.id] = reg
+        _logger.debug(
+            "purpose registered: name=%r id=%s token_assigned=%s",
+            purpose.name,
+            purpose.id,
+            token is not None,
+        )
+        return reg
 
     def _session_context(self, session_id: UUID) -> dict[str, Any]:
         """
@@ -495,45 +594,21 @@ class TTT:
         Emits purpose_started via _multicast() after registration, so all
         previously registered Purposes (and the persistence backend) learn
         about each new participant.
+
+        Architectural note:
+            The intended lifecycle model treats registration as immediate and
+            `purpose_started` primarily as provenance and mesh information,
+            not as a second handshake required to complete admission.
         """
-        await self._await_bootstrap_persist()
-
-        token: str | None = None
-        downlink_signature: str | None = None
-
+        await self._await_bootstrap_ready()
+        self._ensure_accepting_new_work("start_purpose")
+        self._register_purpose(purpose, subscriptions=subscriptions)
         if isinstance(purpose, BasePurpose):
-            token = secrets.token_hex(16)
-            downlink_signature = self._build_downlink_signature(token, purpose.id)
-            purpose._assign_token(token)
-            purpose._assign_downlink_signature(downlink_signature)
-
-        subs = subscriptions or []
-        self.registrations[purpose.id] = PurposeRegistration(
-            purpose=purpose,
-            token=token,
-            downlink_signature=downlink_signature,
-            subscriptions=subs,
-        )
-        _logger.debug(
-            "purpose registered: name=%r id=%s token_assigned=%s",
-            purpose.name,
-            purpose.id,
-            token is not None,
-        )
-
-        is_persistence = isinstance(purpose, CTOPersistencePurposeProtocol)
-        purpose_started_event = HubEvent(
-            event_type=HubEventType.PURPOSE_STARTED,
-            event_id=uuid4(),
-            created_at_ms=now_ms(),
-            payload=PurposeStartedPayload(
-                purpose_name=purpose.name,
-                purpose_id=str(purpose.id),
-                is_persistence_purpose=is_persistence,
-                created_at_ms=now_ms(),
-            ),
-        )
-        await self._multicast(purpose_started_event)
+            await purpose.announce_started(
+                is_persistence_purpose=isinstance(
+                    purpose, CTOPersistencePurposeProtocol
+                )
+            )
 
     async def start_turn(
         self,
@@ -542,6 +617,7 @@ class TTT:
         hub_token: str,
         *,
         session_id: UUID | None = None,
+        session_code: str | None = None,
         profile_version: int = 1,
         request_id: str | None = None,
     ) -> UUID:
@@ -557,6 +633,12 @@ class TTT:
         Purpose (domain or persistence). The hub validates the token and
         records the submitter's identity in the cto_started event payload.
         No CTO is started if authentication fails.
+
+        Session ownership:
+            The current ownership rule is intentionally simple: the registered
+            Purpose that creates the first turn for a session is recorded as
+            that session's owner. Hub-side lifecycle actions such as
+            `end_session` authorization are checked against that binding.
 
         session_id is optional. If not provided, the hub mints a new UUID.
         Callers that manage sessions explicitly should supply it; Purposes
@@ -581,6 +663,8 @@ class TTT:
                 Any registered Purpose (domain or persistence) may submit turns.
             session_id: The session this turn belongs to. Hub mints a UUID
                 if not provided.
+            session_code: Optional caller-defined stable session code persisted
+                in session lifecycle events.
             profile_version: Version of the profile to use. Defaults to 1.
             request_id: Optional caller correlation key. Not yet enforced in
                 v0; reserved for future use.
@@ -594,11 +678,14 @@ class TTT:
             KeyError: If content_profile / profile_version is not registered.
             ValueError: If content does not satisfy the profile contract.
         """
-        await self._await_bootstrap_persist()
+        await self._await_bootstrap_ready()
+        self._ensure_accepting_new_work("start_turn")
 
         reg = self._resolve_registration_for_token_all(hub_token)
 
         resolved_session_id = session_id if session_id is not None else uuid4()
+        if session_code is not None and not session_code:
+            raise ValueError("session_code must be a non-empty string when provided")
 
         profile = ProfileRegistry.get(content_profile, profile_version)
         profile.validate(content, strict=self.strict_profiles)
@@ -623,6 +710,16 @@ class TTT:
             last_event_id=cto_started_event_id,
         )
         self._ctos[cto.turn_id] = cto
+        if resolved_session_id not in self._session_owners:
+            owner = self.session_owner_purpose
+            if owner is None or reg.purpose.id != owner.id:
+                raise UnauthorizedDispatchError(
+                    "start_turn() rejected — only the startup session owner Purpose "
+                    "may create the first turn for a new session."
+                )
+            self._session_owners[resolved_session_id] = reg.purpose.id
+        if session_code is not None:
+            self._session_codes[resolved_session_id] = session_code
         _logger.debug(
             "CTO started: turn_id=%s session_id=%s profile=%s submitted_by=%r",
             cto.turn_id,
@@ -650,29 +747,18 @@ class TTT:
 
     async def close(self, *, reason: str = "normal") -> None:
         """
-        Initiate an orderly session shutdown.
+        Legacy shutdown entry point.
 
-        Phase 1 — SESSION_CLOSING broadcast:
-            Emitted via _multicast() to all registered Purposes. Domain Purposes
-            should use this as their evacuation signal: flush in-flight state,
-            submit any final Deltas, and send PURPOSE_COMPLETED to the hub.
-
-        Phase 2 — Quiescence (v0: immediate):
-            In v0, the hub does not wait for Purposes to acknowledge the closing
-            signal before proceeding. Quiescence detection (waiting for all
-            Purposes to send PURPOSE_COMPLETED, or enforcing a timeout) is
-            deferred to the DAG layer.
-
-        Phase 3 — SESSION_COMPLETED (persistence-only):
-            Written directly to the persistence backend after domain Purposes
-            have cleared. Never multicast. This is the final record in the
-            event log.
+        New shutdown should proceed from a session owner's `end_session()`
+        request. This method remains as a compatibility shim that only emits
+        `session_closing`.
 
         Args:
             reason: Human-readable shutdown reason (e.g. "normal", "timeout").
                 Recorded in the SESSION_CLOSING payload for audit consumers.
         """
-        await self._await_bootstrap_persist()
+        await self._await_bootstrap_ready()
+        self._ensure_accepting_new_work("close")
 
         closing_event = HubEvent(
             event_type=HubEventType.SESSION_CLOSING,
@@ -686,16 +772,56 @@ class TTT:
         )
         await self._multicast(closing_event)
 
-        # v0: no quiescence wait — proceed immediately to SESSION_COMPLETED.
-        # The DAG layer will introduce PURPOSE_COMPLETED tracking and timeouts.
+    async def _route_purpose_event_to_persistence(
+        self, event: PurposeEventProtocol
+    ) -> None:
+        """
+        Route an accepted Purpose-originated event to the persistence Purpose.
 
-        completed_event = HubEvent(
-            event_type=HubEventType.SESSION_COMPLETED,
+        This preserves the invariant that accepted mesh ingress reaches the
+        persistence layer before any built-in hub behavior derived from it.
+        Persistence-authored events are excluded: those are written by the
+        persistence Purpose as part of emission before they reach hub ingress.
+        """
+        p = self.persistence_purpose
+        if p is None:
+            return
+        try:
+            await p.write_event(event)
+        except Exception as exc:
+            _logger.critical(
+                "persistence write failed: persister=%r event_id=%s event_type=%s — "
+                "halting handling of accepted purpose event",
+                p.name,
+                event.event_id,
+                event.event_type,
+                exc_info=exc,
+            )
+            raise PersistenceFailureError(
+                f"Persistence-purpose write failed for accepted purpose event {event.event_id} "
+                f"(persister={p.name!r}): {exc}",
+                persister_name=p.name,
+                event_id=event.event_id,
+            ) from exc
+
+    async def _emit_session_close_pending(self, session_id: UUID) -> None:
+        """Send the all-clear event that only the persistence layer remains active."""
+        event = HubEvent(
+            event_type=HubEventType.SESSION_CLOSE_PENDING,
             event_id=uuid4(),
             created_at_ms=now_ms(),
-            payload=SessionCompletedPayload(is_last_out=True),
+            session_id=session_id,
+            payload=SessionClosePendingPayload(
+                remaining_domain_purposes=0,
+                session_code=self._session_codes.get(session_id),
+            ),
         )
-        await self._multicast(completed_event, persistence_only=True)
+        await self._multicast(
+            event,
+            persistence_only=True,
+            persist_before_dispatch=False,
+            deliver_to_persistence=True,
+        )
 
     def _validate_purpose_event(
         self, event: PurposeEventProtocol
@@ -709,7 +835,7 @@ class TTT:
           3. purpose_name matches that registration
           4. payload satisfies the EventPayloadProtocol serialization contract
         """
-        reg = self._resolve_registration_for_token(event.hub_token)
+        reg = self._resolve_registration_for_token_all(event.hub_token)
 
         if event.purpose_id != reg.purpose.id:
             _logger.warning(
@@ -760,8 +886,6 @@ class TTT:
         for a subset of events; all others may still be observed by subscribers
         or persistence layers.
         """
-        reg, payload = self._validate_purpose_event(event)
-
         # Try to resolve the event_type as a known PurposeEventType first.
         try:
             event_type = PurposeEventType(event.event_type)
@@ -769,17 +893,35 @@ class TTT:
             # Not a built-in event type — check the custom registry.
             event_type_str = event.event_type
             if event_type_str in _CUSTOM_EVENT_POLICY:
+                self._ensure_accepting_event("take_turn", event_type_str)
+                reg, payload = self._validate_purpose_event(event)
                 if _CUSTOM_EVENT_POLICY[event_type_str]:
                     await self._relay_custom_event(event)
                 return None
+            self._ensure_accepting_event("take_turn", event.event_type)
             raise UnknownEventTypeError(
                 f"hub.take_turn: unrecognised event_type {event.event_type!r}"
             )
 
+        self._ensure_accepting_event("take_turn", event_type.value)
+        reg, payload = self._validate_purpose_event(event)
         policy = _EVENT_POLICY.get(event_type)
+        p = self.persistence_purpose
+        if p is None or reg.purpose.id != p.id:
+            await self._route_purpose_event_to_persistence(event)
 
         if event_type is PurposeEventType.DELTA_PROPOSAL:
             return await self._handle_delta_proposal(reg, payload)
+        if event_type is PurposeEventType.PURPOSE_STARTED:
+            return await self._handle_purpose_started(event)
+        if event_type is PurposeEventType.SESSION_STARTED:
+            return await self._handle_session_started(reg)
+        if event_type is PurposeEventType.END_SESSION:
+            return await self._handle_end_session(reg, payload)
+        if event_type is PurposeEventType.PURPOSE_COMPLETED:
+            return await self._handle_purpose_completed(reg, payload)
+        if event_type is PurposeEventType.SESSION_COMPLETED:
+            return await self._handle_session_completed(reg, event)
 
         if policy is None:
             # Event type is unknown to the hub — not in _EVENT_POLICY at all.
@@ -800,6 +942,32 @@ class TTT:
         )
         await self._multicast(hub_event)
 
+    async def _relay_purpose_event(self, event: PurposeEventProtocol) -> None:
+        """Wrap an accepted Purpose event as a HubEvent and multicast it without re-writing it."""
+        hub_event = HubEvent(
+            event_type=event.event_type,
+            event_id=event.event_id,
+            created_at_ms=event.created_at_ms,
+            session_id=getattr(event, "session_id", None),
+            turn_id=getattr(event, "turn_id", None),
+            payload=event.payload,
+        )
+        await self._multicast(hub_event, persist_before_dispatch=False)
+
+    async def _handle_purpose_started(self, event: PurposeEventProtocol) -> None:
+        """Relay purpose_started onto the downlink without re-routing it to persistence."""
+        await self._relay_purpose_event(event)
+        return None
+
+    async def _handle_session_started(self, reg: PurposeRegistration) -> None:
+        """Accept session_started only from the durable persistence purpose."""
+        p = self.persistence_purpose
+        if p is None or reg.purpose.id != p.id or not p.is_durable:
+            raise UnauthorizedDispatchError(
+                "session_started rejected — only the durable persistence Purpose may emit it."
+            )
+        return None
+
     async def _handle_delta_proposal(
         self,
         reg: PurposeRegistration,
@@ -813,6 +981,125 @@ class TTT:
         delta: Delta = delta_payload.delta
 
         return await self._merge_delta(delta)
+
+    async def _handle_end_session(
+        self,
+        reg: PurposeRegistration,
+        payload: EventPayloadProtocol,
+    ) -> None:
+        """Authorize and initiate closing for the session owned by this Purpose."""
+        end_payload = cast(EndSessionPayload, payload)
+        session_id = UUID(end_payload.session_id)
+        owner_id = self._session_owners.get(session_id)
+        if owner_id is None:
+            raise KeyError(f"unknown session_id {end_payload.session_id!r}")
+        if self._is_closing:
+            if self._closing_session_id == session_id:
+                return None
+            raise HubClosedError(
+                "end_session rejected — the hub is already closing a different session."
+            )
+        if owner_id != reg.purpose.id:
+            raise UnauthorizedDispatchError(
+                "end_session rejected — only the session-owning Purpose may close the session."
+            )
+        self._is_closing = True
+        self._closing_session_id = session_id
+        self._closing_sessions[session_id] = set(self.registrations.keys())
+        closing_event = HubEvent(
+            event_type=HubEventType.SESSION_CLOSING,
+            event_id=uuid4(),
+            created_at_ms=now_ms(),
+            session_id=session_id,
+            payload=SessionClosingPayload(
+                reason=end_payload.reason,
+                timeout_ms=None,
+                session_code=self._session_codes.get(session_id),
+            ),
+        )
+        await self._multicast(closing_event)
+        return None
+
+    async def _handle_purpose_completed(
+        self,
+        reg: PurposeRegistration,
+        payload: EventPayloadProtocol,
+    ) -> None:
+        """Track Purpose acknowledgements and finish once all domain Purposes clear."""
+        completed_payload = cast(PurposeCompletedPayload, payload)
+        session_id = UUID(completed_payload.session_id)
+        pending = self._closing_sessions.get(session_id)
+        if pending is None:
+            return None
+
+        pending.discard(reg.purpose.id)
+        if pending:
+            return None
+
+        del self._closing_sessions[session_id]
+        await self._emit_session_close_pending(session_id)
+        return None
+
+    async def _handle_session_completed(
+        self,
+        reg: PurposeRegistration,
+        event: PurposeEventProtocol,
+    ) -> None:
+        """Accept final session completion only from the durable persistence purpose."""
+        p = self.persistence_purpose
+        if p is None or reg.purpose.id != p.id or not p.is_durable:
+            raise UnauthorizedDispatchError(
+                "session_completed rejected — only the durable persistence Purpose may emit it."
+            )
+        self._is_closing = False
+        self._closing_session_id = None
+        self._is_closed = True
+        self._closed_session_id = getattr(event, "session_id", None)
+        return None
+
+    def _ensure_accepting_new_work(self, operation: str) -> None:
+        """Reject new registration/turn/legacy-close operations once shutdown begins."""
+        if self._is_closed:
+            session_id = self._closed_session_id
+            session_info = f" session_id={session_id}" if session_id is not None else ""
+            raise HubClosedError(
+                f"TTT.{operation}() rejected — the hub has already accepted "
+                f"session_completed and is closed.{session_info}"
+            )
+        if not self._is_closing:
+            return
+        session_id = self._closing_session_id
+        session_info = f" session_id={session_id}" if session_id is not None else ""
+        raise HubClosedError(
+            f"TTT.{operation}() rejected — the hub is already closing and "
+            f"accepts no new work.{session_info}"
+        )
+
+    def _ensure_accepting_event(self, operation: str, event_type: str) -> None:
+        """Reject non-shutdown ingress once the hub is closing or closed."""
+        if self._is_closed:
+            session_id = self._closed_session_id
+            session_info = f" session_id={session_id}" if session_id is not None else ""
+            raise HubClosedError(
+                f"TTT.{operation}() rejected event_type={event_type!r} — the hub has "
+                f"already accepted session_completed and is closed.{session_info}"
+            )
+        if not self._is_closing:
+            return
+        allowed = {
+            PurposeEventType.END_SESSION.value,
+            PurposeEventType.PURPOSE_COMPLETED.value,
+            PurposeEventType.SESSION_COMPLETED.value,
+        }
+        if event_type in allowed:
+            return
+        session_id = self._closing_session_id
+        session_info = f" session_id={session_id}" if session_id is not None else ""
+        raise HubClosedError(
+            f"TTT.{operation}() rejected event_type={event_type!r} — the hub is "
+            f"closing and only accepts purpose_completed or session_completed "
+            f"(plus duplicate end_session for the active session).{session_info}"
+        )
 
     async def _merge_delta(self, delta: Delta) -> UUID:
         """
@@ -915,30 +1202,34 @@ class TTT:
         await self._multicast(event)
 
     async def _multicast(
-        self, event: HubEvent, *, persistence_only: bool = False
+        self,
+        event: HubEvent,
+        *,
+        persistence_only: bool = False,
+        persist_before_dispatch: bool = True,
+        deliver_to_persistence: bool = False,
     ) -> None:
         """
-        Deliver a hub-authored event: persistence first, then broadcast.
+        Deliver a hub-authored event by routing it in the configured order.
 
-        Phase 1 — Persistence (unconditional):
-            If a persistence Purpose is registered, write_event() is called
-            before any domain Purpose receives the event. Failure raises
-            PersistenceFailureError and halts delivery — no domain Purpose
-            receives an event that was not persisted.
+        By default, the event is first routed to the persistence Purpose's
+        write path, then broadcast to registered domain Purposes. Some
+        coordination events intentionally override that default:
+
+        - purpose-authored lifecycle facts that have already been routed to
+          persistence should be relayed without a second persistence write
+        - session_close_pending should be delivered to the persistence Purpose
+          as a downlink event so it can author final completion facts
 
         Phase 2 — Broadcast (domain Purposes):
             Skipped when persistence_only=True. Otherwise, each registered
             domain Purpose receives a per-recipient envelope stamped with its
             own hub_token and downlink_signature.
 
-        persistence_only=True is used for SESSION_COMPLETED, which is the
-        final record and must not be delivered to domain Purposes.
-
         v0: naive broadcast to all registered Purposes — no subscription
         filtering or DAG eligibility gating yet.
         """
-        # Phase 1: persistence write before any domain delivery.
-        if self.persistence_purpose is not None:
+        if persist_before_dispatch and self.persistence_purpose is not None:
             p = self.persistence_purpose
             try:
                 await p.write_event(event)
@@ -958,7 +1249,21 @@ class TTT:
                     event_id=event.event_id,
                 ) from exc
 
-        # Phase 2: per-recipient broadcast to domain Purposes.
+        if deliver_to_persistence and self.persistence_purpose is not None:
+            p = self.persistence_purpose
+            if isinstance(p, BasePurpose):
+                addressed = HubEvent(
+                    event_type=event.event_type,
+                    event_id=event.event_id,
+                    created_at_ms=event.created_at_ms,
+                    session_id=event.session_id,
+                    turn_id=event.turn_id,
+                    payload=event.payload,
+                    hub_token=p.token,
+                    downlink_signature=p.downlink_signature,
+                )
+                await p.take_turn(addressed)
+
         if persistence_only:
             return
 

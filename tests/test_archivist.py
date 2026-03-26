@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from conftest import RecordingPurpose
+from conftest import RecordingPurpose, RecordingSessionOwnerPurpose
 
 from turnturnturn import TTT
 from turnturnturn.archivist import (
@@ -212,7 +212,8 @@ async def test_archivist_end_to_end_via_hub(tmp_path):
     jsonl_backend = JsonlArchivistBackend(jsonl_config)
 
     archivist = Archivist(backends=[(jsonl_config, jsonl_backend)])
-    ttt = TTT.start(archivist)
+    owner = RecordingSessionOwnerPurpose()
+    ttt = TTT.start(archivist, owner)
 
     submitter = RecordingPurpose()
     submitter.name = "submitter"
@@ -221,7 +222,7 @@ async def test_archivist_end_to_end_via_hub(tmp_path):
     await ttt.start_turn(
         "conversation",
         {"speaker": {"id": "usr_test"}, "text": "hello"},
-        submitter.token,
+        owner.token,
     )
 
     lines = jsonl_path.read_text().splitlines()

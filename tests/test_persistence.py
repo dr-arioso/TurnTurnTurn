@@ -46,11 +46,18 @@ import warnings
 from uuid import UUID, uuid4
 
 import pytest
-from conftest import RecordingPurpose
+from conftest import RecordingPurpose, RecordingSessionOwnerPurpose
 
 from turnturnturn import TTT, InMemoryPersistencePurpose, PersistenceFailureError
-from turnturnturn.errors import UnauthorizedDispatchError
-from turnturnturn.events import HubEvent, HubEventType
+from turnturnturn.delta import Delta
+from turnturnturn.errors import HubClosedError, UnauthorizedDispatchError
+from turnturnturn.events import (
+    DeltaProposalEvent,
+    DeltaProposalPayload,
+    HubEvent,
+    HubEventType,
+    PurposeEventType,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,6 +73,40 @@ class DurablePersistencePurpose(InMemoryPersistencePurpose):
         return True
 
 
+class DeferringDurablePersistencePurpose(DurablePersistencePurpose):
+    """Durable persister that pauses before authoring session_completed."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.pending_session_id: str | None = None
+        self.pending_session_code: str | None = None
+
+    async def _handle_event(self, event: HubEvent) -> None:
+        await self.write_event(event)
+        if (
+            event.event_type == HubEventType.SESSION_CLOSE_PENDING
+            and event.session_id is not None
+        ):
+            payload_dict = event.payload.as_dict()
+            session_code = (
+                payload_dict.get("session_code")
+                if isinstance(payload_dict, dict)
+                else None
+            )
+            await self.complete_session_closing(str(event.session_id))
+            self.pending_session_id = str(event.session_id)
+            self.pending_session_code = (
+                session_code if isinstance(session_code, str) else None
+            )
+
+    async def flush_session_completed(self) -> None:
+        assert self.pending_session_id is not None
+        await self.emit_session_completed(
+            session_id=self.pending_session_id,
+            session_code=self.pending_session_code,
+        )
+
+
 # ---------------------------------------------------------------------------
 # TTT.start() — persistence_purpose contract
 # ---------------------------------------------------------------------------
@@ -78,13 +119,18 @@ def test_start_requires_persistence_purpose():
 
 def test_start_rejects_non_protocol_object():
     with pytest.raises(TypeError):
-        TTT.start("not a purpose")  # type: ignore[arg-type]
+        TTT.start("not a purpose", RecordingSessionOwnerPurpose())  # type: ignore[arg-type]
+
+
+def test_start_requires_session_owner(persistence_purpose):
+    with pytest.raises(TypeError):
+        TTT.start(persistence_purpose)  # type: ignore[call-arg]
 
 
 def test_start_emits_user_warning_for_non_durable(persistence_purpose):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        TTT.start(persistence_purpose)
+        TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
     assert len(user_warnings) == 1
     assert "is_durable=False" in str(user_warnings[0].message)
@@ -94,7 +140,7 @@ def test_start_no_warning_for_durable():
     p = DurablePersistencePurpose()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        TTT.start(p)
+        TTT.start(p, RecordingSessionOwnerPurpose())
     user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
     assert len(user_warnings) == 0
 
@@ -105,19 +151,27 @@ def test_start_no_warning_for_durable():
 
 
 @pytest.mark.asyncio
-async def test_session_started_is_first_event_in_persistence_log(
-    hub, persistence_purpose
-):
-    # hub fixture constructs TTT.start(persistence_purpose). The
-    # session_started write is scheduled via ensure_future during start(),
-    # so we need one await to let the event loop flush it.
+async def test_session_started_is_first_event_in_persistence_log():
+    persistence_purpose = DurablePersistencePurpose()
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     await hub.start_purpose(RecordingPurpose())
     assert len(persistence_purpose.events) >= 1
     assert persistence_purpose.events[0]["event_type"] == "session_started"
 
 
 @pytest.mark.asyncio
-async def test_session_started_payload_fields(hub, persistence_purpose):
+async def test_non_durable_persistence_does_not_emit_session_started():
+    persistence_purpose = InMemoryPersistencePurpose()
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
+    await hub.start_purpose(RecordingPurpose())
+    event_types = [event["event_type"] for event in persistence_purpose.events]
+    assert "session_started" not in event_types
+
+
+@pytest.mark.asyncio
+async def test_session_started_payload_fields():
+    persistence_purpose = DurablePersistencePurpose()
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     await hub.start_purpose(RecordingPurpose())
     record = persistence_purpose.events[0]
     assert record["event_type"] == "session_started"
@@ -130,12 +184,13 @@ async def test_session_started_payload_fields(hub, persistence_purpose):
     assert "strict_profiles" in payload
     assert payload["persister_name"] == persistence_purpose.name
     assert payload["persister_id"] == str(persistence_purpose.id)
-    assert payload["persister_is_durable"] is False
+    assert payload["persister_is_durable"] is True
     UUID(payload["hub_id"])  # must be a valid UUID string
 
 
 @pytest.mark.asyncio
-async def test_session_started_not_delivered_to_domain_purposes(hub):
+async def test_session_started_not_delivered_to_domain_purposes():
+    hub = TTT.start(DurablePersistencePurpose(), RecordingSessionOwnerPurpose())
     p = RecordingPurpose()
     await hub.start_purpose(p)
     # p only sees purpose_started (its own registration event), not session_started
@@ -162,12 +217,279 @@ async def test_purpose_started_payload_fields(hub, persistence_purpose):
     p = RecordingPurpose()
     await hub.start_purpose(p)
     record = next(
-        e for e in persistence_purpose.events if e["event_type"] == "purpose_started"
+        e
+        for e in persistence_purpose.events
+        if e["event_type"] == "purpose_started"
+        and e["payload"]["purpose_id"] == str(p.id)
     )
     payload = record["payload"]
     assert payload["purpose_name"] == p.name
     assert payload["purpose_id"] == str(p.id)
     assert payload["is_persistence_purpose"] is False
+
+
+@pytest.mark.asyncio
+async def test_durable_persistence_authored_lifecycle_events_are_single_written():
+    persistence_purpose = DurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        {"speaker": {"id": "usr_test"}, "text": "hello"},
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    persistence_started = [
+        event
+        for event in persistence_purpose.events
+        if event["event_type"] == "purpose_started"
+        and event["payload"]["purpose_id"] == str(persistence_purpose.id)
+    ]
+    session_started = [
+        event
+        for event in persistence_purpose.events
+        if event["event_type"] == "session_started"
+    ]
+    session_completed = [
+        event
+        for event in persistence_purpose.events
+        if event["event_type"] == "session_completed"
+    ]
+
+    assert len(persistence_started) == 1
+    assert len(session_started) == 1
+    assert len(session_completed) == 1
+
+
+@pytest.mark.asyncio
+async def test_non_durable_persistence_does_not_emit_session_completed():
+    persistence_purpose = InMemoryPersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        {"speaker": {"id": "usr_test"}, "text": "hello"},
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    event_types = [event["event_type"] for event in persistence_purpose.events]
+    assert "session_completed" not in event_types
+
+
+@pytest.mark.asyncio
+async def test_session_closing_rejects_start_purpose_before_session_completed(
+    minimal_content,
+):
+    persistence_purpose = DeferringDurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    with pytest.raises(HubClosedError):
+        await hub.start_purpose(RecordingPurpose())
+
+
+@pytest.mark.asyncio
+async def test_session_closing_rejects_start_turn_before_session_completed(
+    minimal_content,
+):
+    persistence_purpose = DeferringDurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    with pytest.raises(HubClosedError):
+        await hub.start_turn(
+            "conversation",
+            minimal_content,
+            owner.token,
+            session_id=uuid4(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_session_closing_rejects_domain_event_before_session_completed(
+    minimal_content,
+):
+    persistence_purpose = DeferringDurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+    purpose = RecordingPurpose()
+
+    await hub.start_purpose(purpose)
+    turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"tags": ["important"]},
+    )
+    event = DeltaProposalEvent(
+        event_type=PurposeEventType.DELTA_PROPOSAL,
+        event_id=uuid4(),
+        created_at_ms=0,
+        purpose_id=purpose.id,
+        purpose_name=purpose.name,
+        hub_token=purpose.token,
+        payload=DeltaProposalPayload(delta=delta),
+    )
+
+    with pytest.raises(HubClosedError):
+        await hub.take_turn(event)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_end_session_noops_while_closing(minimal_content):
+    persistence_purpose = DeferringDurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    await owner.end_session(str(session_id))
+
+
+@pytest.mark.asyncio
+async def test_session_completed_closes_hub_for_start_purpose(minimal_content):
+    persistence_purpose = DurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    with pytest.raises(HubClosedError):
+        await hub.start_purpose(RecordingPurpose())
+
+
+@pytest.mark.asyncio
+async def test_session_completed_closes_hub_for_start_turn(minimal_content):
+    persistence_purpose = DurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    with pytest.raises(HubClosedError):
+        await hub.start_turn(
+            "conversation",
+            minimal_content,
+            owner.token,
+            session_id=uuid4(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_session_completed_closes_hub_for_take_turn(minimal_content):
+    persistence_purpose = DurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+    purpose = RecordingPurpose()
+
+    await hub.start_purpose(purpose)
+    turn_id = await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    delta = Delta(
+        delta_id=uuid4(),
+        session_id=session_id,
+        turn_id=turn_id,
+        purpose_name=purpose.name,
+        purpose_id=purpose.id,
+        patch={"tags": ["important"]},
+    )
+    event = DeltaProposalEvent(
+        event_type=PurposeEventType.DELTA_PROPOSAL,
+        event_id=uuid4(),
+        created_at_ms=0,
+        purpose_id=purpose.id,
+        purpose_name=purpose.name,
+        hub_token=purpose.token,
+        payload=DeltaProposalPayload(delta=delta),
+    )
+
+    with pytest.raises(HubClosedError):
+        await hub.take_turn(event)
+
+
+@pytest.mark.asyncio
+async def test_deferring_persistence_can_finish_session_and_close_hub(minimal_content):
+    persistence_purpose = DeferringDurablePersistencePurpose()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+    await persistence_purpose.flush_session_completed()
+
+    with pytest.raises(HubClosedError):
+        await hub.start_purpose(RecordingPurpose())
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +526,8 @@ async def test_write_event_called_before_domain_purpose(
 
     domain.take_turn = instrumented_take_turn  # type: ignore[method-assign]
 
-    hub = TTT.start(persistence_purpose)
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
     await hub.start_purpose(domain)
 
     submitter = RecordingPurpose()
@@ -214,7 +537,7 @@ async def test_write_event_called_before_domain_purpose(
     await hub.start_turn(
         "conversation",
         minimal_content,
-        submitter.token,
+        owner.token,
         session_id=session_id,
     )
 
@@ -232,7 +555,8 @@ async def test_persistence_failure_raises_and_halts_delivery(
     persistence_purpose, session_id, minimal_content
 ):
     """Build a working hub, then inject a failing write_event for the turn call."""
-    hub = TTT.start(persistence_purpose)
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
 
     domain = RecordingPurpose()
     await hub.start_purpose(domain)
@@ -252,7 +576,7 @@ async def test_persistence_failure_raises_and_halts_delivery(
         await hub.start_turn(
             "conversation",
             minimal_content,
-            submitter.token,
+            owner.token,
             session_id=session_id,
         )
 
@@ -267,7 +591,8 @@ async def test_persistence_failure_error_carries_context(
     persistence_purpose, session_id, minimal_content
 ):
     """Build a working hub, then inject a failing write_event for the turn call."""
-    hub = TTT.start(persistence_purpose)
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
 
     submitter = RecordingPurpose()
     submitter.name = "submitter"
@@ -282,7 +607,7 @@ async def test_persistence_failure_error_carries_context(
         await hub.start_turn(
             "conversation",
             minimal_content,
-            submitter.token,
+            owner.token,
             session_id=session_id,
         )
 
@@ -303,6 +628,22 @@ async def test_start_turn_rejects_invalid_token(hub, session_id, minimal_content
             "conversation",
             minimal_content,
             "not_a_real_token",
+            session_id=session_id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_start_turn_rejects_non_owner_for_new_session(
+    hub, session_id, minimal_content
+):
+    non_owner = RecordingPurpose()
+    non_owner.name = "submitter"
+    await hub.start_purpose(non_owner)
+    with pytest.raises(UnauthorizedDispatchError):
+        await hub.start_turn(
+            "conversation",
+            minimal_content,
+            non_owner.token,
             session_id=session_id,
         )
 
@@ -388,7 +729,7 @@ async def test_in_memory_events_are_hub_event_records(
 @pytest.mark.asyncio
 async def test_in_memory_write_event_idempotent_on_event_id(persistence_purpose):
     """Duplicate delivery of the same event_id must not double-append."""
-    hub = TTT.start(persistence_purpose)
+    hub = TTT.start(persistence_purpose, RecordingSessionOwnerPurpose())
     await hub.start_purpose(RecordingPurpose())  # flush session_started
 
     count_before = len(persistence_purpose.events)

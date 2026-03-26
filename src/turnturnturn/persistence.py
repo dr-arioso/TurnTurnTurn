@@ -38,14 +38,26 @@ construction; raw implementations of the protocol are also accepted.
 from __future__ import annotations
 
 import abc
+import importlib.metadata
+import time
 from dataclasses import dataclass, field
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from ._event_serialization import hub_event_record
 from .base_purpose import BasePurpose
-from .events.hub_events import HubEvent
-from .protocols import CTOPersistencePurposeProtocol  # noqa: F401 — re-exported
+from .events import (
+    SessionCompletedEvent,
+    SessionCompletedPayload,
+    SessionStartedEvent,
+    SessionStartedPayload,
+)
+from .events.hub_events import HubEvent, HubEventType
+from .protocols import (  # noqa: F401 — re-exported
+    CTOPersistencePurposeProtocol,
+    EventProtocol,
+    PurposeEventProtocol,
+)
 
 
 class PersistencePurpose(BasePurpose, abc.ABC):
@@ -64,6 +76,11 @@ class PersistencePurpose(BasePurpose, abc.ABC):
       - Set name and id as for any BasePurpose subclass.
 
     See module docstring for the full write_event() and is_durable contracts.
+
+    Architectural note:
+      Persistence is a first-class mesh role, not just a side-channel sink.
+      The long-term bootstrap model treats persistence as the first required
+      participant on the mesh and the last to leave during shutdown.
     """
 
     @property
@@ -85,22 +102,99 @@ class PersistencePurpose(BasePurpose, abc.ABC):
         Do not override — implement write_event() instead.
         """
         await self.write_event(event)
+        if (
+            event.event_type == HubEventType.SESSION_CLOSE_PENDING
+            and event.session_id is not None
+        ):
+            session_code = None
+            payload_dict = event.payload.as_dict()
+            if isinstance(payload_dict, dict):
+                session_code = payload_dict.get("session_code")
+            await self.complete_session_closing(str(event.session_id))
+            await self.emit_session_completed(
+                session_id=str(event.session_id),
+                session_code=session_code if isinstance(session_code, str) else None,
+            )
+
+    async def _submit_purpose_event(self, event: PurposeEventProtocol) -> UUID | None:
+        """
+        Persist this Purpose's self-authored event before handing it to the hub.
+
+        Persistence Purposes are responsible for persisting the events they
+        emit. The hub still authenticates, orders, and reacts to the event,
+        but it must not route the same event back into persistence a second
+        time.
+        """
+        await self.write_event(event)
+        return await self.hub.take_turn(event)
 
     @abc.abstractmethod
-    async def write_event(self, event: HubEvent) -> None:
+    async def write_event(self, event: EventProtocol) -> None:
         """
-        Persist a HubEvent to the backend storage.
+        Persist an accepted mesh event to the backend storage.
 
         Must await completion before returning — the hub relies on this
         for its persistence-before-dispatch guarantee. Must be idempotent
         on event.event_id — duplicate delivery must not corrupt the log.
 
         Args:
-            event: The HubEvent to persist. Serialize via
-                turnturnturn._event_serialization.hub_event_record(event)
-                for the canonical wire format, or use event.payload.as_dict()
-                if only payload content is needed.
+            event: The accepted EventProtocol to persist. Hub-authored and
+                accepted Purpose-authored events are both valid here. Serialize
+                via the canonical helpers in ``turnturnturn._event_serialization``.
         """
+
+    async def emit_session_started(self, *, strict_profiles: bool) -> None:
+        """
+        Emit session_started for this persistence purpose if it is durable.
+
+        Only durable persistence backends are permitted to author the durable
+        session lifecycle facts.
+        """
+        if not self.is_durable:
+            return
+        try:
+            ttt_version = importlib.metadata.version("turnturnturn")
+        except importlib.metadata.PackageNotFoundError:
+            ttt_version = "unknown"
+        now_ms = int(time.time() * 1000)
+        await self._submit_purpose_event(
+            SessionStartedEvent(
+                purpose_id=self.id,
+                purpose_name=self.name,
+                hub_token=self.token,
+                payload=SessionStartedPayload(
+                    hub_id=str(self.hub.hub_id),
+                    ttt_version=ttt_version,
+                    persister_name=self.name,
+                    persister_id=str(self.id),
+                    persister_is_durable=self.is_durable,
+                    strict_profiles=strict_profiles,
+                    created_at_ms=now_ms,
+                ),
+            )
+        )
+
+    async def emit_session_completed(
+        self,
+        *,
+        session_id: str,
+        session_code: str | None = None,
+    ) -> None:
+        """Emit session_completed for a closed session if this persister is durable."""
+        if not self.is_durable:
+            return
+        await self._submit_purpose_event(
+            SessionCompletedEvent(
+                purpose_id=self.id,
+                purpose_name=self.name,
+                hub_token=self.token,
+                session_id=UUID(session_id),
+                payload=SessionCompletedPayload(
+                    is_last_out=True,
+                    session_code=session_code,
+                ),
+            )
+        )
 
 
 @dataclass
@@ -134,14 +228,19 @@ class InMemoryPersistencePurpose(PersistencePurpose):
         """Always False — in-memory storage does not survive process termination."""
         return False
 
-    async def write_event(self, event: HubEvent) -> None:
+    async def write_event(self, event: EventProtocol) -> None:
         """
         Serialize and append the event to the in-memory events list.
 
         Idempotent on event_id: if an event with the same event_id is
         already present, the duplicate is silently dropped.
         """
+        from ._event_serialization import hub_event_record, purpose_event_record
+
         event_id = str(event.event_id)
         if any(e.get("event_id") == event_id for e in self.events):
             return
-        self.events.append(hub_event_record(event))
+        if isinstance(event, HubEvent):
+            self.events.append(hub_event_record(event))
+        else:
+            self.events.append(purpose_event_record(event))

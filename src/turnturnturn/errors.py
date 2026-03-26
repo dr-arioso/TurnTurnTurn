@@ -43,6 +43,16 @@ class UnknownEventTypeError(TTTError):
     """
 
 
+class HubClosedError(TTTError):
+    """
+    Raised when code tries to submit new work to a hub after session completion.
+
+    The intended lifecycle is that callers drop references once the durable
+    persistence Purpose emits `session_completed`. This error is a defensive
+    backstop for lingering references rather than a post-close interaction mode.
+    """
+
+
 class UnboundPurposeError(TTTError):
     """
     Raised when a Purpose that has not been registered with a hub attempts

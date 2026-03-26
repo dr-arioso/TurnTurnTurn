@@ -13,6 +13,7 @@ from .hub_events import (
     HubEvent,
     HubEventType,
     PurposeStartedPayload,
+    SessionClosePendingPayload,
     SessionClosingPayload,
     SessionCompletedPayload,
     SessionStartedPayload,
@@ -21,7 +22,14 @@ from .purpose_events import (
     CTOCloseRequestEvent,
     CTOCloseRequestPayload,
     DeltaProposalEvent,
+    EndSessionEvent,
+    EndSessionPayload,
+    PurposeCompletedEvent,
+    PurposeCompletedPayload,
     PurposeEventType,
+    PurposeStartedEvent,
+    SessionCompletedEvent,
+    SessionStartedEvent,
 )
 
 __all__ = [
@@ -41,12 +49,20 @@ __all__ = [
     "SessionStartedPayload",
     "SessionStartPayload",  # deprecated alias; remove in v0.21
     "SessionClosingPayload",
+    "SessionClosePendingPayload",
     "SessionCompletedPayload",
     # Utility
     "EmptyPayload",
     # Purpose-originated events
     "DeltaProposalEvent",
+    "EndSessionEvent",
+    "EndSessionPayload",
     "CTOCloseRequestEvent",
     "CTOCloseRequestPayload",
+    "PurposeStartedEvent",
+    "PurposeCompletedEvent",
+    "PurposeCompletedPayload",
+    "SessionStartedEvent",
+    "SessionCompletedEvent",
     "PurposeEventType",
 ]

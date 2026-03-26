@@ -9,10 +9,11 @@ from .archivist import (
     SessionDocumentArchivistBackend,
     SessionDocumentArchivistBackendConfig,
 )
-from .base_purpose import BasePurpose
+from .base_purpose import BasePurpose, SessionOwnerPurpose
 from .cto import CTO
 from .delta import Delta
 from .errors import (
+    HubClosedError,
     InvalidDownlinkSignatureError,
     PersistenceFailureError,
     TTTError,
@@ -33,9 +34,12 @@ from .events import (
     HubEvent,
     HubEventType,
     PurposeEventType,
+    PurposeStartedEvent,
     PurposeStartedPayload,
     SessionClosingPayload,
+    SessionCompletedEvent,
     SessionCompletedPayload,
+    SessionStartedEvent,
     SessionStartedPayload,
     SessionStartPayload,
 )
@@ -50,11 +54,13 @@ from .protocols import (
 
 __all__ = [
     "BasePurpose",
+    "SessionOwnerPurpose",
     "CTO",
     "Delta",
     "TTT",
     # Errors
     "TTTError",
+    "HubClosedError",
     "InvalidDownlinkSignatureError",
     "PersistenceFailureError",
     "UnauthorizedDispatchError",
@@ -98,5 +104,8 @@ __all__ = [
     "DeltaProposalEvent",
     "CTOCloseRequestEvent",
     "CTOCloseRequestPayload",
+    "PurposeStartedEvent",
+    "SessionStartedEvent",
+    "SessionCompletedEvent",
     "PurposeEventType",
 ]

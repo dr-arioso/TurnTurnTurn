@@ -14,6 +14,10 @@ authoritative Delta merge, and hub-authored event emission.
 - `take_turn()` — canonical Purpose-to-hub event submission path
 - `close()` — initiate orderly session shutdown
 
+This page describes the current public API surface. For the intended long-term
+bootstrap and lifecycle architecture, including Persist-first startup and the
+explicit session-owner role, see [Bootstrap and Lifecycle](../architecture/bootstrap_lifecycle.md).
+
 ## Lifecycles
 
 ### `TTT.start(...)`
@@ -29,6 +33,11 @@ TTT.start(persistence_purpose, ...)
 `session_started` is persistence-only. It is written before any domain Purpose
 registration or dispatch and is the first record in the event log.
 
+This is the current implementation shape. The intended architecture is moving
+toward a stricter lifecycle protocol in which persistence and session ownership
+are first-class bootstrap roles documented in
+[Bootstrap and Lifecycle](../architecture/bootstrap_lifecycle.md).
+
 
 **`start_purpose(...)`**
 ```text
@@ -38,6 +47,11 @@ start_purpose(...)
     -> emit purpose_started
     -> multicast to registered Purposes
 ```
+
+Today, registration and `purpose_started` are coupled in one hub-managed step.
+The intended architecture keeps registration immediate but treats
+`purpose_started` primarily as provenance and mesh information rather than a
+registration handshake.
 
 **`start_turn(...)`**
 ```text
@@ -99,6 +113,10 @@ close(reason=...)
     -> emit session_completed to persistence only
 ```
 `session_completed` is persistence-only and is the final record in the log.
+
+This reflects the current implementation. The intended lifecycle model is more
+explicit about Persist being first on and last off the mesh; see
+[Bootstrap and Lifecycle](../architecture/bootstrap_lifecycle.md).
 
 Reference
 

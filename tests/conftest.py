@@ -7,7 +7,12 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from turnturnturn import TTT, BasePurpose, InMemoryPersistencePurpose
+from turnturnturn import (
+    TTT,
+    BasePurpose,
+    InMemoryPersistencePurpose,
+    SessionOwnerPurpose,
+)
 from turnturnturn.events import HubEvent
 
 pytest_plugins = ("pytest_asyncio",)
@@ -40,6 +45,20 @@ class NamedPurpose(BasePurpose):
         self.received.append(event)
 
 
+class RecordingSessionOwnerPurpose(SessionOwnerPurpose):
+    """A SessionOwnerPurpose test double that records every event it receives."""
+
+    name = "session_owner"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.id = uuid4()
+        self.received: list[HubEvent] = []
+
+    async def _handle_event(self, event: HubEvent) -> None:
+        self.received.append(event)
+
+
 @pytest.fixture
 def persistence_purpose() -> InMemoryPersistencePurpose:
     """A fresh InMemoryPersistencePurpose for each test."""
@@ -47,13 +66,25 @@ def persistence_purpose() -> InMemoryPersistencePurpose:
 
 
 @pytest.fixture
-def hub(persistence_purpose: InMemoryPersistencePurpose) -> TTT:
+def session_owner() -> RecordingSessionOwnerPurpose:
+    """A fresh startup session owner for each test."""
+    return RecordingSessionOwnerPurpose()
+
+
+@pytest.fixture
+def hub(
+    persistence_purpose: InMemoryPersistencePurpose,
+    session_owner: RecordingSessionOwnerPurpose,
+) -> TTT:
     """A TTT hub backed by an InMemoryPersistencePurpose."""
-    return TTT.start(persistence_purpose)
+    return TTT.start(persistence_purpose, session_owner_purpose=session_owner)
 
 
 @pytest_asyncio.fixture
-async def submitter(hub: TTT) -> RecordingPurpose:
+async def submitter(
+    hub: TTT,
+    session_owner: RecordingSessionOwnerPurpose,
+) -> RecordingSessionOwnerPurpose:
     """
     A registered RecordingPurpose whose token is used to call start_turn().
 
@@ -61,10 +92,7 @@ async def submitter(hub: TTT) -> RecordingPurpose:
     supply hub_token. Tests that need to verify token rejection should
     construct events directly.
     """
-    p = RecordingPurpose()
-    p.name = "submitter"
-    await hub.start_purpose(p)
-    return p
+    return session_owner
 
 
 @pytest.fixture

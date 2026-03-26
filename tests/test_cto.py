@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from turnturnturn import CTO, TTT, InMemoryPersistencePurpose
+from turnturnturn import CTO, TTT, InMemoryPersistencePurpose, SessionOwnerPurpose
 from turnturnturn.cto import CTOIndex
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,20 @@ def _make_cto(**kwargs) -> CTO:
 
 
 # Ensure conversation profile is loaded for accessor tests
-TTT.start(InMemoryPersistencePurpose())
+
+
+class _BootstrapOwner(SessionOwnerPurpose):
+    name = "bootstrap_owner"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.id = uuid4()
+
+    async def _handle_event(self, event) -> None:
+        return None
+
+
+TTT.start(InMemoryPersistencePurpose(), _BootstrapOwner())
 
 
 # ---------------------------------------------------------------------------

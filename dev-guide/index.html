@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -284,9 +284,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../ttt_architecture_v0_20/" class="md-nav__link">
+    
+    
+    
+    
+      
         
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
@@ -300,7 +318,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/core_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/bootstrap_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bootstrap and Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -840,12 +958,21 @@ methods must be documented before they can be committed.</p>
 <p>Generate a coverage badge (written to <code>docs/assets/</code>):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>interrogate<span class="w"> </span>src/turnturnturn<span class="w"> </span>--generate-badge<span class="w"> </span>docs/assets/
 </code></pre></div>
+<p>Badge generation is intentionally a manual docs step, not part of the
+pre-commit hook path.</p>
 <h2 id="docs">Docs<a class="headerlink" href="#docs" title="Permanent link">&para;</a></h2>
 <p>The documentation site is built from two sources:</p>
 <ol>
-<li><strong>Narrative docs</strong> — Markdown files in <code>docs/</code> (architecture, guides, this page).</li>
+<li><strong>Narrative docs</strong> — Markdown files in <code>docs/</code> (architecture, lifecycle, guides, this page).</li>
 <li><strong>API reference</strong> — Extracted live from docstrings at build time via <code>mkdocstrings</code>.</li>
 </ol>
+<p>For architecture work, prefer one authoritative home per concern:</p>
+<ul>
+<li><code>docs/architecture/bootstrap_lifecycle.md</code> — mesh/session lifecycle invariants</li>
+<li><code>docs/architecture/core_architecture.md</code> — broader substrate architecture</li>
+<li>docstrings — code-local contract and API behavior</li>
+</ul>
+<p>Keep <code>README.md</code> brief and link-oriented. Do not duplicate lifecycle narrative there.</p>
 <p>Serve locally:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mkdocs<span class="w"> </span>serve
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># → http://127.0.0.1:8000</span>

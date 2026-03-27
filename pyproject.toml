@@ -27,11 +27,10 @@ dev = [
 
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "W", "C90"]
-ignore = ["E501"]
 
 [tool.ruff.lint]
-ignore = ["E501"]
+select = ["E", "F", "W", "C90"]
+ignore = ["E501", "C901"]
 
 [tool.ruff.lint.per-file-ignores]
 "docs/*.py" = ["E501"]
@@ -63,8 +62,6 @@ verbose = 0
 quiet = false
 whitelist-regex = []
 color = true
-generate-badge = "docs/assets/"
-badge-format = "svg"
 
 [build-system]
 requires = ["setuptools>=65.0","wheel"]

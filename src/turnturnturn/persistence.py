@@ -44,7 +44,6 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID, uuid4
 
-from ._event_serialization import hub_event_record
 from .base_purpose import BasePurpose
 from .events import (
     SessionCompletedEvent,
@@ -101,6 +100,11 @@ class PersistencePurpose(BasePurpose, abc.ABC):
         Called by BasePurpose.take_turn() after route credential validation.
         Do not override — implement write_event() instead.
         """
+        if event.event_type == "cto_request":
+            raise NotImplementedError(
+                f"{type(self).__name__} does not implement cto_request handling. "
+                "Use Archivist for cto_json imports."
+            )
         await self.write_event(event)
         if (
             event.event_type == HubEventType.SESSION_CLOSE_PENDING
@@ -161,7 +165,7 @@ class PersistencePurpose(BasePurpose, abc.ABC):
             SessionStartedEvent(
                 purpose_id=self.id,
                 purpose_name=self.name,
-                hub_token=self.token,
+                hub_token=self._require_token(),
                 payload=SessionStartedPayload(
                     hub_id=str(self.hub.hub_id),
                     ttt_version=ttt_version,
@@ -187,7 +191,7 @@ class PersistencePurpose(BasePurpose, abc.ABC):
             SessionCompletedEvent(
                 purpose_id=self.id,
                 purpose_name=self.name,
-                hub_token=self.token,
+                hub_token=self._require_token(),
                 session_id=UUID(session_id),
                 payload=SessionCompletedPayload(
                     is_last_out=True,
@@ -243,4 +247,5 @@ class InMemoryPersistencePurpose(PersistencePurpose):
         if isinstance(event, HubEvent):
             self.events.append(hub_event_record(event))
         else:
+            assert isinstance(event, PurposeEventProtocol)
             self.events.append(purpose_event_record(event))

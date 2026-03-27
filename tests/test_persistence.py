@@ -42,13 +42,21 @@ InMemoryPersistencePurpose
 
 from __future__ import annotations
 
+import json
 import warnings
 from uuid import UUID, uuid4
 
 import pytest
 from conftest import RecordingPurpose, RecordingSessionOwnerPurpose
 
-from turnturnturn import TTT, InMemoryPersistencePurpose, PersistenceFailureError
+from turnturnturn import (
+    CTO,
+    TTT,
+    InMemoryPersistencePurpose,
+    PersistenceFailureError,
+    cto_json_document,
+)
+from turnturnturn.archivist import Archivist, ArchivistBackendConfig
 from turnturnturn.delta import Delta
 from turnturnturn.errors import HubClosedError, UnauthorizedDispatchError
 from turnturnturn.events import (
@@ -105,6 +113,69 @@ class DeferringDurablePersistencePurpose(DurablePersistencePurpose):
             session_id=self.pending_session_id,
             session_code=self.pending_session_code,
         )
+
+
+class DurableArchivistBackend:
+    """Minimal durable Archivist backend for gating tests."""
+
+    is_durable: bool = True
+
+    async def accept(self, event) -> None:
+        return None
+
+
+class DeferringArchivist(Archivist):
+    """Archivist variant that defers the final session_completed emission."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            backends=[(ArchivistBackendConfig(), DurableArchivistBackend())]
+        )
+        self.pending_session_id: str | None = None
+        self.pending_session_code: str | None = None
+
+    async def _handle_event(self, event: HubEvent) -> None:
+        if str(event.event_type) == PurposeEventType.CTO_REQUEST.value:
+            await self._handle_cto_request_event(event)
+            return
+        await self._route_to_backends(event)
+        if (
+            event.event_type == HubEventType.SESSION_CLOSE_PENDING
+            and event.session_id is not None
+        ):
+            payload_dict = event.payload.as_dict()
+            session_code = (
+                payload_dict.get("session_code")
+                if isinstance(payload_dict, dict)
+                else None
+            )
+            await self.complete_session_closing(str(event.session_id))
+            self.pending_session_id = str(event.session_id)
+            self.pending_session_code = (
+                session_code if isinstance(session_code, str) else None
+            )
+
+    async def flush_session_completed(self) -> None:
+        assert self.pending_session_id is not None
+        await self.emit_session_completed(
+            session_id=self.pending_session_id,
+            session_code=self.pending_session_code,
+        )
+
+
+def _write_conversation_cto_json(tmp_path, text: str = "hello") -> str:
+    document = cto_json_document(
+        CTO(
+            turn_id=uuid4(),
+            session_id=uuid4(),
+            created_at_ms=1234,
+            content_profile={"id": "conversation", "version": 1},
+            content={"speaker": {"id": "usr_test"}, "text": text},
+        )
+    )
+    path = tmp_path / "import.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return str(path)
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +462,48 @@ async def test_duplicate_end_session_noops_while_closing(minimal_content):
 
 
 @pytest.mark.asyncio
+async def test_cto_request_is_allowed_while_open(tmp_path):
+    persistence_purpose = Archivist(
+        backends=[(ArchivistBackendConfig(), DurableArchivistBackend())]
+    )
+    owner = RecordingSessionOwnerPurpose()
+    TTT.start(persistence_purpose, owner)
+    source_locator = _write_conversation_cto_json(tmp_path, text="open session import")
+
+    await owner.request_cto(
+        session_id=str(uuid4()),
+        source_kind="cto_json",
+        source_locator=source_locator,
+        session_code="OPEN-1",
+    )
+
+
+@pytest.mark.asyncio
+async def test_cto_request_is_rejected_while_closing(minimal_content, tmp_path):
+    persistence_purpose = DeferringArchivist()
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+    source_locator = _write_conversation_cto_json(tmp_path, text="closing import")
+
+    await hub.start_turn(
+        "conversation",
+        minimal_content,
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    with pytest.raises(HubClosedError):
+        await owner.request_cto(
+            session_id=str(session_id),
+            source_kind="cto_json",
+            source_locator=source_locator,
+            session_code="CLOSING-1",
+        )
+
+
+@pytest.mark.asyncio
 async def test_session_completed_closes_hub_for_start_purpose(minimal_content):
     persistence_purpose = DurablePersistencePurpose()
     owner = RecordingSessionOwnerPurpose()
@@ -470,6 +583,33 @@ async def test_session_completed_closes_hub_for_take_turn(minimal_content):
 
     with pytest.raises(HubClosedError):
         await hub.take_turn(event)
+
+
+@pytest.mark.asyncio
+async def test_cto_request_is_rejected_after_session_completed(tmp_path):
+    persistence_purpose = Archivist(
+        backends=[(ArchivistBackendConfig(), DurableArchivistBackend())]
+    )
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(persistence_purpose, owner)
+    session_id = uuid4()
+    source_locator = _write_conversation_cto_json(tmp_path, text="closed import")
+
+    await hub.start_turn(
+        "conversation",
+        {"speaker": {"id": "usr_test"}, "text": "hello"},
+        owner.token,
+        session_id=session_id,
+    )
+    await owner.end_session(str(session_id))
+
+    with pytest.raises(HubClosedError):
+        await owner.request_cto(
+            session_id=str(session_id),
+            source_kind="cto_json",
+            source_locator=source_locator,
+            session_code="CLOSED-1",
+        )
 
 
 @pytest.mark.asyncio

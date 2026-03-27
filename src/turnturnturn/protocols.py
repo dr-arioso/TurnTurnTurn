@@ -29,10 +29,17 @@ class EventProtocol(Protocol):
     Purpose-originated events.
     """
 
-    event_type: str
-    event_id: UUID
-    created_at_ms: int
-    payload: EventPayloadProtocol
+    @property
+    def event_type(self) -> str: ...
+
+    @property
+    def event_id(self) -> UUID: ...
+
+    @property
+    def created_at_ms(self) -> int: ...
+
+    @property
+    def payload(self) -> EventPayloadProtocol: ...
 
 
 @runtime_checkable
@@ -45,9 +52,14 @@ class PurposeEventProtocol(EventProtocol, Protocol):
     routing the event.
     """
 
-    purpose_id: UUID
-    purpose_name: str
-    hub_token: str
+    @property
+    def purpose_id(self) -> UUID: ...
+
+    @property
+    def purpose_name(self) -> str: ...
+
+    @property
+    def hub_token(self) -> str: ...
 
 
 @runtime_checkable
@@ -83,9 +95,14 @@ class PurposeProtocol(TurnTakerProtocol, Protocol):
     implementations.
     """
 
-    name: str
-    id: UUID
-    token: str | None
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def id(self) -> UUID: ...
+
+    @property
+    def token(self) -> str | None: ...
 
 
 @runtime_checkable
@@ -115,6 +132,7 @@ class CTOPersistencePurposeProtocol(PurposeProtocol, Protocol):
         backends must handle duplicate delivery without data corruption.
     """
 
-    is_durable: bool
+    @property
+    def is_durable(self) -> bool: ...
 
     async def write_event(self, event: EventProtocol) -> None: ...

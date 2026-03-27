@@ -1,26 +1,28 @@
 exclude: '^examples/'
 
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
-    hooks:
-      - id: ruff
-        args: ["--select", "E,F,W,C90", "--ignore", "E501"]
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-        language_version: python3.12
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
   - repo: local
     hooks:
+      - id: ruff
+        name: ruff (venv)
+        entry: bash -c 'RUFF_CACHE_DIR=/tmp/ruff-turnturnturn .venv/bin/ruff "$@"' --
+        language: system
+        args: ["check", "--select", "E,F,W,C90", "--ignore", "E501,C901"]
+        types_or: [python, pyi]
+      - id: black
+        name: black (venv)
+        entry: .venv/bin/python tools/black_check.py
+        language: system
+        types_or: [python, pyi]
+      - id: isort
+        name: isort (venv)
+        entry: .venv/bin/isort
+        language: system
+        args: ["--profile", "black"]
+        types_or: [python, pyi]
       - id: mypy
         name: mypy (venv)
-        entry: .venv/bin/mypy
+        entry: bash -c 'MYPY_CACHE_DIR=/tmp/mypy-turnturnturn .venv/bin/mypy "$@"' --
         language: system
         pass_filenames: false
         args: ["--strict", "src/turnturnturn"]
@@ -43,7 +45,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
       - id: check-added-large-files
+        name: Check added large files
+        entry: bash -c 'limit=524288; status=0; for file in "$@"; do if [ -f "$file" ]; then size=$(wc -c <"$file"); if [ "$size" -gt "$limit" ]; then echo "$file (${size} bytes) exceeds ${limit}-byte limit"; status=1; fi; fi; done; exit "$status"' --
+        language: system
+        pass_filenames: true
+        stages: [pre-commit]

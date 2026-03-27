@@ -58,8 +58,10 @@ TTT is not the workflow brain and is not the domain layer.
 
 The **Canonical Turn Object** is the authoritative work item.
 
-A CTO is created by `start_turn()`, never mutated directly, and replaced on
-every accepted merge. Its stable responsibilities are:
+A CTO is introduced into the mesh either by direct creation with
+`start_turn()` or by persistence-backed import via `cto_request` ->
+`cto_imported` -> `cto_started`. Once live, it is never mutated directly and
+is replaced on every accepted merge. Its stable responsibilities are:
 
 - carry profile identity
 - carry profile-conformant content

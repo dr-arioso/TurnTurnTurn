@@ -11,6 +11,8 @@ authoritative Delta merge, and hub-authored event emission.
   dotted-namespace event type with the pluggable relay
 - `start_purpose()` — register a Purpose and assign route credentials
 - `start_turn()` — create a new canonical CTO from authenticated bootstrap input
+- `BasePurpose.request_cto()` — ask persistence to import a canonical `cto_json`
+  document into the mesh
 - `take_turn()` — canonical Purpose-to-hub event submission path
 - `close()` — initiate orderly session shutdown
 
@@ -63,6 +65,20 @@ start_turn(...)
     -> emit cto_started
     -> multicast to registered Purposes
 ```
+
+**`request_cto(...)`**
+```text
+request_cto(...)
+    -> emit cto_request
+    -> persistence loads and normalizes cto_json
+    -> persistence emits cto_imported
+    -> hub adopts the imported CTO
+    -> emit cto_started
+```
+This is the mesh-native sibling of `start_turn()`. The caller supplies a
+source locator instead of turn content, and the persistence layer performs the
+reconstitution work.
+
 **`take_turn(...)`**
 ```text
 take_turn(event)

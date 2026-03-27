@@ -41,6 +41,8 @@ from .errors import (
     UnboundPurposeError,
 )
 from .events import (
+    CTORequestEvent,
+    CTORequestPayload,
     EndSessionEvent,
     EndSessionPayload,
     HubEvent,
@@ -137,6 +139,16 @@ class BasePurpose(abc.ABC):
         """Bind this Purpose instance to the hub that registered it."""
         self._hub = hub
 
+    def _require_token(self) -> str:
+        """Return the bound hub token or raise until registration is complete."""
+        token = self.token
+        if token is None:
+            raise UnboundPurposeError(
+                f"Purpose {self.name!r} (id={self.id}) has not been registered "
+                f"with a hub. Call ttt.start_purpose() before dispatch."
+            )
+        return token
+
     @property
     def hub(self) -> TTT:
         """Return the bound hub. Raises until the Purpose is registered."""
@@ -165,8 +177,49 @@ class BasePurpose(abc.ABC):
             EndSessionEvent(
                 purpose_id=self.id,
                 purpose_name=self.name,
-                hub_token=self.token,
+                hub_token=self._require_token(),
                 payload=EndSessionPayload(session_id=session_id, reason=reason),
+            )
+        )
+
+    async def request_cto(
+        self,
+        *,
+        session_id: str,
+        source_kind: str,
+        source_locator: str,
+        session_code: str | None = None,
+        request_id: str | None = None,
+    ) -> None:
+        """
+        Request that the persistence layer import a CTO document into the mesh.
+
+        This is the mesh-native sibling to `start_turn()`: the caller does not
+        hand the hub turn content directly, but instead asks persistence to
+        retrieve and reconstitute a CTO-shaped document from an external source.
+        """
+        if not session_id:
+            raise ValueError("session_id must be a non-empty string")
+        if not source_kind:
+            raise ValueError("source_kind must be a non-empty string")
+        if not source_locator:
+            raise ValueError("source_locator must be a non-empty string")
+        session_uuid = UUID(session_id)
+        await self._submit_purpose_event(
+            CTORequestEvent(
+                purpose_id=self.id,
+                purpose_name=self.name,
+                hub_token=self._require_token(),
+                session_id=session_uuid,
+                payload=CTORequestPayload(
+                    session_id=session_id,
+                    source_kind=source_kind,
+                    source_locator=source_locator,
+                    requested_by_purpose_id=str(self.id),
+                    requested_by_purpose_name=self.name,
+                    session_code=session_code,
+                    request_id=request_id,
+                ),
             )
         )
 
@@ -185,7 +238,7 @@ class BasePurpose(abc.ABC):
             PurposeStartedEvent(
                 purpose_id=self.id,
                 purpose_name=self.name,
-                hub_token=self.token,
+                hub_token=self._require_token(),
                 payload=PurposeStartedPayload(
                     purpose_name=self.name,
                     purpose_id=str(self.id),
@@ -218,7 +271,7 @@ class BasePurpose(abc.ABC):
             PurposeCompletedEvent(
                 purpose_id=self.id,
                 purpose_name=self.name,
-                hub_token=self.token,
+                hub_token=self._require_token(),
                 payload=PurposeCompletedPayload(session_id=session_id, reason=reason),
             )
         )

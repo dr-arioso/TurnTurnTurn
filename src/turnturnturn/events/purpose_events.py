@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 from uuid import UUID, uuid4
 
 from ..protocols import EventPayloadProtocol
@@ -38,6 +39,8 @@ class PurposeEventType(str, Enum):
     DELTA_PROPOSAL = "delta_proposal"
     PURPOSE_STARTED = "purpose_started"
     SESSION_STARTED = "session_started"
+    CTO_REQUEST = "cto_request"
+    CTO_IMPORTED = "cto_imported"
     END_SESSION = "end_session"
     PURPOSE_COMPLETED = "purpose_completed"
     SESSION_COMPLETED = "session_completed"
@@ -57,6 +60,62 @@ class EndSessionPayload(EventPayloadProtocol):
             "_v": 1,
             "session_id": self.session_id,
             "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
+class CTORequestPayload(EventPayloadProtocol):
+    """Payload for a Purpose-originated request to import a CTO JSON document."""
+
+    session_id: str
+    source_kind: str
+    source_locator: str
+    requested_by_purpose_id: str
+    requested_by_purpose_name: str
+    session_code: str | None = None
+    request_id: str | None = None
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "_schema": "cto_request",
+            "_v": 1,
+            "session_id": self.session_id,
+            "source_kind": self.source_kind,
+            "source_locator": self.source_locator,
+            "requested_by_purpose_id": self.requested_by_purpose_id,
+            "requested_by_purpose_name": self.requested_by_purpose_name,
+            "session_code": self.session_code,
+            "request_id": self.request_id,
+        }
+
+
+@dataclass(frozen=True)
+class CTOImportedPayload(EventPayloadProtocol):
+    """Payload for a persistence-authored imported CTO awaiting hub adoption."""
+
+    session_id: str
+    source_kind: str
+    source_locator: str
+    source_content_hash: str
+    requested_by_purpose_id: str
+    requested_by_purpose_name: str
+    cto_json: dict[str, Any]
+    session_code: str | None = None
+    request_id: str | None = None
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "_schema": "cto_imported",
+            "_v": 1,
+            "session_id": self.session_id,
+            "source_kind": self.source_kind,
+            "source_locator": self.source_locator,
+            "source_content_hash": self.source_content_hash,
+            "requested_by_purpose_id": self.requested_by_purpose_id,
+            "requested_by_purpose_name": self.requested_by_purpose_name,
+            "session_code": self.session_code,
+            "request_id": self.request_id,
+            "cto_json": self.cto_json,
         }
 
 
@@ -86,6 +145,38 @@ class EndSessionEvent:
     payload: EndSessionPayload
     event_type: PurposeEventType = field(
         default=PurposeEventType.END_SESSION, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
+
+
+@dataclass(frozen=True)
+class CTORequestEvent:
+    """Purpose-authored event requesting that persistence import a CTO JSON document."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    session_id: UUID
+    payload: CTORequestPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.CTO_REQUEST, init=False
+    )
+    event_id: UUID = field(default_factory=uuid4, init=False)
+    created_at_ms: int = field(default_factory=_now_ms, init=False)
+
+
+@dataclass(frozen=True)
+class CTOImportedEvent:
+    """Persistence-authored event carrying a normalized imported CTO document."""
+
+    purpose_id: UUID
+    purpose_name: str
+    hub_token: str
+    session_id: UUID
+    payload: CTOImportedPayload
+    event_type: PurposeEventType = field(
+        default=PurposeEventType.CTO_IMPORTED, init=False
     )
     event_id: UUID = field(default_factory=uuid4, init=False)
     created_at_ms: int = field(default_factory=_now_ms, init=False)

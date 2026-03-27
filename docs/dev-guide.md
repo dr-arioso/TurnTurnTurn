@@ -45,6 +45,9 @@ Generate a coverage badge (written to `docs/assets/`):
 interrogate src/turnturnturn --generate-badge docs/assets/
 ```
 
+Badge generation is intentionally a manual docs step, not part of the
+pre-commit hook path.
+
 ## Docs
 
 The documentation site is built from two sources:

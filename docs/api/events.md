@@ -34,6 +34,8 @@ For the broader substrate model, see [Core Architecture](../architecture/core_ar
 | Event | Meaning |
 | ----- | ------- |
 | `delta_proposal` | A Purpose proposes a Delta for authoritative merge. |
+| `cto_request` | A Purpose asks persistence to import a canonical `cto_json` document into the mesh. |
+| `cto_imported` | The persistence Purpose reports a normalized imported CTO document for hub adoption. |
 | `end_session` | A Purpose requests orderly session shutdown. |
 | `purpose_completed` | A Purpose reports that it has completed its work. |
 | `cto_close_request` | A Purpose signals that a CTO is complete from that Purpose's perspective. Currently accepted as a stub for future DAG/quiescence logic. |
@@ -91,6 +93,8 @@ Hub-authored payloads include:
 Purpose-authored payloads include:
 
 - `DeltaProposalPayload`
+- `CTORequestPayload`
+- `CTOImportedPayload`
 - `EndSessionPayload`
 - `PurposeCompletedPayload`
 - `CTOCloseRequestPayload`
@@ -126,6 +130,10 @@ Purpose-authored payloads include:
 ::: turnturnturn.events.SessionCompletedPayload
 
 ::: turnturnturn.events.DeltaProposalPayload
+
+::: turnturnturn.events.CTORequestPayload
+
+::: turnturnturn.events.CTOImportedPayload
 
 ::: turnturnturn.events.EndSessionPayload
 

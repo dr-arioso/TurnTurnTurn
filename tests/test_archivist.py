@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from uuid import uuid4
+import json
+from uuid import UUID, uuid4
 
 import pytest
 from conftest import RecordingPurpose, RecordingSessionOwnerPurpose
 
-from turnturnturn import TTT
+from turnturnturn import CTO, TTT, cto_json_document
 from turnturnturn.archivist import (
     Archivist,
     ArchivistBackendConfig,
@@ -205,8 +206,6 @@ async def test_archivist_different_profiles_route_to_different_backends():
 @pytest.mark.asyncio
 async def test_archivist_end_to_end_via_hub(tmp_path):
     """Archivist registered as persistence Purpose writes JSONL records for real hub events."""
-    import json
-
     jsonl_path = tmp_path / "events.jsonl"
     jsonl_config = JsonlArchivistBackendConfig(path=jsonl_path)
     jsonl_backend = JsonlArchivistBackend(jsonl_config)
@@ -236,3 +235,112 @@ async def test_archivist_end_to_end_via_hub(tmp_path):
     assert event_types[0] == "session_started"
     assert "purpose_started" in event_types
     assert "cto_started" in event_types
+
+
+@pytest.mark.asyncio
+async def test_archivist_imports_cto_json_and_emits_cto_started(tmp_path):
+    """A cto_request causes Archivist to emit cto_imported and the hub to adopt it."""
+    cto_document = cto_json_document(
+        CTO(
+            turn_id=uuid4(),
+            session_id=uuid4(),
+            created_at_ms=1234,
+            content_profile={"id": "conversation", "version": 1},
+            content={
+                "speaker": {"id": "usr_patient", "role": "user", "label": "Patient"},
+                "text": "My knee is swollen and hurts when I stand on it.",
+            },
+            observations={"fixture": [{"key": "note", "value": "import me"}]},
+        ),
+        session_code="legacy-session",
+        metadata={"source_note": "doctor-patient-fixture"},
+    )
+    cto_path = tmp_path / "import.json"
+    cto_path.write_text(json.dumps(cto_document), encoding="utf-8")
+
+    backend = DurableCapturingBackend()
+    archivist = Archivist(backends=[(ArchivistBackendConfig(), backend)])
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(archivist, owner)
+
+    observer = RecordingPurpose()
+    await hub.start_purpose(observer)
+    session_id = uuid4()
+
+    await owner.request_cto(
+        session_id=str(session_id),
+        source_kind="cto_json",
+        source_locator=str(cto_path),
+        session_code="live-session",
+    )
+
+    imported = [
+        event for event in observer.received if event.event_type == "cto_imported"
+    ]
+    started = [
+        event
+        for event in observer.received
+        if event.event_type == HubEventType.CTO_STARTED
+    ]
+    assert len(imported) == 1
+    assert len(started) == 1
+
+    payload = started[0].payload.as_dict()
+    turn_id = payload["cto_index"]["turn_id"]
+    adopted = hub.librarian.get_cto(UUID(turn_id))
+    assert adopted is not None
+    assert adopted.session_id == session_id
+    assert adopted.content["text"] == (
+        "My knee is swollen and hurts when I stand on it."
+    )
+    assert adopted.observations["fixture"][0]["value"] == "import me"
+    assert adopted.observations["turnturnturn.provenance"][0]["key"] == "import"
+    assert payload["submitted_by_purpose_id"] == str(owner.id)
+    assert payload["submitted_by_purpose_name"] == owner.name
+
+
+@pytest.mark.asyncio
+async def test_archivist_dedupes_repeated_cto_request_by_derived_key(tmp_path):
+    """Repeated requests for the same cto_json path/content import only once."""
+    cto_document = cto_json_document(
+        CTO(
+            turn_id=uuid4(),
+            session_id=uuid4(),
+            created_at_ms=1234,
+            content_profile={"id": "conversation", "version": 1},
+            content={
+                "speaker": {"id": "usr_patient"},
+                "text": "Still cannot bear weight on it.",
+            },
+        )
+    )
+    cto_path = tmp_path / "import.json"
+    cto_path.write_text(json.dumps(cto_document), encoding="utf-8")
+
+    archivist = Archivist(
+        backends=[(ArchivistBackendConfig(), DurableCapturingBackend())]
+    )
+    owner = RecordingSessionOwnerPurpose()
+    hub = TTT.start(archivist, owner)
+    observer = RecordingPurpose()
+    await hub.start_purpose(observer)
+    session_id = uuid4()
+
+    for _ in range(2):
+        await owner.request_cto(
+            session_id=str(session_id),
+            source_kind="cto_json",
+            source_locator=str(cto_path),
+            session_code="repeat-session",
+        )
+
+    imported = [
+        event for event in observer.received if event.event_type == "cto_imported"
+    ]
+    started = [
+        event
+        for event in observer.received
+        if event.event_type == HubEventType.CTO_STARTED
+    ]
+    assert len(imported) == 1
+    assert len(started) == 1

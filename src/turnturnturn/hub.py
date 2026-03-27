@@ -30,6 +30,7 @@ from turnturnturn.errors import UnauthorizedDispatchError
 
 from .base_purpose import BasePurpose, SessionOwnerPurpose
 from .cto import CTO
+from .cto_json import TTT_PROVENANCE_NAMESPACE, normalize_cto_json_document
 from .delta import Delta
 from .errors import HubClosedError, PersistenceFailureError, UnknownEventTypeError
 from .events import (
@@ -43,7 +44,12 @@ from .events import (
     SessionClosingPayload,
 )
 from .events.hub_events import DeltaProposalPayload
-from .events.purpose_events import EndSessionPayload, PurposeCompletedPayload
+from .events.purpose_events import (
+    CTOImportedPayload,
+    CTORequestPayload,
+    EndSessionPayload,
+    PurposeCompletedPayload,
+)
 from .profile import ProfileRegistry
 from .protocols import (
     CTOPersistencePurposeProtocol,
@@ -71,6 +77,8 @@ _EVENT_POLICY: dict[PurposeEventType, _EventPolicy] = {
     PurposeEventType.DELTA_PROPOSAL: _EventPolicy(handler="_handle_delta_proposal"),
     PurposeEventType.PURPOSE_STARTED: _EventPolicy(handler="_handle_purpose_started"),
     PurposeEventType.SESSION_STARTED: _EventPolicy(handler="_handle_session_started"),
+    PurposeEventType.CTO_REQUEST: _EventPolicy(handler="_handle_cto_request"),
+    PurposeEventType.CTO_IMPORTED: _EventPolicy(handler="_handle_cto_imported"),
     PurposeEventType.END_SESSION: _EventPolicy(handler="_handle_end_session"),
     PurposeEventType.PURPOSE_COMPLETED: _EventPolicy(
         handler="_handle_purpose_completed"
@@ -426,6 +434,13 @@ class TTT:
         except RuntimeError:
             asyncio.run(coro)
 
+    def _is_current_bootstrap_task(self) -> bool:
+        """Return True when called from one of the scheduled bootstrap tasks."""
+        current = asyncio.current_task()
+        if current is None:
+            return False
+        return current in {self._bootstrap_persist_task, self._bootstrap_owner_task}
+
     async def _await_bootstrap_ready(self) -> None:
         """
         Ensure bootstrap persistence and owner admission side effects have completed.
@@ -435,6 +450,9 @@ class TTT:
         async hub operations await those tasks first so startup ordering remains
         deterministic for persistence and registration.
         """
+        if self._is_current_bootstrap_task():
+            return
+
         persist_task = self._bootstrap_persist_task
         if persist_task is not None:
             self._bootstrap_persist_task = None
@@ -694,40 +712,71 @@ class TTT:
             content,
             self._session_context(resolved_session_id),
         )
-
-        # Mint the event_id before constructing the CTO so that last_event_id
-        # can be set to the cto_started event_id at construction time.
-        # This keeps the CTO's version handle and the emitted event in sync
-        # without a second write to _ctos after the event is built.
-        cto_started_event_id = uuid4()
-
-        cto = CTO(
-            turn_id=uuid4(),
+        self._ensure_startup_owner_for_new_session(
             session_id=resolved_session_id,
-            created_at_ms=now_ms(),
+            requester_id=reg.purpose.id,
+            operation="start_turn",
+        )
+        return await self._accept_new_cto(
+            session_id=resolved_session_id,
+            session_code=session_code,
             content_profile={"id": content_profile, "version": profile_version},
             content=resolved_content,
+            observations={},
+            submitted_by_purpose_id=str(reg.purpose.id),
+            submitted_by_purpose_name=reg.purpose.name,
+        )
+
+    def _ensure_startup_owner_for_new_session(
+        self,
+        *,
+        session_id: UUID,
+        requester_id: UUID,
+        operation: str,
+    ) -> None:
+        """Require the startup session owner to create or import the first turn."""
+        if session_id in self._session_owners:
+            return
+        owner = self.session_owner_purpose
+        if owner is None or requester_id != owner.id:
+            raise UnauthorizedDispatchError(
+                f"{operation} rejected — only the startup session owner Purpose "
+                "may create the first turn for a new session."
+            )
+        self._session_owners[session_id] = requester_id
+
+    async def _accept_new_cto(
+        self,
+        *,
+        session_id: UUID,
+        session_code: str | None,
+        content_profile: dict[str, Any],
+        content: dict[str, Any],
+        observations: dict[str, list[dict[str, Any]]],
+        submitted_by_purpose_id: str | None,
+        submitted_by_purpose_name: str | None,
+    ) -> UUID:
+        """Create canonical CTO state and emit the corresponding cto_started event."""
+        cto_started_event_id = uuid4()
+        cto = CTO(
+            turn_id=uuid4(),
+            session_id=session_id,
+            created_at_ms=now_ms(),
+            content_profile=content_profile,
+            content=content,
+            observations=observations,
             last_event_id=cto_started_event_id,
         )
         self._ctos[cto.turn_id] = cto
-        if resolved_session_id not in self._session_owners:
-            owner = self.session_owner_purpose
-            if owner is None or reg.purpose.id != owner.id:
-                raise UnauthorizedDispatchError(
-                    "start_turn() rejected — only the startup session owner Purpose "
-                    "may create the first turn for a new session."
-                )
-            self._session_owners[resolved_session_id] = reg.purpose.id
         if session_code is not None:
-            self._session_codes[resolved_session_id] = session_code
+            self._session_codes[session_id] = session_code
         _logger.debug(
             "CTO started: turn_id=%s session_id=%s profile=%s submitted_by=%r",
             cto.turn_id,
             cto.session_id,
-            content_profile,
-            reg.purpose.name,
+            content_profile["id"],
+            submitted_by_purpose_name,
         )
-
         event = HubEvent(
             event_type=HubEventType.CTO_STARTED,
             event_id=cto_started_event_id,
@@ -736,13 +785,11 @@ class TTT:
             turn_id=cto.turn_id,
             payload=CTOStartedPayload(
                 cto_index=cto.to_index().to_dict(),
-                submitted_by_purpose_id=str(reg.purpose.id),
-                submitted_by_purpose_name=reg.purpose.name,
+                submitted_by_purpose_id=submitted_by_purpose_id,
+                submitted_by_purpose_name=submitted_by_purpose_name,
             ),
         )
-
         await self._multicast(event)
-        # v0: no DAG yet; dispatch is "all registered purposes for this event"
         return cto.turn_id
 
     async def close(self, *, reason: str = "normal") -> None:
@@ -886,6 +933,8 @@ class TTT:
         for a subset of events; all others may still be observed by subscribers
         or persistence layers.
         """
+        await self._await_bootstrap_ready()
+
         # Try to resolve the event_type as a known PurposeEventType first.
         try:
             event_type = PurposeEventType(event.event_type)
@@ -913,15 +962,25 @@ class TTT:
         if event_type is PurposeEventType.DELTA_PROPOSAL:
             return await self._handle_delta_proposal(reg, payload)
         if event_type is PurposeEventType.PURPOSE_STARTED:
-            return await self._handle_purpose_started(event)
+            await self._handle_purpose_started(event)
+            return None
         if event_type is PurposeEventType.SESSION_STARTED:
-            return await self._handle_session_started(reg)
+            await self._handle_session_started(reg)
+            return None
+        if event_type is PurposeEventType.CTO_REQUEST:
+            await self._handle_cto_request(reg, payload)
+            return None
+        if event_type is PurposeEventType.CTO_IMPORTED:
+            return await self._handle_cto_imported(reg, event, payload)
         if event_type is PurposeEventType.END_SESSION:
-            return await self._handle_end_session(reg, payload)
+            await self._handle_end_session(reg, payload)
+            return None
         if event_type is PurposeEventType.PURPOSE_COMPLETED:
-            return await self._handle_purpose_completed(reg, payload)
+            await self._handle_purpose_completed(reg, payload)
+            return None
         if event_type is PurposeEventType.SESSION_COMPLETED:
-            return await self._handle_session_completed(reg, event)
+            await self._handle_session_completed(reg, event)
+            return None
 
         if policy is None:
             # Event type is unknown to the hub — not in _EVENT_POLICY at all.
@@ -967,6 +1026,107 @@ class TTT:
                 "session_started rejected — only the durable persistence Purpose may emit it."
             )
         return None
+
+    async def _handle_cto_request(
+        self,
+        reg: PurposeRegistration,
+        payload: EventPayloadProtocol,
+    ) -> None:
+        """Relay a validated CTO import request to the persistence purpose only."""
+        request_payload = cast(CTORequestPayload, payload)
+        hub_event = HubEvent(
+            event_type=PurposeEventType.CTO_REQUEST.value,
+            event_id=uuid4(),
+            created_at_ms=now_ms(),
+            session_id=UUID(request_payload.session_id),
+            payload=CTORequestPayload(
+                session_id=request_payload.session_id,
+                source_kind=request_payload.source_kind,
+                source_locator=request_payload.source_locator,
+                requested_by_purpose_id=str(reg.purpose.id),
+                requested_by_purpose_name=reg.purpose.name,
+                session_code=request_payload.session_code,
+                request_id=request_payload.request_id,
+            ),
+        )
+        await self._multicast(
+            hub_event,
+            persistence_only=True,
+            persist_before_dispatch=False,
+            deliver_to_persistence=True,
+        )
+        return None
+
+    async def _handle_cto_imported(
+        self,
+        reg: PurposeRegistration,
+        event: PurposeEventProtocol,
+        payload: EventPayloadProtocol,
+    ) -> UUID:
+        """Accept a persistence-authored imported CTO, adopt it, then emit cto_started."""
+        p = self.persistence_purpose
+        if p is None or reg.purpose.id != p.id:
+            raise UnauthorizedDispatchError(
+                "cto_imported rejected — only the persistence Purpose may emit it."
+            )
+
+        imported_payload = cast(CTOImportedPayload, payload)
+        await self._relay_purpose_event(event)
+
+        normalized = normalize_cto_json_document(imported_payload.cto_json)
+        live_session_id = UUID(imported_payload.session_id)
+        requester_id = UUID(imported_payload.requested_by_purpose_id)
+        self._ensure_startup_owner_for_new_session(
+            session_id=live_session_id,
+            requester_id=requester_id,
+            operation="cto_imported",
+        )
+
+        profile = ProfileRegistry.get(
+            normalized.content_profile["id"],
+            normalized.content_profile["version"],
+        )
+        profile.validate(normalized.content, strict=self.strict_profiles)
+
+        provenance_entries = list(
+            normalized.observations.get(TTT_PROVENANCE_NAMESPACE, [])
+        )
+        provenance_entries.append(
+            {
+                "key": "import",
+                "value": {
+                    "source": {
+                        "kind": imported_payload.source_kind,
+                        "locator": imported_payload.source_locator,
+                        "content_hash": imported_payload.source_content_hash,
+                    },
+                    "request": {
+                        "request_id": imported_payload.request_id,
+                        "requested_by_purpose_id": imported_payload.requested_by_purpose_id,
+                        "requested_by_purpose_name": imported_payload.requested_by_purpose_name,
+                    },
+                    "historical": {
+                        "identity": normalized.historical_identity,
+                        "metadata": normalized.historical_metadata,
+                    },
+                },
+            }
+        )
+        observations = {
+            namespace: list(entries)
+            for namespace, entries in normalized.observations.items()
+        }
+        observations[TTT_PROVENANCE_NAMESPACE] = provenance_entries
+
+        return await self._accept_new_cto(
+            session_id=live_session_id,
+            session_code=imported_payload.session_code,
+            content_profile=normalized.content_profile,
+            content=normalized.content,
+            observations=observations,
+            submitted_by_purpose_id=imported_payload.requested_by_purpose_id,
+            submitted_by_purpose_name=imported_payload.requested_by_purpose_name,
+        )
 
     async def _handle_delta_proposal(
         self,

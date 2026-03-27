@@ -22,6 +22,7 @@ Architecture note:
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -33,9 +34,16 @@ from ._event_serialization import (
     hub_event_record,
     purpose_event_record,
 )
+from .cto_json import load_cto_json_document, normalize_cto_json_document
+from .events import PurposeEventType
 from .events.hub_events import HubEvent, HubEventType
+from .events.purpose_events import (
+    CTOImportedEvent,
+    CTOImportedPayload,
+    CTORequestPayload,
+)
 from .persistence import PersistencePurpose
-from .protocols import EventProtocol
+from .protocols import EventProtocol, PurposeEventProtocol
 
 if TYPE_CHECKING:
     pass  # reserved for future type-only imports
@@ -202,7 +210,7 @@ class JsonlArchivistBackend:
         record = (
             hub_event_record(event)
             if isinstance(event, HubEvent)
-            else purpose_event_record(event)
+            else purpose_event_record(_as_purpose_event(event))
         )
         line = json.dumps(record, sort_keys=True)
         with self._config.path.open("a", encoding="utf-8") as f:
@@ -292,12 +300,13 @@ class SessionDocumentArchivistBackend:
         record = (
             hub_event_record(event)
             if isinstance(event, HubEvent)
-            else purpose_event_record(event)
+            else purpose_event_record(_as_purpose_event(event))
         )
         self._events.append(record)
 
         if _event_type_value(event.event_type) == "session_completed":
-            self._flush(session_id=str(event.session_id) if event.session_id else None)
+            session_id = event.session_id if isinstance(event, HubEvent) else None
+            self._flush(session_id=str(session_id) if session_id else None)
 
     def _flush(self, session_id: str | None) -> None:
         """
@@ -374,6 +383,7 @@ class Archivist(PersistencePurpose):
         super().__init__()
         self.id = uuid4()
         self._backends = backends
+        self._handled_request_keys: set[str] = set()
 
     @property
     def is_durable(self) -> bool:
@@ -403,19 +413,100 @@ class Archivist(PersistencePurpose):
         Args:
             event: The validated HubEvent received from the hub.
         """
+        if _event_type_value(event.event_type) == PurposeEventType.CTO_REQUEST.value:
+            await self._handle_cto_request_event(event)
+            return
+
+        await self._route_to_backends(event)
+        if (
+            event.event_type == HubEventType.SESSION_CLOSE_PENDING
+            and event.session_id is not None
+        ):
+            payload_dict = event.payload.as_dict()
+            session_code = (
+                payload_dict.get("session_code")
+                if isinstance(payload_dict, dict)
+                else None
+            )
+            await self.complete_session_closing(str(event.session_id))
+            await self.emit_session_completed(
+                session_id=str(event.session_id),
+                session_code=session_code if isinstance(session_code, str) else None,
+            )
+
+    async def _route_to_backends(self, event: EventProtocol) -> None:
+        """Fan a validated event out to every matching Archivist backend."""
         for config, backend in self._backends:
             if config.matches(event):
                 await backend.accept(event)
 
+    async def _handle_cto_request_event(self, event: HubEvent) -> None:
+        """Load a cto_json document, dedupe it, and emit cto_imported once."""
+        payload = event.payload
+        if not isinstance(payload, CTORequestPayload):
+            raise TypeError(
+                "Archivist received cto_request without CTORequestPayload payload"
+            )
+        if payload.source_kind != "cto_json":
+            raise NotImplementedError(
+                f"Archivist only supports source_kind='cto_json' in v1; got {payload.source_kind!r}"
+            )
+
+        source_path = Path(payload.source_locator).expanduser()
+        document_bytes = source_path.read_bytes()
+        content_hash = hashlib.sha256(document_bytes).hexdigest()
+        request_key = (
+            payload.request_id
+            if payload.request_id is not None
+            else f"{payload.source_kind}:{source_path.resolve()}:{content_hash}"
+        )
+        if request_key in self._handled_request_keys:
+            return
+
+        document = load_cto_json_document(source_path)
+        normalized = normalize_cto_json_document(document)
+        self._handled_request_keys.add(request_key)
+        await self._submit_purpose_event(
+            CTOImportedEvent(
+                purpose_id=self.id,
+                purpose_name=self.name,
+                hub_token=self._require_token(),
+                session_id=(
+                    event.session_id if event.session_id is not None else uuid4()
+                ),
+                payload=CTOImportedPayload(
+                    session_id=payload.session_id,
+                    source_kind=payload.source_kind,
+                    source_locator=str(source_path.resolve()),
+                    source_content_hash=content_hash,
+                    requested_by_purpose_id=payload.requested_by_purpose_id,
+                    requested_by_purpose_name=payload.requested_by_purpose_name,
+                    cto_json=normalized.document,
+                    session_code=payload.session_code,
+                    request_id=request_key,
+                ),
+            )
+        )
+
     async def write_event(self, event: EventProtocol) -> None:
         """
-        Satisfy the PersistencePurpose ABC by delegating to _handle_event().
+        Persist an accepted event via the appropriate Archivist path.
 
-        PersistencePurpose routes hub events through _handle_event(); Archivist
-        overrides that directly so write_event() is not the active dispatch
-        path. It is implemented here to fulfil the abstract method contract.
+        Accepted purpose events are written to backends as provenance records.
+        Hub-authored downlink events continue through `_handle_event()`, which
+        may trigger Archivist's additional behaviors such as `cto_request`
+        import handling and final session completion authorship.
 
         Args:
-            event: The HubEvent to persist.
+            event: The accepted mesh event to persist.
         """
-        await self._handle_event(event)
+        if isinstance(event, HubEvent):
+            await self._handle_event(event)
+            return
+        await self._route_to_backends(event)
+
+
+def _as_purpose_event(event: EventProtocol) -> PurposeEventProtocol:
+    """Narrow a non-hub event to the accepted purpose-event protocol."""
+    assert isinstance(event, PurposeEventProtocol)
+    return event

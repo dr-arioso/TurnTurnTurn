@@ -11,10 +11,10 @@ from turnturnturn import CTO, cto_json_document
 from turnturnturn.delta import Delta
 from turnturnturn.errors import UnauthorizedDispatchError, UnknownEventTypeError
 from turnturnturn.events import (
-    CTOImportedEvent,
+    CTOImported,
     CTOImportedPayload,
-    DeltaProposalEvent,
-    DeltaProposalPayload,
+    ProposeDelta,
+    ProposeDeltaPayload,
     PurposeEventType,
 )
 
@@ -30,20 +30,20 @@ def _make_delta(*, session_id, turn_id, purpose_name, purpose_id, patch):
     )
 
 
-def _make_delta_proposal_event(*, purpose, delta):
-    return DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+def _make_propose_delta(*, purpose, delta):
+    return ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
-        payload=DeltaProposalPayload(delta=delta),
+        payload=ProposeDeltaPayload(delta=delta),
     )
 
 
 @pytest.mark.asyncio
-async def test_take_turn_valid_delta_proposal_updates_observations(
+async def test_take_turn_valid_propose_delta_updates_observations(
     hub, session_id, minimal_content, submitter
 ):
     purpose = RecordingPurpose()
@@ -63,7 +63,7 @@ async def test_take_turn_valid_delta_proposal_updates_observations(
         purpose_id=purpose.id,
         patch={"tags": ["important"]},
     )
-    event = _make_delta_proposal_event(purpose=purpose, delta=delta)
+    event = _make_propose_delta(purpose=purpose, delta=delta)
 
     await hub.take_turn(event)
 
@@ -94,14 +94,14 @@ async def test_take_turn_wrong_token_raises(
         patch={"x": ["v"]},
     )
 
-    event = DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+    event = ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token="wrong_token",
-        payload=DeltaProposalPayload(delta=delta),
+        payload=ProposeDeltaPayload(delta=delta),
     )
 
     with pytest.raises(UnauthorizedDispatchError):
@@ -130,14 +130,14 @@ async def test_take_turn_mismatched_purpose_name_raises(
         patch={"x": ["v"]},
     )
 
-    event = DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+    event = ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name="not_recording",
         hub_token=purpose.token,
-        payload=DeltaProposalPayload(delta=delta),
+        payload=ProposeDeltaPayload(delta=delta),
     )
 
     with pytest.raises(UnauthorizedDispatchError):
@@ -190,7 +190,7 @@ async def test_take_turn_rejects_cto_imported_from_non_persistence_purpose(hub):
             content={"speaker": {"id": "usr_test"}, "text": "imported"},
         )
     )
-    event = CTOImportedEvent(
+    event = CTOImported(
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,

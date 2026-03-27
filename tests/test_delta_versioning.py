@@ -33,22 +33,22 @@ from conftest import RecordingPurpose
 from turnturnturn import CTO, Delta
 from turnturnturn.cto import CTOIndex
 from turnturnturn.events import (
-    DeltaProposalEvent,
-    DeltaProposalPayload,
     HubEventType,
+    ProposeDelta,
+    ProposeDeltaPayload,
     PurposeEventType,
 )
 
 
-def _proposal_event_for(delta: Delta, purpose) -> DeltaProposalEvent:
-    return DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+def _proposal_event_for(delta: Delta, purpose) -> ProposeDelta:
+    return ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
-        payload=DeltaProposalPayload(delta=delta),
+        payload=ProposeDeltaPayload(delta=delta),
     )
 
 

@@ -38,9 +38,9 @@ from .cto_json import load_cto_json_document, normalize_cto_json_document
 from .events import PurposeEventType
 from .events.hub_events import HubEvent, HubEventType
 from .events.purpose_events import (
-    CTOImportedEvent,
+    CTOImported,
     CTOImportedPayload,
-    CTORequestPayload,
+    RequestCTOPayload,
 )
 from .persistence import PersistencePurpose
 from .protocols import EventProtocol, PurposeEventProtocol
@@ -413,8 +413,8 @@ class Archivist(PersistencePurpose):
         Args:
             event: The validated HubEvent received from the hub.
         """
-        if _event_type_value(event.event_type) == PurposeEventType.CTO_REQUEST.value:
-            await self._handle_cto_request_event(event)
+        if _event_type_value(event.event_type) == PurposeEventType.REQUEST_CTO.value:
+            await self._handle_request_cto(event)
             return
 
         await self._route_to_backends(event)
@@ -440,12 +440,12 @@ class Archivist(PersistencePurpose):
             if config.matches(event):
                 await backend.accept(event)
 
-    async def _handle_cto_request_event(self, event: HubEvent) -> None:
+    async def _handle_request_cto(self, event: HubEvent) -> None:
         """Load a cto_json document, dedupe it, and emit cto_imported once."""
         payload = event.payload
-        if not isinstance(payload, CTORequestPayload):
+        if not isinstance(payload, RequestCTOPayload):
             raise TypeError(
-                "Archivist received cto_request without CTORequestPayload payload"
+                "Archivist received request_cto without RequestCTOPayload payload"
             )
         if payload.source_kind != "cto_json":
             raise NotImplementedError(
@@ -467,7 +467,7 @@ class Archivist(PersistencePurpose):
         normalized = normalize_cto_json_document(document)
         self._handled_request_keys.add(request_key)
         await self._submit_purpose_event(
-            CTOImportedEvent(
+            CTOImported(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),
@@ -494,7 +494,7 @@ class Archivist(PersistencePurpose):
 
         Accepted purpose events are written to backends as provenance records.
         Hub-authored downlink events continue through `_handle_event()`, which
-        may trigger Archivist's additional behaviors such as `cto_request`
+        may trigger Archivist's additional behaviors such as `request_cto`
         import handling and final session completion authorship.
 
         Args:

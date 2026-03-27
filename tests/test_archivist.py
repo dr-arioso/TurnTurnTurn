@@ -239,7 +239,7 @@ async def test_archivist_end_to_end_via_hub(tmp_path):
 
 @pytest.mark.asyncio
 async def test_archivist_imports_cto_json_and_emits_cto_started(tmp_path):
-    """A cto_request causes Archivist to emit cto_imported and the hub to adopt it."""
+    """A request_cto causes Archivist to emit cto_imported and the hub to adopt it."""
     cto_document = cto_json_document(
         CTO(
             turn_id=uuid4(),
@@ -300,7 +300,7 @@ async def test_archivist_imports_cto_json_and_emits_cto_started(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_archivist_dedupes_repeated_cto_request_by_derived_key(tmp_path):
+async def test_archivist_dedupes_repeated_request_cto_by_derived_key(tmp_path):
     """Repeated requests for the same cto_json path/content import only once."""
     cto_document = cto_json_document(
         CTO(

@@ -33,12 +33,12 @@ For the broader substrate model, see [Core Architecture](../architecture/core_ar
 
 | Event | Meaning |
 | ----- | ------- |
-| `delta_proposal` | A Purpose proposes a Delta for authoritative merge. |
-| `cto_request` | A Purpose asks persistence to import a canonical `cto_json` document into the mesh. |
+| `propose_delta` | A Purpose proposes a Delta for authoritative merge. |
+| `request_cto` | A Purpose asks persistence to import a canonical `cto_json` document into the mesh. |
 | `cto_imported` | The persistence Purpose reports a normalized imported CTO document for hub adoption. |
-| `end_session` | A Purpose requests orderly session shutdown. |
+| `request_session_end` | A Purpose requests orderly session shutdown. |
 | `purpose_completed` | A Purpose reports that it has completed its work. |
-| `cto_close_request` | A Purpose signals that a CTO is complete from that Purpose's perspective. Currently accepted as a stub for future DAG/quiescence logic. |
+| `request_cto_close` | A Purpose signals that a CTO is complete from that Purpose's perspective. Currently accepted as a stub for future DAG/quiescence logic. |
 
 ## Custom event types
 
@@ -49,8 +49,8 @@ Domain packages can define their own event namespaces without modifying
 ```python
 from turnturnturn.hub import TTT
 
-TTT.register_event_type("adjacency.stimulus", multicast=True)
-TTT.register_event_type("adjacency.stimulus_response", multicast=True)
+TTT.register_event_type("adjacency.prompt_subject", multicast=True)
+TTT.register_event_type("adjacency.subject_response", multicast=True)
 ```
 
 Custom events submitted via `take_turn()` are:
@@ -65,10 +65,10 @@ built-in and custom events. Purposes handling custom events should compare
 against the string constant directly:
 
 ```python
-from adjacency.events import STIMULUS_EVENT  # "adjacency.stimulus"
+from adjacency.events import PROMPT_SUBJECT  # "adjacency.prompt_subject"
 
 async def _handle_event(self, event: HubEvent) -> None:
-    if event.event_type == STIMULUS_EVENT:
+    if event.event_type == PROMPT_SUBJECT:
         ...
 ```
 
@@ -92,12 +92,12 @@ Hub-authored payloads include:
 
 Purpose-authored payloads include:
 
-- `DeltaProposalPayload`
-- `CTORequestPayload`
+- `ProposeDeltaPayload`
+- `RequestCTOPayload`
 - `CTOImportedPayload`
-- `EndSessionPayload`
+- `RequestSessionEndPayload`
 - `PurposeCompletedPayload`
-- `CTOCloseRequestPayload`
+- `RequestCTOClosePayload`
 
 ## Reference
 
@@ -107,9 +107,9 @@ Purpose-authored payloads include:
 
 ::: turnturnturn.events.HubEvent
 
-::: turnturnturn.events.DeltaProposalEvent
+::: turnturnturn.events.ProposeDelta
 
-::: turnturnturn.events.CTOCloseRequestEvent
+::: turnturnturn.events.RequestCTOClose
 
 ::: turnturnturn.events.CTOStartedPayload
 
@@ -129,16 +129,16 @@ Purpose-authored payloads include:
 
 ::: turnturnturn.events.SessionCompletedPayload
 
-::: turnturnturn.events.DeltaProposalPayload
+::: turnturnturn.events.ProposeDeltaPayload
 
-::: turnturnturn.events.CTORequestPayload
+::: turnturnturn.events.RequestCTOPayload
 
 ::: turnturnturn.events.CTOImportedPayload
 
-::: turnturnturn.events.EndSessionPayload
+::: turnturnturn.events.RequestSessionEndPayload
 
 ::: turnturnturn.events.PurposeCompletedPayload
 
-::: turnturnturn.events.CTOCloseRequestPayload
+::: turnturnturn.events.RequestCTOClosePayload
 
 ::: turnturnturn.events.EmptyPayload

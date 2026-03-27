@@ -46,9 +46,9 @@ from uuid import UUID, uuid4
 
 from .base_purpose import BasePurpose
 from .events import (
-    SessionCompletedEvent,
+    SessionCompleted,
     SessionCompletedPayload,
-    SessionStartedEvent,
+    SessionStarted,
     SessionStartedPayload,
 )
 from .events.hub_events import HubEvent, HubEventType
@@ -100,9 +100,9 @@ class PersistencePurpose(BasePurpose, abc.ABC):
         Called by BasePurpose.take_turn() after route credential validation.
         Do not override — implement write_event() instead.
         """
-        if event.event_type == "cto_request":
+        if event.event_type == "request_cto":
             raise NotImplementedError(
-                f"{type(self).__name__} does not implement cto_request handling. "
+                f"{type(self).__name__} does not implement request_cto handling. "
                 "Use Archivist for cto_json imports."
             )
         await self.write_event(event)
@@ -162,7 +162,7 @@ class PersistencePurpose(BasePurpose, abc.ABC):
             ttt_version = "unknown"
         now_ms = int(time.time() * 1000)
         await self._submit_purpose_event(
-            SessionStartedEvent(
+            SessionStarted(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),
@@ -188,7 +188,7 @@ class PersistencePurpose(BasePurpose, abc.ABC):
         if not self.is_durable:
             return
         await self._submit_purpose_event(
-            SessionCompletedEvent(
+            SessionCompleted(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),

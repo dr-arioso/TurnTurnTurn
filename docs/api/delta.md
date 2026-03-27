@@ -2,7 +2,7 @@
 
 A `Delta` is a Purpose-proposed change submitted to the hub for authoritative
 merge. Purposes never mutate CTO state directly — they submit
-`DeltaProposalEvent`s through `hub.take_turn(...)`, and TTT decides whether and
+`ProposeDelta` events through `hub.take_turn(...)`, and TTT decides whether and
 how the proposal becomes canonical state.
 
 Deltas are append-only. The hub enforces that every `patch` value is a list and
@@ -10,7 +10,7 @@ extends the proposing Purpose’s observation namespace with those values. TTT
 does not silently overwrite or delete prior observations.
 
 The `Delta` itself is the payload-level proposal object. The hub-facing event
-envelope is `DeltaProposalEvent`.
+envelope is `ProposeDelta`.
 
 ## Provenance
 

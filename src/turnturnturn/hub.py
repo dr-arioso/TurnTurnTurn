@@ -43,12 +43,12 @@ from .events import (
     SessionClosePendingPayload,
     SessionClosingPayload,
 )
-from .events.hub_events import DeltaProposalPayload
+from .events.hub_events import ProposeDeltaPayload
 from .events.purpose_events import (
     CTOImportedPayload,
-    CTORequestPayload,
-    EndSessionPayload,
     PurposeCompletedPayload,
+    RequestCTOPayload,
+    RequestSessionEndPayload,
 )
 from .profile import ProfileRegistry
 from .protocols import (
@@ -74,21 +74,23 @@ class _EventPolicy:
 
 
 _EVENT_POLICY: dict[PurposeEventType, _EventPolicy] = {
-    PurposeEventType.DELTA_PROPOSAL: _EventPolicy(handler="_handle_delta_proposal"),
+    PurposeEventType.PROPOSE_DELTA: _EventPolicy(handler="_handle_propose_delta"),
     PurposeEventType.PURPOSE_STARTED: _EventPolicy(handler="_handle_purpose_started"),
     PurposeEventType.SESSION_STARTED: _EventPolicy(handler="_handle_session_started"),
-    PurposeEventType.CTO_REQUEST: _EventPolicy(handler="_handle_cto_request"),
+    PurposeEventType.REQUEST_CTO: _EventPolicy(handler="_handle_request_cto"),
     PurposeEventType.CTO_IMPORTED: _EventPolicy(handler="_handle_cto_imported"),
-    PurposeEventType.END_SESSION: _EventPolicy(handler="_handle_end_session"),
+    PurposeEventType.REQUEST_SESSION_END: _EventPolicy(
+        handler="_handle_request_session_end"
+    ),
     PurposeEventType.PURPOSE_COMPLETED: _EventPolicy(
         handler="_handle_purpose_completed"
     ),
     PurposeEventType.SESSION_COMPLETED: _EventPolicy(
         handler="_handle_session_completed"
     ),
-    # CTOCloseRequest is accepted but not yet acted upon. The DAG layer will
+    # RequestCTOClose is accepted but not yet acted upon. The DAG layer will
     # implement quiescence detection and CTO_COMPLETED emission.
-    PurposeEventType.CTO_CLOSE_REQUEST: _EventPolicy(handler=None),
+    PurposeEventType.REQUEST_CTO_CLOSE: _EventPolicy(handler=None),
 }
 
 # Custom event type registry (populated by TTT.register_event_type()).
@@ -656,7 +658,7 @@ class TTT:
             The current ownership rule is intentionally simple: the registered
             Purpose that creates the first turn for a session is recorded as
             that session's owner. Hub-side lifecycle actions such as
-            `end_session` authorization are checked against that binding.
+            `request_session_end` authorization are checked against that binding.
 
         session_id is optional. If not provided, the hub mints a new UUID.
         Callers that manage sessions explicitly should supply it; Purposes
@@ -796,7 +798,7 @@ class TTT:
         """
         Legacy shutdown entry point.
 
-        New shutdown should proceed from a session owner's `end_session()`
+        New shutdown should proceed from a session owner's `request_session_end()`
         request. This method remains as a compatibility shim that only emits
         `session_closing`.
 
@@ -959,21 +961,21 @@ class TTT:
         if p is None or reg.purpose.id != p.id:
             await self._route_purpose_event_to_persistence(event)
 
-        if event_type is PurposeEventType.DELTA_PROPOSAL:
-            return await self._handle_delta_proposal(reg, payload)
+        if event_type is PurposeEventType.PROPOSE_DELTA:
+            return await self._handle_propose_delta(reg, payload)
         if event_type is PurposeEventType.PURPOSE_STARTED:
             await self._handle_purpose_started(event)
             return None
         if event_type is PurposeEventType.SESSION_STARTED:
             await self._handle_session_started(reg)
             return None
-        if event_type is PurposeEventType.CTO_REQUEST:
-            await self._handle_cto_request(reg, payload)
+        if event_type is PurposeEventType.REQUEST_CTO:
+            await self._handle_request_cto(reg, payload)
             return None
         if event_type is PurposeEventType.CTO_IMPORTED:
             return await self._handle_cto_imported(reg, event, payload)
-        if event_type is PurposeEventType.END_SESSION:
-            await self._handle_end_session(reg, payload)
+        if event_type is PurposeEventType.REQUEST_SESSION_END:
+            await self._handle_request_session_end(reg, payload)
             return None
         if event_type is PurposeEventType.PURPOSE_COMPLETED:
             await self._handle_purpose_completed(reg, payload)
@@ -1027,19 +1029,19 @@ class TTT:
             )
         return None
 
-    async def _handle_cto_request(
+    async def _handle_request_cto(
         self,
         reg: PurposeRegistration,
         payload: EventPayloadProtocol,
     ) -> None:
         """Relay a validated CTO import request to the persistence purpose only."""
-        request_payload = cast(CTORequestPayload, payload)
+        request_payload = cast(RequestCTOPayload, payload)
         hub_event = HubEvent(
-            event_type=PurposeEventType.CTO_REQUEST.value,
+            event_type=PurposeEventType.REQUEST_CTO.value,
             event_id=uuid4(),
             created_at_ms=now_ms(),
             session_id=UUID(request_payload.session_id),
-            payload=CTORequestPayload(
+            payload=RequestCTOPayload(
                 session_id=request_payload.session_id,
                 source_kind=request_payload.source_kind,
                 source_locator=request_payload.source_locator,
@@ -1128,7 +1130,7 @@ class TTT:
             submitted_by_purpose_name=imported_payload.requested_by_purpose_name,
         )
 
-    async def _handle_delta_proposal(
+    async def _handle_propose_delta(
         self,
         reg: PurposeRegistration,
         payload: EventPayloadProtocol,
@@ -1137,18 +1139,18 @@ class TTT:
         Built-in handler for DELTA_PROPOSAL Purpose events.
         """
         # At this point we know the payload must contain a Delta.
-        delta_payload = cast(DeltaProposalPayload, payload)
+        delta_payload = cast(ProposeDeltaPayload, payload)
         delta: Delta = delta_payload.delta
 
         return await self._merge_delta(delta)
 
-    async def _handle_end_session(
+    async def _handle_request_session_end(
         self,
         reg: PurposeRegistration,
         payload: EventPayloadProtocol,
     ) -> None:
         """Authorize and initiate closing for the session owned by this Purpose."""
-        end_payload = cast(EndSessionPayload, payload)
+        end_payload = cast(RequestSessionEndPayload, payload)
         session_id = UUID(end_payload.session_id)
         owner_id = self._session_owners.get(session_id)
         if owner_id is None:
@@ -1157,11 +1159,11 @@ class TTT:
             if self._closing_session_id == session_id:
                 return None
             raise HubClosedError(
-                "end_session rejected — the hub is already closing a different session."
+                "request_session_end rejected — the hub is already closing a different session."
             )
         if owner_id != reg.purpose.id:
             raise UnauthorizedDispatchError(
-                "end_session rejected — only the session-owning Purpose may close the session."
+                "request_session_end rejected — only the session-owning Purpose may close the session."
             )
         self._is_closing = True
         self._closing_session_id = session_id
@@ -1247,7 +1249,7 @@ class TTT:
         if not self._is_closing:
             return
         allowed = {
-            PurposeEventType.END_SESSION.value,
+            PurposeEventType.REQUEST_SESSION_END.value,
             PurposeEventType.PURPOSE_COMPLETED.value,
             PurposeEventType.SESSION_COMPLETED.value,
         }
@@ -1258,7 +1260,7 @@ class TTT:
         raise HubClosedError(
             f"TTT.{operation}() rejected event_type={event_type!r} — the hub is "
             f"closing and only accepts purpose_completed or session_completed "
-            f"(plus duplicate end_session for the active session).{session_info}"
+            f"(plus duplicate request_session_end for the active session).{session_info}"
         )
 
     async def _merge_delta(self, delta: Delta) -> UUID:

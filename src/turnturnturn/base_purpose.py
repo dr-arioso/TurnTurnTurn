@@ -41,16 +41,16 @@ from .errors import (
     UnboundPurposeError,
 )
 from .events import (
-    CTORequestEvent,
-    CTORequestPayload,
-    EndSessionEvent,
-    EndSessionPayload,
     HubEvent,
     HubEventType,
-    PurposeCompletedEvent,
+    PurposeCompleted,
     PurposeCompletedPayload,
-    PurposeStartedEvent,
+    PurposeStarted,
     PurposeStartedPayload,
+    RequestCTO,
+    RequestCTOPayload,
+    RequestSessionEnd,
+    RequestSessionEndPayload,
 )
 from .protocols import PurposeEventProtocol
 
@@ -72,7 +72,7 @@ class BasePurpose(abc.ABC):
       - A Purpose is the mesh-visible actor; ambient calling code is not.
       - Registered Purposes may emit mesh events back through the hub.
       - The base class provides common lifecycle affordances such as
-        `end_session()` and default `session_closing` acknowledgement so
+        `request_session_end()` and default `session_closing` acknowledgement so
         domain packages do not need to re-implement that substrate logic.
 
     Intended lifecycle direction:
@@ -159,12 +159,14 @@ class BasePurpose(abc.ABC):
             )
         return self._hub  # type: ignore[return-value]
 
-    async def end_session(self, session_id: str, *, reason: str = "normal") -> None:
+    async def request_session_end(
+        self, session_id: str, *, reason: str = "normal"
+    ) -> None:
         """
         Request hub-managed shutdown for a session visible to this Purpose.
 
         This helper exists so lifecycle-capable Purposes do not need to
-        hand-assemble the `EndSessionEvent` envelope repeatedly. Whether the
+        hand-assemble the `RequestSessionEnd` envelope repeatedly. Whether the
         request succeeds is still governed by hub-side policy, including
         session-owner checks.
         """
@@ -174,11 +176,11 @@ class BasePurpose(abc.ABC):
             return
         self._requested_session_end.add(session_id)
         await self._submit_purpose_event(
-            EndSessionEvent(
+            RequestSessionEnd(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),
-                payload=EndSessionPayload(session_id=session_id, reason=reason),
+                payload=RequestSessionEndPayload(session_id=session_id, reason=reason),
             )
         )
 
@@ -206,12 +208,12 @@ class BasePurpose(abc.ABC):
             raise ValueError("source_locator must be a non-empty string")
         session_uuid = UUID(session_id)
         await self._submit_purpose_event(
-            CTORequestEvent(
+            RequestCTO(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),
                 session_id=session_uuid,
-                payload=CTORequestPayload(
+                payload=RequestCTOPayload(
                     session_id=session_id,
                     source_kind=source_kind,
                     source_locator=source_locator,
@@ -235,7 +237,7 @@ class BasePurpose(abc.ABC):
             return
         self._announced_started = True
         await self._submit_purpose_event(
-            PurposeStartedEvent(
+            PurposeStarted(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),
@@ -268,7 +270,7 @@ class BasePurpose(abc.ABC):
             return
         self._acknowledged_session_closing.add(session_id)
         await self._submit_purpose_event(
-            PurposeCompletedEvent(
+            PurposeCompleted(
                 purpose_id=self.id,
                 purpose_name=self.name,
                 hub_token=self._require_token(),
@@ -355,7 +357,7 @@ class SessionOwnerPurpose(BasePurpose):
     A TTT hub boots with a required session-owner Purpose alongside the
     persistence Purpose. The owner is the only Purpose permitted to create the
     first turn for a new session; after that, normal per-session ownership
-    rules continue to govern owner-only actions such as `end_session`.
+    rules continue to govern owner-only actions such as `request_session_end`.
 
     This class is intentionally lightweight. It makes startup authority
     explicit without forcing a single domain-independent `start_session()` API

@@ -69,7 +69,7 @@ start_turn(...)
 **`request_cto(...)`**
 ```text
 request_cto(...)
-    -> emit cto_request
+    -> emit request_cto
     -> persistence loads and normalizes cto_json
     -> persistence emits cto_imported
     -> hub adopts the imported CTO
@@ -101,7 +101,7 @@ namespaces without modifying `HubEventType`.
 
 ```text
 register_event_type(event_type, multicast=True)
-    -> validate dotted-namespace format (e.g. "adjacency.stimulus")
+    -> validate dotted-namespace format (e.g. "adjacency.prompt_subject")
     -> guard against conflicting re-registration
     -> write event_type → multicast into _CUSTOM_EVENT_POLICY
 ```

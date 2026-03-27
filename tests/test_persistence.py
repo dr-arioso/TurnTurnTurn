@@ -60,10 +60,10 @@ from turnturnturn.archivist import Archivist, ArchivistBackendConfig
 from turnturnturn.delta import Delta
 from turnturnturn.errors import HubClosedError, UnauthorizedDispatchError
 from turnturnturn.events import (
-    DeltaProposalEvent,
-    DeltaProposalPayload,
     HubEvent,
     HubEventType,
+    ProposeDelta,
+    ProposeDeltaPayload,
     PurposeEventType,
 )
 
@@ -135,8 +135,8 @@ class DeferringArchivist(Archivist):
         self.pending_session_code: str | None = None
 
     async def _handle_event(self, event: HubEvent) -> None:
-        if str(event.event_type) == PurposeEventType.CTO_REQUEST.value:
-            await self._handle_cto_request_event(event)
+        if str(event.event_type) == PurposeEventType.REQUEST_CTO.value:
+            await self._handle_request_cto(event)
             return
         await self._route_to_backends(event)
         if (
@@ -312,7 +312,7 @@ async def test_durable_persistence_authored_lifecycle_events_are_single_written(
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     persistence_started = [
         event
@@ -349,7 +349,7 @@ async def test_non_durable_persistence_does_not_emit_session_completed():
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     event_types = [event["event_type"] for event in persistence_purpose.events]
     assert "session_completed" not in event_types
@@ -370,7 +370,7 @@ async def test_session_closing_rejects_start_purpose_before_session_completed(
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     with pytest.raises(HubClosedError):
         await hub.start_purpose(RecordingPurpose())
@@ -391,7 +391,7 @@ async def test_session_closing_rejects_start_turn_before_session_completed(
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     with pytest.raises(HubClosedError):
         await hub.start_turn(
@@ -419,7 +419,7 @@ async def test_session_closing_rejects_domain_event_before_session_completed(
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     delta = Delta(
         delta_id=uuid4(),
@@ -429,14 +429,14 @@ async def test_session_closing_rejects_domain_event_before_session_completed(
         purpose_id=purpose.id,
         patch={"tags": ["important"]},
     )
-    event = DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+    event = ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
-        payload=DeltaProposalPayload(delta=delta),
+        payload=ProposeDeltaPayload(delta=delta),
     )
 
     with pytest.raises(HubClosedError):
@@ -444,7 +444,7 @@ async def test_session_closing_rejects_domain_event_before_session_completed(
 
 
 @pytest.mark.asyncio
-async def test_duplicate_end_session_noops_while_closing(minimal_content):
+async def test_duplicate_request_session_end_noops_while_closing(minimal_content):
     persistence_purpose = DeferringDurablePersistencePurpose()
     owner = RecordingSessionOwnerPurpose()
     hub = TTT.start(persistence_purpose, owner)
@@ -456,13 +456,13 @@ async def test_duplicate_end_session_noops_while_closing(minimal_content):
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
 
 @pytest.mark.asyncio
-async def test_cto_request_is_allowed_while_open(tmp_path):
+async def test_request_cto_is_allowed_while_open(tmp_path):
     persistence_purpose = Archivist(
         backends=[(ArchivistBackendConfig(), DurableArchivistBackend())]
     )
@@ -479,7 +479,7 @@ async def test_cto_request_is_allowed_while_open(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_cto_request_is_rejected_while_closing(minimal_content, tmp_path):
+async def test_request_cto_is_rejected_while_closing(minimal_content, tmp_path):
     persistence_purpose = DeferringArchivist()
     owner = RecordingSessionOwnerPurpose()
     hub = TTT.start(persistence_purpose, owner)
@@ -492,7 +492,7 @@ async def test_cto_request_is_rejected_while_closing(minimal_content, tmp_path):
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     with pytest.raises(HubClosedError):
         await owner.request_cto(
@@ -516,7 +516,7 @@ async def test_session_completed_closes_hub_for_start_purpose(minimal_content):
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     with pytest.raises(HubClosedError):
         await hub.start_purpose(RecordingPurpose())
@@ -535,7 +535,7 @@ async def test_session_completed_closes_hub_for_start_turn(minimal_content):
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     with pytest.raises(HubClosedError):
         await hub.start_turn(
@@ -561,7 +561,7 @@ async def test_session_completed_closes_hub_for_take_turn(minimal_content):
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     delta = Delta(
         delta_id=uuid4(),
@@ -571,14 +571,14 @@ async def test_session_completed_closes_hub_for_take_turn(minimal_content):
         purpose_id=purpose.id,
         patch={"tags": ["important"]},
     )
-    event = DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+    event = ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=0,
         purpose_id=purpose.id,
         purpose_name=purpose.name,
         hub_token=purpose.token,
-        payload=DeltaProposalPayload(delta=delta),
+        payload=ProposeDeltaPayload(delta=delta),
     )
 
     with pytest.raises(HubClosedError):
@@ -586,7 +586,7 @@ async def test_session_completed_closes_hub_for_take_turn(minimal_content):
 
 
 @pytest.mark.asyncio
-async def test_cto_request_is_rejected_after_session_completed(tmp_path):
+async def test_request_cto_is_rejected_after_session_completed(tmp_path):
     persistence_purpose = Archivist(
         backends=[(ArchivistBackendConfig(), DurableArchivistBackend())]
     )
@@ -601,7 +601,7 @@ async def test_cto_request_is_rejected_after_session_completed(tmp_path):
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
 
     with pytest.raises(HubClosedError):
         await owner.request_cto(
@@ -625,7 +625,7 @@ async def test_deferring_persistence_can_finish_session_and_close_hub(minimal_co
         owner.token,
         session_id=session_id,
     )
-    await owner.end_session(str(session_id))
+    await owner.request_session_end(str(session_id))
     await persistence_purpose.flush_session_completed()
 
     with pytest.raises(HubClosedError):

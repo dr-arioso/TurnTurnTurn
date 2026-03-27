@@ -10,11 +10,11 @@ from turnturnturn.delta import Delta
 from turnturnturn.events import (
     CTOStartedPayload,
     DeltaMergedPayload,
-    DeltaProposalEvent,
-    DeltaProposalPayload,
     EmptyPayload,
     HubEvent,
     HubEventType,
+    ProposeDelta,
+    ProposeDeltaPayload,
     PurposeEventType,
 )
 
@@ -36,8 +36,8 @@ def test_event_type_delta_merged_value():
     assert HubEventType.DELTA_MERGED.value == "delta_merged"
 
 
-def test_event_type_delta_proposal_value():
-    assert PurposeEventType.DELTA_PROPOSAL.value == "delta_proposal"
+def test_event_type_propose_delta_value():
+    assert PurposeEventType.PROPOSE_DELTA.value == "propose_delta"
 
 
 def test_hub_event_fields():
@@ -108,7 +108,7 @@ def test_delta_merged_payload_as_dict():
     assert "cto_index" in data
 
 
-def test_delta_proposal_event_fields():
+def test_propose_delta_fields():
     pid = uuid4()
     delta = Delta(
         delta_id=uuid4(),
@@ -118,9 +118,9 @@ def test_delta_proposal_event_fields():
         purpose_id=pid,
         patch={"x": ["y"]},
     )
-    payload = DeltaProposalPayload(delta=delta)
-    event = DeltaProposalEvent(
-        event_type=PurposeEventType.DELTA_PROPOSAL,
+    payload = ProposeDeltaPayload(delta=delta)
+    event = ProposeDelta(
+        event_type=PurposeEventType.PROPOSE_DELTA,
         event_id=uuid4(),
         created_at_ms=123,
         purpose_id=pid,
@@ -128,14 +128,14 @@ def test_delta_proposal_event_fields():
         hub_token="tok",
         payload=payload,
     )
-    assert event.event_type == PurposeEventType.DELTA_PROPOSAL
+    assert event.event_type == PurposeEventType.PROPOSE_DELTA
     assert event.purpose_id == pid
     assert event.purpose_name == "tester"
     assert event.hub_token == "tok"
     assert event.payload is payload
 
 
-def test_delta_proposal_payload_as_dict():
+def test_propose_delta_payload_as_dict():
     delta = Delta(
         delta_id=uuid4(),
         session_id=uuid4(),
@@ -144,5 +144,5 @@ def test_delta_proposal_payload_as_dict():
         purpose_id=uuid4(),
         patch={"x": ["y"]},
     )
-    payload = DeltaProposalPayload(delta=delta)
+    payload = ProposeDeltaPayload(delta=delta)
     assert payload.as_dict()["delta"]["purpose_name"] == "tester"

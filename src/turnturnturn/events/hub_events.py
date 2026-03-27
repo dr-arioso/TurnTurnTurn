@@ -170,7 +170,7 @@ class DeltaRejectedPayload(EventPayloadProtocol):
 
 
 @dataclass(frozen=True)
-class DeltaProposalPayload(EventPayloadProtocol):
+class ProposeDeltaPayload(EventPayloadProtocol):
     """
     Payload for a Purpose-originated delta proposal.
 

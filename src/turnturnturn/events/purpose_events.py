@@ -10,10 +10,10 @@ from uuid import UUID, uuid4
 
 from ..protocols import EventPayloadProtocol
 
-# DeltaProposalPayload moved to hub_events.py in v0.20.
+# ProposeDeltaPayload moved to hub_events.py in v0.20.
 # Import it from there (or from events/__init__.py) rather than here.
 from .hub_events import (  # noqa: F401 re-export
-    DeltaProposalPayload as DeltaProposalPayload,
+    ProposeDeltaPayload as ProposeDeltaPayload,
 )
 from .hub_events import PurposeStartedPayload as PurposeStartedPayload
 from .hub_events import SessionCompletedPayload as SessionCompletedPayload
@@ -31,24 +31,24 @@ class PurposeEventType(str, Enum):
     These are proposals or lifecycle signals from a registered Purpose, not
     hub-authored facts.
 
-    CTOCloseRequest signals that the originating Purpose considers a CTO's
+    RequestCTOClose signals that the originating Purpose considers a CTO's
     processing complete from its own perspective. The hub stub currently
     accepts and ignores it; the DAG layer will implement quiescence logic.
     """
 
-    DELTA_PROPOSAL = "delta_proposal"
+    PROPOSE_DELTA = "propose_delta"
     PURPOSE_STARTED = "purpose_started"
     SESSION_STARTED = "session_started"
-    CTO_REQUEST = "cto_request"
+    REQUEST_CTO = "request_cto"
     CTO_IMPORTED = "cto_imported"
-    END_SESSION = "end_session"
+    REQUEST_SESSION_END = "request_session_end"
     PURPOSE_COMPLETED = "purpose_completed"
     SESSION_COMPLETED = "session_completed"
-    CTO_CLOSE_REQUEST = "cto_close_request"
+    REQUEST_CTO_CLOSE = "request_cto_close"
 
 
 @dataclass(frozen=True)
-class EndSessionPayload(EventPayloadProtocol):
+class RequestSessionEndPayload(EventPayloadProtocol):
     """Payload for a Purpose-originated request to end a session."""
 
     session_id: str
@@ -56,7 +56,7 @@ class EndSessionPayload(EventPayloadProtocol):
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "_schema": "end_session",
+            "_schema": "request_session_end",
             "_v": 1,
             "session_id": self.session_id,
             "reason": self.reason,
@@ -64,7 +64,7 @@ class EndSessionPayload(EventPayloadProtocol):
 
 
 @dataclass(frozen=True)
-class CTORequestPayload(EventPayloadProtocol):
+class RequestCTOPayload(EventPayloadProtocol):
     """Payload for a Purpose-originated request to import a CTO JSON document."""
 
     session_id: str
@@ -77,7 +77,7 @@ class CTORequestPayload(EventPayloadProtocol):
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "_schema": "cto_request",
+            "_schema": "request_cto",
             "_v": 1,
             "session_id": self.session_id,
             "source_kind": self.source_kind,
@@ -136,38 +136,38 @@ class PurposeCompletedPayload(EventPayloadProtocol):
 
 
 @dataclass(frozen=True)
-class EndSessionEvent:
+class RequestSessionEnd:
     """Purpose-authored event requesting that the hub begin session shutdown."""
 
     purpose_id: UUID
     purpose_name: str
     hub_token: str
-    payload: EndSessionPayload
+    payload: RequestSessionEndPayload
     event_type: PurposeEventType = field(
-        default=PurposeEventType.END_SESSION, init=False
+        default=PurposeEventType.REQUEST_SESSION_END, init=False
     )
     event_id: UUID = field(default_factory=uuid4, init=False)
     created_at_ms: int = field(default_factory=_now_ms, init=False)
 
 
 @dataclass(frozen=True)
-class CTORequestEvent:
+class RequestCTO:
     """Purpose-authored event requesting that persistence import a CTO JSON document."""
 
     purpose_id: UUID
     purpose_name: str
     hub_token: str
     session_id: UUID
-    payload: CTORequestPayload
+    payload: RequestCTOPayload
     event_type: PurposeEventType = field(
-        default=PurposeEventType.CTO_REQUEST, init=False
+        default=PurposeEventType.REQUEST_CTO, init=False
     )
     event_id: UUID = field(default_factory=uuid4, init=False)
     created_at_ms: int = field(default_factory=_now_ms, init=False)
 
 
 @dataclass(frozen=True)
-class CTOImportedEvent:
+class CTOImported:
     """Persistence-authored event carrying a normalized imported CTO document."""
 
     purpose_id: UUID
@@ -183,7 +183,7 @@ class CTOImportedEvent:
 
 
 @dataclass(frozen=True)
-class PurposeStartedEvent:
+class PurposeStarted:
     """Purpose-authored provenance event announcing successful mesh admission."""
 
     purpose_id: UUID
@@ -198,7 +198,7 @@ class PurposeStartedEvent:
 
 
 @dataclass(frozen=True)
-class SessionStartedEvent:
+class SessionStarted:
     """Durable persistence-authored provenance event announcing session bootstrap."""
 
     purpose_id: UUID
@@ -213,7 +213,7 @@ class SessionStartedEvent:
 
 
 @dataclass(frozen=True)
-class PurposeCompletedEvent:
+class PurposeCompleted:
     """Purpose-authored event acknowledging that local shutdown work is complete."""
 
     purpose_id: UUID
@@ -228,7 +228,7 @@ class PurposeCompletedEvent:
 
 
 @dataclass(frozen=True)
-class SessionCompletedEvent:
+class SessionCompleted:
     """Durable persistence-authored final session completion event."""
 
     purpose_id: UUID
@@ -244,9 +244,9 @@ class SessionCompletedEvent:
 
 
 @dataclass(frozen=True)
-class CTOCloseRequestPayload(EventPayloadProtocol):
+class RequestCTOClosePayload(EventPayloadProtocol):
     """
-    Payload for a Purpose-originated CTOCloseRequest event.
+    Payload for a Purpose-originated RequestCTOClose event.
 
     Carries only turn_id — the Purpose is signalling satisfaction with a
     specific CTO, not submitting data. The hub stub currently accepts this
@@ -259,14 +259,14 @@ class CTOCloseRequestPayload(EventPayloadProtocol):
     def as_dict(self) -> dict[str, object]:
         """Serialize to a JSON-safe dict for the event log."""
         return {
-            "_schema": "cto_close_request",
+            "_schema": "request_cto_close",
             "_v": 1,
             "turn_id": self.turn_id,
         }
 
 
 @dataclass(frozen=True)
-class CTOCloseRequestEvent:
+class RequestCTOClose:
     """
     Purpose-authored event signalling that the originating Purpose considers
     a CTO's processing complete.
@@ -283,11 +283,11 @@ class CTOCloseRequestEvent:
     purpose_id: UUID
     purpose_name: str
     hub_token: str
-    payload: CTOCloseRequestPayload
+    payload: RequestCTOClosePayload
 
 
 @dataclass(frozen=True)
-class DeltaProposalEvent:
+class ProposeDelta:
     """
     Purpose-authored event used to propose a Delta to the hub.
 
@@ -301,4 +301,4 @@ class DeltaProposalEvent:
     purpose_id: UUID
     purpose_name: str
     hub_token: str
-    payload: DeltaProposalPayload
+    payload: ProposeDeltaPayload

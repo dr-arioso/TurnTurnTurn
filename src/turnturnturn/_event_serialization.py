@@ -92,7 +92,7 @@ def purpose_event_record(event: PurposeEventProtocol) -> dict[str, Any]:
 
     Record shape (stable from v0.19):
         record_type  : "purpose_event"
-        event_type   : wire string (e.g. "delta_proposal")
+        event_type   : wire string (e.g. "propose_delta")
         event_id     : UUID string
         created_at_ms: int (Unix ms)
         purpose_id   : UUID string

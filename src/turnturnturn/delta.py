@@ -3,7 +3,7 @@ Delta — a purpose-proposed change for hub merge.
 
 A Delta is the only mechanism by which a Purpose may influence canonical
 CTO state. Purposes never write to the CTO directly — they construct a
-Delta and submit it to the hub via hub.take_turn(DeltaProposalEvent). The hub validates,
+Delta and submit it to the hub via hub.take_turn(ProposeDelta). The hub validates,
 merges, and emits a delta_merged event.
 
 Patch semantics are append-only: all values must be lists. The hub
